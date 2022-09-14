@@ -4,7 +4,9 @@
 
 (defn extract [cfg]
   (let [{:keys [source-type source-url extractor-options]} cfg
-        extractor-cfg (assoc extractor-options :source-url source-url)]
+        extractor-cfg (assoc extractor-options
+                             :source-url source-url
+                             :node-modules-folder source-url)]
     (condp = source-type
       :flat-table (flat-table/import-from-cfg extractor-cfg)
       :ig (ftr.extraction.ig.core/import-from-cfg extractor-cfg))))

@@ -1,8 +1,7 @@
 (ns ftr.utils.core
   (:require [clojure.java.io :as io]
             [cheshire.core :as json]
-            [clojure.string :as str])
-  (:import org.apache.commons.io.input.ReversedLinesFileReader))
+            [clojure.string :as str]))
 
 
 (defn dissoc-when
