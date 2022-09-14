@@ -8,8 +8,7 @@
 
 
 (defmethod u/*fn ::extract-terminology [{:as _ctx, :keys [cfg]}]
-  (doto {:extraction-result (ftr.extraction.core/extract cfg)}
-    (println "->>>")))
+  {:extraction-result (ftr.extraction.core/extract cfg)})
 
 
 

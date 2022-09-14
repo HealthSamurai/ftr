@@ -176,38 +176,29 @@
            {:code "X" :op "add"}
            nil?]))))
 
-  (clean-up-test-env! test-env-cfg))
+  (clean-up-test-env! csv-test-env-cfg))
 
-(defn prepare-test-env! [{:as _cfg, :keys [csv-source-initial
-                                           csv-source-updated
-                                           ftr-path]}]
-  (let [fixture-file (io/file csv-source-initial)
-        fixture-file-2 (io/file csv-source-updated)]
-
-    (io/make-parents fixture-file)
-    (spit
-      fixture-file
-      "10344;20;XX;External causes of morbidity and mortality;;;1;
-16003;2001;V01-X59;Accidents;10344;;1;
-15062;20012;W00-X59;Other external causes of accidental injury;16003;;1;10/07/2020")
-
-    (io/make-parents fixture-file-2)
-    (spit
-      fixture-file-2
-      "10343;766;AA;loh and mortality;;;1;
-10343;666;X;morbidity and mortality;;;1;
-10344;20;XX;External causes of morbidity and mortality;;;1;
-16003;2001;V01-X59;Updated accidents;10344;;1;")
-
-    ))
 
 (t/deftest generate-repository-layout-from-ig-source
   (def ig-test-env-cfg
-    {:ig-source-initial "test/fixture/dehydrated.core/node_modules"
-     :ftr-path "/tmp/ftr2"
-     :vs1-name "AdministrativeGender"
-     :vs2-name "CodeSystemContentMode"
+    {:ig-source-initial           "test/fixture/dehydrated.core/node_modules"
+     :ig-source-updated           "test/fixture/dehydrated.mutated.core/node_modules"
+     :ftr-path                    "/tmp/igftr"
+     :vs1-name                    "AdministrativeGender"
+     :vs2-name                    "CodeSystemContentMode"
+     :expected-tf1-sha256         "9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1"
+     :expected-tf1-filename       "tf.9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1.ndjson.gz"
+     :expected-updated-tf1-sha256 "7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3"
+     :expected-updated-tf1-filename "tf.7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3.ndjson.gz"
+     :expected-tf1-patch-filename "patch.9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1.7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3.ndjson.gz"
+     :expected-tf2-sha256   "a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb"
+     :expected-tf2-filename "tf.a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb.ndjson.gz"
+     :expected-updated-tf2-sha256 "ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b"
+     :expected-updated-tf2-filename "tf.ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b.ndjson.gz"
+     :expected-tf2-patch-filename "patch.a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb.ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b.ndjson.gz"
      })
+
+
   (def ig-user-cfg {:module      "dehydrated"
                     :source-url  (:ig-source-initial ig-test-env-cfg)
                     :ftr-path    (:ftr-path ig-test-env-cfg)
@@ -215,6 +206,8 @@
                     :source-type :ig})
 
   (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg))
+
+
   (let [{:as user-cfg, :keys [module ftr-path tag]}
         ig-user-cfg
 
@@ -223,7 +216,7 @@
 
         tf-tag-file-name
         (format "tag.%s.ndjson.gz" tag)
-        _ (println user-cfg)
+
         _
         (sut/apply-cfg user-cfg)
 
@@ -239,10 +232,10 @@
          {(format "%s.ndjson.gz" tag) {}}
          "vs"
          {vs1-name
-          {(:expected-tf-filename ig-test-env-cfg) {}
+          {(:expected-tf1-filename ig-test-env-cfg) {}
            tf-tag-file-name                     {}}
           vs2-name
-          {(:expected-tf-filename ig-test-env-cfg) {}
+          {(:expected-tf2-filename ig-test-env-cfg) {}
            tf-tag-file-name                     {}}}}}))
 
     (t/testing "sees tag ingex content"
@@ -253,38 +246,129 @@
                 (:module user-cfg)
                 (:tag user-cfg)))
        [{:name (format "%s.%s" module vs1-name)
-         :hash (:expected-tf-sha256 ig-test-env-cfg)}
+         :hash (:expected-tf1-sha256 ig-test-env-cfg)}
         {:name (format "%s.%s" module vs2-name)
-         :hash (:expected-tf-sha256 ig-test-env-cfg)}
+         :hash (:expected-tf2-sha256 ig-test-env-cfg)}
         nil?]))
 
-    (t/testing "sees terminology tag file"
-      (matcho/match
-       (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/%s"
-                                               ftr-path
-                                               (:module ig-user-cfg)
-                                               vs1-name
-                                               tf-tag-file-name))
-       [{:tag tag
-         :hash (:expected-tf-sha256 ig-test-env-cfg)}
-        nil?])
-      (matcho/match
-       (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path vs2-name tf-tag-file-name))
-       [{:tag tag
-         :hash (:expected-tf-sha256 ig-test-env-cfg)}
-        nil?])))
-  )
+    (t/testing "sees terminology tag files"
+      (t/testing (format "for %s vs" vs1-name)
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/%s"
+                                                  ftr-path
+                                                  (:module ig-user-cfg)
+                                                  vs1-name
+                                                  tf-tag-file-name))
+          [{:tag tag
+            :hash (:expected-tf1-sha256 ig-test-env-cfg)}
+           nil?]))
 
-(comment
-
-  ;; generate-layout
-  ;; compare-layout-tree
-
-
-  ;; index
-  ;; tag
-  ;; patch
+      (t/testing (format "for %s vs" vs1-name)
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/%s"
+                                                  ftr-path
+                                                  (:module ig-user-cfg)
+                                                  vs2-name
+                                                  tf-tag-file-name))
+          [{:tag tag
+            :hash (:expected-tf2-sha256 ig-test-env-cfg)}
+           nil?]))))
 
 
-  ;;
-  )
+  (t/testing "User provides updated config for IG"
+    (let [{:as user-cfg, :keys [module ftr-path tag]}
+          (assoc ig-user-cfg :source-url (:ig-source-updated ig-test-env-cfg))
+
+          {:keys [vs1-name vs2-name]}
+          ig-test-env-cfg
+
+          tf-tag-file-name
+          (format "tag.%s.ndjson.gz" tag)
+
+          _
+          (sut/apply-cfg user-cfg)
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees updated repository layout, new tf sha is correct, patch file created"
+        (matcho/match
+          ftr-tree
+          {module
+           {"tags"
+            {(format "%s.ndjson.gz" tag) {}}
+            "vs"
+            {vs1-name
+             {(:expected-tf1-filename ig-test-env-cfg)         {}
+              (:expected-updated-tf1-filename ig-test-env-cfg) {}
+              (:expected-tf1-patch-filename ig-test-env-cfg)   {}
+              tf-tag-file-name                                  {}}
+             vs2-name
+             {(:expected-tf2-filename ig-test-env-cfg)         {}
+              (:expected-updated-tf2-filename ig-test-env-cfg) {}
+              (:expected-tf2-patch-filename ig-test-env-cfg)   {}
+              tf-tag-file-name                                  {}}}}})
+        )
+
+      (t/testing "sees tag ingex content"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz
+            (format "%s/%s/tags/%s.ndjson.gz"
+                    (:ftr-path ig-test-env-cfg)
+                    (:module user-cfg)
+                    (:tag user-cfg)))
+          [{:name (format "%s.%s" module vs1-name) :hash (:expected-updated-tf1-sha256 ig-test-env-cfg)}
+           {:name (format "%s.%s" module vs2-name) :hash (:expected-updated-tf2-sha256 ig-test-env-cfg)}
+           nil?]))
+
+      (t/testing "sees terminology tag file"
+        (t/testing (format "%s vs" vs1-name)
+          (matcho/match
+            (ftr.utils.core/parse-ndjson-gz
+              (format "%s/%s/vs/%s/%s"
+                      ftr-path
+                      (:module user-cfg)
+                      vs1-name
+                      tf-tag-file-name))
+            [{:tag tag :hash (:expected-updated-tf1-sha256 ig-test-env-cfg)}
+             {:from (:expected-tf1-sha256 ig-test-env-cfg) :to (:expected-updated-tf1-sha256 ig-test-env-cfg)}
+             nil?]))
+
+        (t/testing (format "%s vs" vs2-name)
+          (matcho/match
+            (ftr.utils.core/parse-ndjson-gz
+              (format "%s/%s/vs/%s/%s"
+                      ftr-path
+                      (:module user-cfg)
+                      vs2-name
+                      tf-tag-file-name))
+            [{:tag tag :hash (:expected-updated-tf2-sha256 ig-test-env-cfg)}
+             {:from (:expected-tf2-sha256 ig-test-env-cfg) :to (:expected-updated-tf2-sha256 ig-test-env-cfg)}
+             nil?])))
+
+      (t/testing "sees terminology patch file"
+        (t/testing (format "%s vs" vs1-name)
+          (matcho/match
+            (sort-by :code (ftr.utils.core/parse-ndjson-gz
+                             (format "%s/%s/vs/%s/%s"
+                                     ftr-path
+                                     (:module user-cfg)
+                                     vs1-name
+                                     (:expected-tf1-patch-filename ig-test-env-cfg))))
+            [{:name vs1-name}
+             {:op "remove" :code "other"}
+             nil?]))
+
+        (t/testing (format "%s vs" vs2-name)
+          (matcho/match
+            (sort-by :code (ftr.utils.core/parse-ndjson-gz
+                             (format "%s/%s/vs/%s/%s"
+                                     ftr-path
+                                     (:module user-cfg)
+                                     vs2-name
+                                     (:expected-tf2-patch-filename ig-test-env-cfg))))
+            [{:name vs2-name}
+             {:op "update" :code "not-present"
+              :definition "!None! of the concepts defined by the code system are included in the code system resource."}
+             {:op "add" :code "test-content"}
+             nil?]))))))
