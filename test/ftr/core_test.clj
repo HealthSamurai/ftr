@@ -14,14 +14,18 @@
     (map (fn [f] (drop 1 (str/split (str f) #"/"))) (file-seq (io/file path)))))
 
 
-(def csv-test-env-cfg {:csv-source-initial "/tmp/ftr-fixtures/icd10initial.csv"
-                       :csv-source-updated "/tmp/ftr-fixtures/icd10updated.csv"
-                       :ftr-path "/tmp/ftr"
-                       :expected-tf-sha256 "70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976"
-                       :expected-tf-filename "tf.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.ndjson.gz"
-                       :expected-updated-tf-sha256 "476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5"
+(def csv-test-env-cfg {:csv-source-initial           "/tmp/ftr-fixtures/icd10initial.csv"
+                       :csv-source-updated           "/tmp/ftr-fixtures/icd10updated.csv"
+                       :csv-source-tag               "/tmp/ftr-fixtures/icd10newtag.csv"
+                       :ftr-path                     "/tmp/ftr"
+                       :expected-tf-sha256           "70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976"
+                       :expected-tf-filename         "tf.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.ndjson.gz"
+                       :expected-updated-tf-sha256   "476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5"
                        :expected-updated-tf-filename "tf.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.ndjson.gz"
-                       :expected-patch-filename "patch.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.ndjson.gz"})
+                       :expected-tag-tf-sha256       "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"
+                       :expected-tag-tf-filename     "tf.a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b.ndjson.gz"
+                       :expected-patch-filename      "patch.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.ndjson.gz"
+                       :expected-patch2-filename     "patch.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b.ndjson.gz"})
 
 
 (def csv-user-cfg {:module            "icd10"
@@ -45,9 +49,11 @@
 
 (defn prepare-test-env! [{:as _cfg, :keys [csv-source-initial
                                            csv-source-updated
+                                           csv-source-tag
                                            ftr-path]}]
   (let [fixture-file (io/file csv-source-initial)
-        fixture-file-2 (io/file csv-source-updated)]
+        fixture-file-2 (io/file csv-source-updated)
+        fixture-file-3 (io/file csv-source-tag)]
 
     (io/make-parents fixture-file)
     (spit
@@ -64,13 +70,20 @@
 10344;20;XX;External causes of morbidity and mortality;;;1;
 16003;2001;V01-X59;Updated accidents;10344;;1;")
 
+    (io/make-parents fixture-file-3)
+    (spit
+      fixture-file-3
+      "10343;666;X;morbidity and mortality;;;1;")
+
     (ftr.utils.core/rmrf ftr-path)))
 
 (defn clean-up-test-env! [{:as _cfg, :keys [csv-source-initial
                                             csv-source-updated
+                                            csv-source-tag
                                             ftr-path]}]
   (ftr.utils.core/rmrf csv-source-initial)
   (ftr.utils.core/rmrf csv-source-updated)
+  (ftr.utils.core/rmrf csv-source-tag)
   (ftr.utils.core/rmrf ftr-path))
 
 (t/deftest generate-repository-layout-from-csv-source
@@ -134,10 +147,7 @@
           (sut/apply-cfg user-cfg)
 
           ftr-tree
-          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))
-
-          _
-          (def a ftr-tree)]
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
 
       (t/testing "sees updated repository layout, new tf sha is correct, patch file created"
         (matcho/match
@@ -174,6 +184,78 @@
            {:code "V01-X59" :op "update"}
            {:code "W00-X59" :op "remove"}
            {:code "X" :op "add"}
+           nil?]))))
+
+  (t/testing "tag move"
+    (let [{:as user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :name} :value-set} :extractor-options
+           {:keys [old-tag new-tag]} :move-tag}
+          (assoc csv-user-cfg
+                 :source-url (:csv-source-tag csv-test-env-cfg)
+                 :move-tag {:old-tag "v1"
+                            :new-tag "v2"})
+
+          old-tf-tag-file-name
+          (format "tag.%s.ndjson.gz" old-tag)
+
+          new-tf-tag-file-name
+          (format "tag.%s.ndjson.gz" new-tag)
+
+          _
+          (sut/apply-cfg user-cfg)
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+
+      (t/testing "sees updated repository layout, new tf sha is correct, patch file created"
+        (matcho/match
+         ftr-tree
+         {module
+          {"tags"
+           {(format "%s.ndjson.gz" old-tag) {}
+            (format "%s.ndjson.gz" new-tag) {}}
+           "vs"
+           {value-set-name
+            {(:expected-tf-filename csv-test-env-cfg)         {}
+             (:expected-updated-tf-filename csv-test-env-cfg) {}
+             (:expected-patch-filename csv-test-env-cfg)      {}
+             old-tf-tag-file-name                             {}
+             new-tf-tag-file-name                             {}}}}}))
+
+      (t/testing "sees tag ingex content"
+        (matcho/match
+         (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/tags/%s.ndjson.gz" (:ftr-path csv-test-env-cfg) old-tag))
+         [{:name (format "%s.%s" module value-set-name) :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
+          nil?])
+
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/tags/%s.ndjson.gz" (:ftr-path csv-test-env-cfg) new-tag))
+          [{:name (format "%s.%s" module value-set-name) :hash "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"}
+           nil?]))
+
+      (t/testing "sees terminology tag file"
+        (t/testing (format "%s tag" old-tag)
+          (matcho/match
+            (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name old-tf-tag-file-name))
+            [{:tag tag :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
+             {:from (:expected-tf-sha256 csv-test-env-cfg) :to (:expected-updated-tf-sha256 csv-test-env-cfg)}
+             nil?]))
+
+        (t/testing (format "%s tag" new-tag)
+          (matcho/match
+            (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name new-tf-tag-file-name))
+            [{:tag new-tag :hash "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b" :from-tag old-tag}
+             {:from (:expected-updated-tf-sha256 csv-test-env-cfg) :to "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"}
+             nil?])))
+
+      (t/testing "sees new patch file"
+        (matcho/match
+          (sort-by :code (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name (:expected-patch2-filename csv-test-env-cfg))))
+          [{:name value-set-name}
+           {:code "AA" :op "remove"}
+           {:code "V01-X59" :op "remove"}
+           {:code "XX" :op "remove"}
            nil?]))))
 
   (clean-up-test-env! csv-test-env-cfg))
@@ -371,4 +453,7 @@
              {:op "update" :code "not-present"
               :definition "!None! of the concepts defined by the code system are included in the code system resource."}
              {:op "add" :code "test-content"}
-             nil?]))))))
+             nil?])))))
+
+  (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg))
+  )

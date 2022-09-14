@@ -18,6 +18,7 @@
 
 (defmethod u/*fn ::shape-ftr-layout [{:as _ctx, :keys [cfg write-result]}]
   (let [tag (:tag cfg)
+        ?new-tag (get-in cfg [:move-tag :new-tag])
         module-path (format "%s/%s" (:ftr-path cfg) (:module cfg))
         tags-path (format "%s/tags" module-path)
         vs-dir-path (format "%s/vs" module-path)
@@ -38,7 +39,9 @@
       :temp-tf-path temp-tf-path
       :tf-path (format "%s/%s" vs-name-path tf-name)
       :tf-tag-path (format "%s/tag.%s.ndjson.gz" vs-name-path tag)
-      :tag-index-path (format "%s/%s.ndjson.gz" tags-path tag)}}))
+      :new-tf-tag-path (when ?new-tag (format "%s/tag.%s.ndjson.gz" vs-name-path ?new-tag))
+      :tag-index-path (format "%s/%s.ndjson.gz" tags-path tag)
+      :new-tag-index-path (when ?new-tag (format "%s/%s.ndjson.gz" tags-path ?new-tag))}}))
 
 
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]}]

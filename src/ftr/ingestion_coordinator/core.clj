@@ -16,17 +16,30 @@
                              :old-sha256 current-sha256}}))
 
 
-(defn create-tf-tag! [tf-tag-path tag sha256]
-  (ftr.utils.core/spit-ndjson-gz! tf-tag-path [{:tag tag :hash sha256}]))
+(defn create-tf-tag! [tf-tag-path tag sha256
+                      & [{:keys [move-tag? old-tag old-tf-tag-path]}]]
+  (if move-tag?
+    (let [[{:as _tag-file-entry, :keys [hash]}]
+          (ftr.utils.core/parse-ndjson-gz old-tf-tag-path)]
+      (ftr.utils.core/spit-ndjson-gz! tf-tag-path
+                                      [{:tag tag :hash sha256 :from-tag old-tag}
+                                       {:from hash :to sha256}])
+      {:ingestion-coordinator {:generate-patch? true
+                               :old-sha256 hash}})
+    (ftr.utils.core/spit-ndjson-gz! tf-tag-path [{:tag tag :hash sha256}])))
 
 
 (defmethod u/*fn ::tf-tag-upsert [{:as _ctx,
-                                   {:keys [tag]} :cfg
+                                   {:keys [tag] {:keys [new-tag old-tag]} :move-tag} :cfg
                                    {:keys [tf-sha256]} :write-result
-                                   {:keys [tf-tag-path]} :ftr-layout}]
-  (if (ftr.utils.core/file-exists? tf-tag-path)
-    (update-tf-tag! tf-tag-path tf-sha256)
-    (create-tf-tag! tf-tag-path tag tf-sha256)))
+                                   {:keys [tf-tag-path new-tf-tag-path]} :ftr-layout}]
+  (if new-tf-tag-path
+    (create-tf-tag! new-tf-tag-path new-tag tf-sha256 {:move-tag? true
+                                                       :old-tag old-tag
+                                                       :old-tf-tag-path tf-tag-path})
+    (if (ftr.utils.core/file-exists? tf-tag-path)
+      (update-tf-tag! tf-tag-path tf-sha256)
+      (create-tf-tag! tf-tag-path tag tf-sha256))))
 
 
 (defn update-tag-index! [tag-index-path vs-name module new-sha256]
@@ -50,12 +63,15 @@
 
 
 (defmethod u/*fn ::tag-index-upsert [{:as _ctx, ;;TODO
-                                      {:keys [module]} :cfg
+                                      {:keys [module move-tag]} :cfg
                                       {:keys [tf-sha256 value-set]} :write-result
-                                      {:keys [tag-index-path]} :ftr-layout}]
-  (if (ftr.utils.core/file-exists? tag-index-path)
-    (update-tag-index! tag-index-path (:name value-set) module tf-sha256)
-    (create-tag-index! tag-index-path (:name value-set) module tf-sha256)))
+                                      {:keys [tag-index-path
+                                              new-tag-index-path]} :ftr-layout}]
+  (if new-tag-index-path
+    (create-tag-index! new-tag-index-path (:name value-set) module tf-sha256)
+    (if (ftr.utils.core/file-exists? tag-index-path)
+      (update-tag-index! tag-index-path (:name value-set) module tf-sha256)
+      (create-tag-index! tag-index-path (:name value-set) module tf-sha256))))
 
 
 (defn generate-tf-name [sha]
