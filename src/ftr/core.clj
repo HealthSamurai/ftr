@@ -19,10 +19,11 @@
 (defmethod u/*fn ::shape-ftr-layout [{:as _ctx, :keys [cfg write-result]}]
   (let [tag (:tag cfg)
         ?new-tag (get-in cfg [:move-tag :new-tag])
+        ?old-tag (get-in cfg [:move-tag :old-tag])
         module-path (format "%s/%s" (:ftr-path cfg) (:module cfg))
         tags-path (format "%s/tags" module-path)
         vs-dir-path (format "%s/vs" module-path)
-        value-set-name (get-in write-result [:value-set :name])
+        value-set-name (ftr.utils.core/escape-url (get-in write-result [:value-set :url]))
         temp-tf-file (:terminology-file write-result)
         tf-name (.getName temp-tf-file)
         temp-tf-path (.getAbsolutePath temp-tf-file)
@@ -39,7 +40,7 @@
       :temp-tf-path temp-tf-path
       :tf-path (format "%s/%s" vs-name-path tf-name)
       :tf-tag-path (format "%s/tag.%s.ndjson.gz" vs-name-path tag)
-      :new-tf-tag-path (when ?new-tag (format "%s/tag.%s.ndjson.gz" vs-name-path ?new-tag))
+      :old-tf-tag-path (when ?new-tag (format "%s/tag.%s.ndjson.gz" vs-name-path ?old-tag))
       :tag-index-path (format "%s/%s.ndjson.gz" tags-path tag)
       :new-tag-index-path (when ?new-tag (format "%s/%s.ndjson.gz" tags-path ?new-tag))}}))
 
@@ -69,13 +70,24 @@
 (comment
   (def usr-cfg
     {:module            "fhir"
-     :ftr-path          "/tmp/mysuperftr"
+     :ftr-path          "/tmp/ftr"
+     :tag               "r3"
+     :source-type       :ig
+     :source-url "/tmp/r3"})
+
+  (def usr-cfg-2
+    {:module            "fhir"
+     :ftr-path          "/tmp/ftr"
+     :move-tag {:old-tag "r3"
+                :new-tag "r4"}
      :tag               "r4"
      :source-type       :ig
-     :extractor-options {:node-modules-folder "/tmp/node_modules"}})
-
+     :source-url "/tmp/r4"})
 
   (time (do (apply-cfg usr-cfg)
+            :done))
+
+  (time (do (apply-cfg usr-cfg-2)
             :done))
 
   )

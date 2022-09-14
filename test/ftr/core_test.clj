@@ -91,8 +91,10 @@
     (prepare-test-env! csv-test-env-cfg)
 
     (let [{:as user-cfg, :keys [module ftr-path tag]
-           {{value-set-name :name} :value-set} :extractor-options}
+           {{value-set-name :url} :value-set} :extractor-options}
           csv-user-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
 
           tf-tag-file-name
           (format "tag.%s.ndjson.gz" tag)
@@ -137,8 +139,10 @@
 
   (t/testing "User provides updated config for CSV"
     (let [{:as user-cfg, :keys [module ftr-path tag]
-           {{value-set-name :name} :value-set} :extractor-options}
+           {{value-set-name :url} :value-set} :extractor-options}
           (assoc csv-user-cfg :source-url (:csv-source-updated csv-test-env-cfg))
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
 
           tf-tag-file-name
           (format "tag.%s.ndjson.gz" tag)
@@ -188,12 +192,16 @@
 
   (t/testing "tag move"
     (let [{:as user-cfg, :keys [module ftr-path tag]
-           {{value-set-name :name} :value-set} :extractor-options
+           {{value-set-name :url} :value-set} :extractor-options
            {:keys [old-tag new-tag]} :move-tag}
           (assoc csv-user-cfg
                  :source-url (:csv-source-tag csv-test-env-cfg)
+                 :tag "v2"
                  :move-tag {:old-tag "v1"
                             :new-tag "v2"})
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
 
           old-tf-tag-file-name
           (format "tag.%s.ndjson.gz" old-tag)
@@ -238,7 +246,7 @@
         (t/testing (format "%s tag" old-tag)
           (matcho/match
             (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name old-tf-tag-file-name))
-            [{:tag tag :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
+            [{:tag old-tag :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
              {:from (:expected-tf-sha256 csv-test-env-cfg) :to (:expected-updated-tf-sha256 csv-test-env-cfg)}
              nil?]))
 
@@ -266,8 +274,8 @@
     {:ig-source-initial           "test/fixture/dehydrated.core/node_modules"
      :ig-source-updated           "test/fixture/dehydrated.mutated.core/node_modules"
      :ftr-path                    "/tmp/igftr"
-     :vs1-name                    "AdministrativeGender"
-     :vs2-name                    "CodeSystemContentMode"
+     :vs1-name                    "http:--hl7.org-fhir-ValueSet-administrative-gender"
+     :vs2-name                    "http:--hl7.org-fhir-ValueSet-codesystem-content-mode"
      :expected-tf1-sha256         "9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1"
      :expected-tf1-filename       "tf.9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1.ndjson.gz"
      :expected-updated-tf1-sha256 "7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3"

@@ -74,7 +74,8 @@
 
 
 (defn file-exists? [path]
-  (.exists (io/file path)))
+  (when path
+    (.exists (io/file path))))
 
 
 (defn spit-ndjson-gz! [output-path coll]

@@ -25,6 +25,8 @@
         (nil? c1)
         (recur c1 (.readLine n) (conj diff-acc (merge {:op "add"} c2)))
 
+        (nil? c2)
+        (recur (.readLine o) nil (conj diff-acc (merge {:op "remove"} c1)))
 
         (= (make-code&system c1)
            (make-code&system c2))
@@ -51,7 +53,9 @@
                                     {:keys [value-set]} :write-result
                                     {:keys [generate-patch? tf-file old-tf-file]} :ingestion-coordinator}]
   (when generate-patch?
-    (->>
-      (generate-patch! (str old-tf-file) (str tf-file))
-      (into [{:name (:name value-set)}])
-      (ftr.utils.core/spit-ndjson-gz! tf-patch-path))))
+    (let [patch (generate-patch! (str old-tf-file) (str tf-file))]
+      (when (seq patch)
+        (->>
+          patch
+          (into [{:name (ftr.utils.core/escape-url (:url value-set))}])
+          (ftr.utils.core/spit-ndjson-gz! tf-patch-path))))))
