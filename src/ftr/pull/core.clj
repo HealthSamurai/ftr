@@ -7,21 +7,13 @@
 
 (defn init [{:as _cfg, :keys [tag ftr-path module]}
             & [{:as params, :keys [patch-plan-file-name]
-                :or {patch-plan-file-name (ftr.utils.core/gen-uuid)}}]]
-  (let [tag-index-path (format "%s/%s/tags/%s.ndjson.gz"
-                               ftr-path
-                               module
-                               tag)
+                :or {patch-plan-file-name (str "update-plan-" (ftr.utils.core/gen-uuid))}}]]
+  (let [tag-index-path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)
         tag-index (ftr.utils.core/parse-ndjson-gz tag-index-path)
-        temp-patch-plan-file (format "%s/%s.ndjson.gz"
+        patch-plan-file (format "%s/%s.ndjson.gz"
                                      ftr-path
                                      patch-plan-file-name)]
-    (with-open [w (-> temp-patch-plan-file
-                      (io/file)
-                      (java.io.FileOutputStream.)
-                      (java.util.zip.GZIPOutputStream. true)
-                      (java.io.OutputStreamWriter.)
-                      (java.io.BufferedWriter.))]
+    (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file)]
       (doseq [{:as _ti-entry, :keys [hash name]} tag-index
               :let [trimmed-name (second (str/split name #"\." 2))]]
         (let [tf-path (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
@@ -29,12 +21,13 @@
                               module
                               trimmed-name
                               hash)]
-          (with-open [r (-> tf-path
-                            (io/input-stream)
-                            (java.util.zip.GZIPInputStream.)
-                            (io/reader))]
+          (with-open [r (ftr.utils.core/open-gz-reader tf-path)]
             (doseq [l (line-seq r)]
               (.write w (str l \newline)))))))))
+
+
+(defn extract-vs-name [name]
+  (second (str/split name #"\." 2)))
 
 
 (defn tag-index->tag-index-map [tag-index]
@@ -42,64 +35,82 @@
             (assoc acc name hash)) {} tag-index))
 
 
-(defn migrate [{:as cfg, :keys [ftr-path
-                                module
-                                tag
-                                tag-index
-                                update-plan-file-name]
-                :or {update-plan-file-name "update-plan"}}]
+(defn diff-tag-indexes [a b]
+  (let [all-keys (into #{} (concat (keys a) (keys b)))]
+    (reduce (fn [acc k]
+              (let [a-entry (get a k)
+                    b-entry (get b k)]
+                (cond
+                  (nil? a-entry)
+                  (conj acc {:state :add
+                             :vs-name k
+                             :from a-entry
+                             :to b-entry})
+
+                  (nil? b-entry)
+                  (conj acc {:state :remove
+                             :vs-name k
+                             :from a-entry
+                             :to b-entry})
+
+                  (not= (get a k) (get b k))
+                  (conj acc {:state :updated
+                             :vs-name k
+                             :from a-entry
+                             :to b-entry}))))
+            [] all-keys)))
+
+
+(defn migrate [{:as _cfg, :keys [ftr-path module tag tag-index patch-plan-file-name]
+                :or {patch-plan-file-name "update-plan"}}]
   (let [actual-tag-index-path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)
         actual-tag-index      (ftr.utils.core/parse-ndjson-gz actual-tag-index-path)
         client-tag-index-map  (tag-index->tag-index-map tag-index)
         actual-tag-index-map  (tag-index->tag-index-map actual-tag-index)
-        tf-paths-to-migrate   (reduce-kv (fn [acc vs-name vs-hash]
-                                           (let [client-tf-hash (get client-tag-index-map vs-name)]
-                                             (if (and
-                                                   (some? client-tf-hash)
-                                                   (not= vs-hash client-tf-hash))
-                                               (conj acc {:from    client-tf-hash
-                                                          :to      vs-hash
-                                                          :vs-name (second (str/split vs-name #"\." 2))})
-                                               acc)))
-                                       []
-                                       actual-tag-index-map)
-        update-plan-file-path (format "%s/%s.ndjson.gz" ftr-path update-plan-file-name)]
-    (with-open [w (-> update-plan-file-path
-                      (io/file)
-                      (java.io.FileOutputStream.)
-                      (java.util.zip.GZIPOutputStream. true)
-                      (java.io.OutputStreamWriter.)
-                      (java.io.BufferedWriter.))]
-      (reduce (fn [acc {:keys [from to vs-name] :as tag-entry}]
-                (let [->vs-path        (fn [suffix] (str (format "%s/%s/vs/%s/" ftr-path module vs-name) suffix))
-                      tag-file-path    (->vs-path (format "tag.%s.ndjson.gz" tag))
-                      tag-file         (ftr.utils.core/parse-ndjson-gz tag-file-path)
-                      ?patch-file-path (first
-                                         (keep (fn [m] (when (= m (dissoc tag-entry :vs-name))
-                                                         (->vs-path (format "patch.%s.%s.ndjson.gz"
-                                                                            from
-                                                                            to))))
-                                               (rest tag-file)))
-                      old-tf           (->vs-path (format "tf.%s.ndjson.gz" from))
-                      new-tf           (->vs-path (format "tf.%s.ndjson.gz" to))
-                      patch-file       (or (when (and ?patch-file-path (-> ?patch-file-path io/file .exists))
-                                             (rest (ftr.utils.core/parse-ndjson-gz ?patch-file-path)))
-                                           (ftr.patch-generator.core/generate-patch! old-tf new-tf))
-                      to-remove?       (comp #{"remove"} :op)
-                      new-tf-reader    (ftr.utils.core/open-ndjson-gz-reader new-tf)]
+        tag-indexes-diff      (diff-tag-indexes client-tag-index-map actual-tag-index-map)
+        patch-plan-file-path (format "%s/%s.ndjson.gz" ftr-path patch-plan-file-name)]
+    (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
+      (reduce (fn [acc {:keys [state from to vs-name] :as tag-entry}]
+                (let [vs-name (extract-vs-name vs-name)
+                      ->vs-path (fn [suffix] (str (format "%s/%s/vs/%s/" ftr-path module vs-name) suffix))
+                      ?old-tf           (when from (->vs-path (format "tf.%s.ndjson.gz" from)))
+                      ?new-tf           (when to (->vs-path (format "tf.%s.ndjson.gz" to)))]
+                  (condp = state
+                    :remove
+                    (->>
+                      (ftr.utils.core/parse-ndjson-gz ?old-tf)
+                      (map :id)
+                      (update acc :remove-plan into))
 
-                  ;; NOTE: read codesystem & valueset
-                  (.write w (ftr.utils.core/generate-ndjson-row (.readLine new-tf-reader)))
-                  (.write w (ftr.utils.core/generate-ndjson-row (.readLine new-tf-reader)))
+                    :add
+                    (do (doseq [l (line-seq (ftr.utils.core/open-gz-reader ?new-tf))]
+                          (.write w (str l \newline)))
+                        acc)
 
-                  ;; NOTE: collect resources to update
-                  (doseq [resource (filter (comp not to-remove?) patch-file)]
-                    (.write w (ftr.utils.core/generate-ndjson-row (dissoc resource :op))))
+                    :updated
+                    (let [tag-file-path (->vs-path (format "tag.%s.ndjson.gz" tag))
+                          tag-file (ftr.utils.core/parse-ndjson-gz tag-file-path)
+                          ?patch-file-path (first
+                                             (keep (fn [m] (when (= m (dissoc tag-entry :vs-name))
+                                                             (->vs-path (format "patch.%s.%s.ndjson.gz"
+                                                                                from
+                                                                                to))))
+                                                   (rest tag-file)))
+                          patch (or (when (and ?patch-file-path (-> ?patch-file-path io/file .exists))
+                                      (rest (ftr.utils.core/parse-ndjson-gz ?patch-file-path)))
+                                    (ftr.patch-generator.core/generate-patch! ?old-tf ?new-tf))
+                          new-tf-reader (ftr.utils.core/open-ndjson-gz-reader ?new-tf)
+                          new-tf-cs (.readLine new-tf-reader)
+                          new-tf-vs (.readLine new-tf-reader)
+                          {:strs [add remove update]} (group-by :op patch)
+                          concepts (->> (into add update)
+                                        (map #(dissoc % :op :_source)))
+                          ids-to-remove (map :id remove)]
 
-                  (->> patch-file
-                       (filter to-remove?)
-                       (map :id)
-                       (update acc :remove-plan into))))
+                      (doseq [l (into [new-tf-cs new-tf-vs] concepts)]
+                        (.write w (ftr.utils.core/generate-ndjson-row l)))
+
+                      (clojure.core/update acc :remove-plan into ids-to-remove)))))
               {:remove-plan []
-               :update-plan update-plan-file-path}
-              tf-paths-to-migrate))))
+               :patch-plan patch-plan-file-path}
+              tag-indexes-diff))))

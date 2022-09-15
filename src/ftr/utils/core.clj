@@ -116,3 +116,19 @@
   (-> url
       (str/replace #"/" "-")
       (str/replace #" " "-")))
+
+
+(defn open-gz-writer [output]
+  (-> output
+      (io/file)
+      (java.io.FileOutputStream.)
+      (java.util.zip.GZIPOutputStream. true)
+      (java.io.OutputStreamWriter.)
+      (java.io.BufferedWriter.)))
+
+
+(defn open-gz-reader [input]
+  (-> input
+      (io/input-stream)
+      (java.util.zip.GZIPInputStream.)
+      (io/reader)))

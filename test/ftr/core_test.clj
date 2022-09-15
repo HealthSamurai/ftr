@@ -490,10 +490,11 @@
   (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg))
   )
 
-(t/deftest migrate-test
+(t/deftest update-test
   (let [env      {:ig-source-initial     "test/fixture/dehydrated.core/node_modules"
                   :ig-source-updated1    "test/fixture/dehydrated.mutated.core/node_modules"
                   :ig-source-updated2    "test/fixture/dehydrated.mutated.core2/node_modules"
+                  :ig-source-updated3    "test/fixture/dehydrated.mutated.core3/node_modules"
                   :update-plan-name      "update-plan"
                   :update-plan-name-path "/tmp/igftr/update-plan.ndjson.gz"
                   :ftr-path              "/tmp/igftr"}
@@ -516,23 +517,47 @@
                                                 (:tag user-cfg)))})]
 
     (sut/apply-cfg (assoc user-cfg :source-url (:ig-source-updated1 env)))
-    (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated2 env)
+    (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated2 env)}))
+    (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated3 env)
                                     :tag        "v2"
                                     :move-tag   {:old-tag "v1"
                                                  :new-tag "v2"}}))
 
 
-    (t/testing "do pull/migrate"
+    (t/testing "do pull/update"
       (matcho/match
-        (pull-sut/migrate (assoc client-cfg :update-plan-name (:update-plan-name env)))
-        {:update-plan (:update-plan-name-path env)
-         :remove-plan ["http:--hl7.org-fhir-administrative-gender-other"]}))
+        (update (pull-sut/migrate (assoc client-cfg :update-plan-name (:update-plan-name env))) :remove-plan sort)
+        {:patch-plan (:update-plan-name-path env)
+         :remove-plan
+         ["administrative-gender"
+          "administrative-gender"
+          "http:--hl7.org-fhir-administrative-gender-female"
+          "http:--hl7.org-fhir-administrative-gender-male"
+          "http:--hl7.org-fhir-administrative-gender-other"
+          "http:--hl7.org-fhir-administrative-gender-unknown"
+          nil?]}))
 
 
     (t/testing "sees bulk update plan file"
       (matcho/match
         (ftr.utils.core/parse-ndjson-gz (:update-plan-name-path env))
-        [{:resourceType "CodeSystem" :name "AdministrativeGender"}
-         {:resourceType "ValueSet"   :name "AdministrativeGender"}
-        {:code "custom"}
+        [{:resourceType "CodeSystem" :name "v3.NullFlavor"}
+         {:resourceType "ValueSet"   :name "v3.NullFlavor"}
+         {:code "ASKU"}
+         {:code "DER"}
+         {:code "INV"}
+         {:code "MSK"}
+         {:code "NA"}
+         {:code "NASK"}
+         {:code "NAV"}
+         {:code "NAVU"}
+         {:code "NI"}
+         {:code "NINF"}
+         {:code "NP"}
+         {:code "OTH"}
+         {:code "PINF"}
+         {:code "QS"}
+         {:code "TRC"}
+         {:code "UNC"}
+         {:code "UNK"}
          nil?]))))
