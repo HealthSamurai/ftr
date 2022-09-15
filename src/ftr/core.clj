@@ -11,7 +11,6 @@
   {:extraction-result (ftr.extraction.core/extract cfg)})
 
 
-
 (defmethod u/*fn ::write-terminology-file [ctx]
   {:write-result (ftr.writer.core/write-terminology-file ctx)})
 

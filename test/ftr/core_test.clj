@@ -1,5 +1,6 @@
 (ns ftr.core-test
   (:require [ftr.core :as sut]
+            [ftr.pull.core :as pull-sut]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :as t]
@@ -461,7 +462,30 @@
              {:op "update" :code "not-present"
               :definition "!None! of the concepts defined by the code system are included in the code system resource."}
              {:op "add" :code "test-content"}
+             nil?])))
+
+      (t/testing "Pull-initialize operation"
+        (pull-sut/init user-cfg {:patch-plan-file-name "ig-plan"})
+
+        (t/testing "patch plan file generated correctly"
+          (matcho/match
+            (ftr.utils.core/parse-ndjson-gz (format "%s/ig-plan.ndjson.gz"
+                                                    (:ftr-path user-cfg)))
+            [{:resourceType "CodeSystem" :name "AdministrativeGender"}
+             {:resourceType "ValueSet"   :name "AdministrativeGender"}
+             {:code "female"}
+             {:code "male"}
+             {:code "unknown"}
+             {:resourceType "CodeSystem" :name "CodeSystemContentMode"}
+             {:resourceType "ValueSet"   :name "CodeSystemContentMode"}
+             {:code "complete"}
+             {:code "example"}
+             {:code "fragment"}
+             {:code "not-present"}
+             {:code "supplement"}
+             {:code "test-content"}
              nil?])))))
+
 
   (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg))
   )
