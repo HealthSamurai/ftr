@@ -491,13 +491,12 @@
   )
 
 (t/deftest migrate-test
-
-  (let [
-        env      {:ig-source-initial  "test/fixture/dehydrated.core/node_modules"
-                  :ig-source-updated1 "test/fixture/dehydrated.mutated.core/node_modules"
-                  :ig-source-updated2 "test/fixture/dehydrated.mutated.core2/node_modules"
-                  :update-plan-name   "update-plan"
-                  :ftr-path           "/tmp/igftr"}
+  (let [env      {:ig-source-initial     "test/fixture/dehydrated.core/node_modules"
+                  :ig-source-updated1    "test/fixture/dehydrated.mutated.core/node_modules"
+                  :ig-source-updated2    "test/fixture/dehydrated.mutated.core2/node_modules"
+                  :update-plan-name      "update-plan"
+                  :update-plan-name-path "/tmp/igftr/update-plan.ndjson.gz"
+                  :ftr-path              "/tmp/igftr"}
         user-cfg {:module      "dehydrated"
                   :source-url  (:ig-source-initial env)
                   :ftr-path    (:ftr-path env)
@@ -511,28 +510,29 @@
                            :move-tag  {:old-tag "v1"
                                        :new-tag "v2"}
                            :tag-index (ftr.utils.core/parse-ndjson-gz
-                                       (format "%s/%s/tags/%s.ndjson.gz"
-                                               (:ftr-path env)
-                                               (:module user-cfg)
-                                               (:tag user-cfg)))})
-
-        ]
+                                        (format "%s/%s/tags/%s.ndjson.gz"
+                                                (:ftr-path env)
+                                                (:module user-cfg)
+                                                (:tag user-cfg)))})]
 
     (sut/apply-cfg (assoc user-cfg :source-url (:ig-source-updated1 env)))
-
     (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated2 env)
                                     :tag        "v2"
                                     :move-tag   {:old-tag "v1"
                                                  :new-tag "v2"}}))
 
 
-    (t/testing "migrate"
-        (matcho/match
-          (pull-sut/migrate (assoc client-cfg :update-plan-name (:update-plan-name env))))
-        {:update-plan (:update-plan-path env)
-         :remove-plan nil}
-        )
+    (t/testing "do pull/migrate"
+      (matcho/match
+        (pull-sut/migrate (assoc client-cfg :update-plan-name (:update-plan-name env)))
+        {:update-plan (:update-plan-name-path env)
+         :remove-plan ["http:--hl7.org-fhir-administrative-gender-other"]}))
 
-    )
-  ;;
-  )
+
+    (t/testing "sees bulk update plan file"
+      (matcho/match
+        (ftr.utils.core/parse-ndjson-gz (:update-plan-name-path env))
+        [{:resourceType "CodeSystem" :name "AdministrativeGender"}
+         {:resourceType "ValueSet"   :name "AdministrativeGender"}
+        {:code "custom"}
+         nil?]))))

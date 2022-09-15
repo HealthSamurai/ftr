@@ -54,7 +54,9 @@
         actual-tag-index-map  (tag-index->tag-index-map actual-tag-index)
         tf-paths-to-migrate   (reduce-kv (fn [acc vs-name vs-hash]
                                            (let [client-tf-hash (get client-tag-index-map vs-name)]
-                                             (if (not= vs-hash client-tf-hash)
+                                             (if (and
+                                                   (some? client-tf-hash)
+                                                   (not= vs-hash client-tf-hash))
                                                (conj acc {:from    client-tf-hash
                                                           :to      vs-hash
                                                           :vs-name (second (str/split vs-name #"\." 2))})
@@ -73,17 +75,17 @@
                       tag-file-path    (->vs-path (format "tag.%s.ndjson.gz" tag))
                       tag-file         (ftr.utils.core/parse-ndjson-gz tag-file-path)
                       ?patch-file-path (first
-                                        (keep (fn [m] (when (= m (dissoc tag-entry :vs-name))
-                                                       (->vs-path (format "patch.%s.%s.ndjson.gz"
-                                                                          from
-                                                                          to))))
-                                              (rest tag-file)))
+                                         (keep (fn [m] (when (= m (dissoc tag-entry :vs-name))
+                                                         (->vs-path (format "patch.%s.%s.ndjson.gz"
+                                                                            from
+                                                                            to))))
+                                               (rest tag-file)))
                       old-tf           (->vs-path (format "tf.%s.ndjson.gz" from))
                       new-tf           (->vs-path (format "tf.%s.ndjson.gz" to))
                       patch-file       (or (when (and ?patch-file-path (-> ?patch-file-path io/file .exists))
                                              (rest (ftr.utils.core/parse-ndjson-gz ?patch-file-path)))
                                            (ftr.patch-generator.core/generate-patch! old-tf new-tf))
-                      to-remove?       (comp #{:remove} :op)
+                      to-remove?       (comp #{"remove"} :op)
                       new-tf-reader    (ftr.utils.core/open-ndjson-gz-reader new-tf)]
 
                   ;; NOTE: read codesystem & valueset
@@ -100,8 +102,4 @@
                        (update acc :remove-plan into))))
               {:remove-plan []
                :update-plan update-plan-file-path}
-              tf-paths-to-migrate))
-
-    )
-
-  )
+              tf-paths-to-migrate))))
