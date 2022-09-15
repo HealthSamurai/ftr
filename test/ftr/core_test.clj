@@ -491,26 +491,30 @@
   )
 
 (t/deftest migrate-test
+
   (let [
-        env        {:ig-source-initial  "test/fixture/dehydrated.core/node_modules"
-                    :ig-source-updated1 "test/fixture/dehydrated.mutated.core/node_modules"
-                    :ig-source-updated2 "test/fixture/dehydrated.mutated.core2/node_modules"
-                    :update-plan-path   "/tmp/igftr/update-plan.ndjson.gz"
-                    :ftr-path           "/tmp/igftr"}
-        user-cfg   {:module      "dehydrated"
-                    :source-url  (:ig-source-initial env)
-                    :ftr-path    (:ftr-path env)
-                    :tag         "v1"
-                    :source-type :ig}
+        env      {:ig-source-initial  "test/fixture/dehydrated.core/node_modules"
+                  :ig-source-updated1 "test/fixture/dehydrated.mutated.core/node_modules"
+                  :ig-source-updated2 "test/fixture/dehydrated.mutated.core2/node_modules"
+                  :update-plan-name   "update-plan"
+                  :ftr-path           "/tmp/igftr"}
+        user-cfg {:module      "dehydrated"
+                  :source-url  (:ig-source-initial env)
+                  :ftr-path    (:ftr-path env)
+                  :tag         "v1"
+                  :source-type :ig}
+
+        _          (ftr.utils.core/rmrf (:ftr-path env))
         _          (sut/apply-cfg user-cfg)
         client-cfg (merge user-cfg
-                          {:tag "v2"
-                           :move-tag {:old-tag "v1"
-                                      :new-tag "v2"}
-                           :tag-index (slurp (format "%s/%s/tags/%s.ndjson.gz"
-                                                     (:ftr-path env)
-                                                     (:module user-cfg)
-                                                     (:tag user-cfg)))})
+                          {:tag       "v2"
+                           :move-tag  {:old-tag "v1"
+                                       :new-tag "v2"}
+                           :tag-index (ftr.utils.core/parse-ndjson-gz
+                                       (format "%s/%s/tags/%s.ndjson.gz"
+                                               (:ftr-path env)
+                                               (:module user-cfg)
+                                               (:tag user-cfg)))})
 
         ]
 
@@ -522,15 +526,13 @@
                                                  :new-tag "v2"}}))
 
 
-    #_(t/testing "migrate"
+    (t/testing "migrate"
         (matcho/match
-          (pull-sut/migrate client-cfg))
+          (pull-sut/migrate (assoc client-cfg :update-plan-name (:update-plan-name env))))
         {:update-plan (:update-plan-path env)
-         :remove-plan ()}
+         :remove-plan nil}
         )
 
-
     )
-  
   ;;
   )
