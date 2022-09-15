@@ -524,7 +524,7 @@
 
     #_(t/testing "migrate"
         (matcho/match
-         (pull-sut/migrate client-cfg))
+          (pull-sut/migrate client-cfg))
         {:update-plan (:update-plan-path env)
          :remove-plan ()}
         )

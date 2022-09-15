@@ -104,7 +104,4 @@
   [{:as ctx,
     {:keys [terminology-file]} :write-result
     {:keys [tf-path]} :ftr-layout}]
-  (if (ftr.utils.core/file-exists? tf-path)
-    (do (io/delete-file terminology-file)
-        {::u/status :stop})
-    (u/*apply ::coordinate-tf-ingestion ctx)))
+  (u/*apply ::coordinate-tf-ingestion ctx))
