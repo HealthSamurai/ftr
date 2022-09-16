@@ -132,3 +132,10 @@
       (io/input-stream)
       (java.util.zip.GZIPInputStream.)
       (io/reader)))
+
+
+(defn psize [path]
+  (let [f (io/file path)]
+    (if (.isDirectory f)
+      (apply + (pmap psize (.listFiles f)))
+      (.length f))))

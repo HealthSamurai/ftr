@@ -58,4 +58,5 @@
         (->>
           patch
           (into [{:name (ftr.utils.core/escape-url (:url value-set))}])
-          (ftr.utils.core/spit-ndjson-gz! tf-patch-path))))))
+          (ftr.utils.core/spit-ndjson-gz! tf-patch-path)))
+      {:patch-generation-result {:patch-created? true}})))
