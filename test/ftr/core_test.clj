@@ -561,13 +561,3 @@
          {:code "UNC"}
          {:code "UNK"}
          nil?]))))
-
-(def a (time (pull-sut/migrate {:module            "fhir"
-                                :ftr-path          "/tmp/ftr"
-                                :tag               "r4"
-                                :move-tag {:old-tag "r3"
-                                           :new-tag "r4"}
-                                :source-type       :ig
-                                :tag-index (ftr.utils.core/parse-ndjson-gz "/tmp/ftr/fhir/tags/r3.ndjson.gz")})))
-
-(count (get a :remove-plan))
