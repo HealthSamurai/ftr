@@ -56,18 +56,17 @@
                      ::feeder {:vs-url vs-url}))))
 
 
-(defn apply-cfg [{:as cfg, :keys [source-type]}]
-  (let [ctx {:cfg cfg}]
-    (condp = source-type
-      :flat-table
-      (u/*apply [::extract-terminology
-                 ::write-terminology-file
-                 ::shape-ftr-layout
-                 :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx)
+(defn apply-cfg [{:as ctx, {:keys [source-type]} :cfg}]
+  (case source-type
+    :flat-table
+    (u/*apply [::extract-terminology
+               ::write-terminology-file
+               ::shape-ftr-layout
+               :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx)
 
-      :ig
-      (u/*apply [::extract-terminology
-                 ::feeder] ctx))))
+    :ig
+    (u/*apply [::extract-terminology
+               ::feeder] ctx)))
 
 
 (comment

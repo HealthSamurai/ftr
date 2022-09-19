@@ -1,7 +1,6 @@
 (ns ftr.utils.unifn.core
   (:require [clojure.spec.alpha :as s]
-            [clojure.stacktrace :as stacktrace]
-            [ftr.utils.unifn.core :as u]))
+            [clojure.stacktrace :as stacktrace]))
 
 (defn deep-merge [a b]
   (loop [[[k v :as i] & ks] b
