@@ -45,7 +45,7 @@
       :new-tag-index-path (when ?new-tag (format "%s/%s.ndjson.gz" tags-path ?new-tag))}}))
 
 
-(defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result pipeline-opts]
+(defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
                             {:keys [ftr-path]} :cfg}] extraction-result
   (doseq [[vs-url tf] extraction-result]
     (u/*apply [::write-terminology-file
@@ -57,9 +57,7 @@
 
 
 (defn apply-cfg [{:as cfg, :keys [source-type]}]
-  (let [ctx {:cfg cfg
-             ::u/tracers [:ftr.logger.core/dispatch-logger]
-             :state (atom {})}]
+  (let [ctx {:cfg cfg}]
     (condp = source-type
       :flat-table
       (u/*apply [::extract-terminology

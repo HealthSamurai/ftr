@@ -35,7 +35,8 @@
                                 parsed-cfg  (parse-ftr-cfg cfg-path)]
                             (if-let [error (::error parsed-cfg)]
                               (println (str "\u001B[31m" error "\u001B[0m"))
-                              (ftr.core/apply-cfg (assoc-in parsed-cfg [:pipeline-opts :render-logs?] true)))))}
+                              (ftr.core/apply-cfg  {:cfg parsed-cfg
+                                                    :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]}))))}
                  {:command "tag"
                   :description "Create a tag relying on an existing config and the tag specified in it"
                   :opts [{:option "config"

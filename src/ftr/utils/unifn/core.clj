@@ -1,6 +1,7 @@
 (ns ftr.utils.unifn.core
   (:require [clojure.spec.alpha :as s]
-            [clojure.stacktrace :as stacktrace]))
+            [clojure.stacktrace :as stacktrace]
+            [ftr.utils.unifn.core :as u]))
 
 (defn deep-merge [a b]
   (loop [[[k v :as i] & ks] b
@@ -34,12 +35,22 @@
   (if (and (not (= inter :all))
            (contains? #{:error :stop} st))
     arg
-    (let [arg (dissoc arg ::intercept) ]
-       (when tracers
-         (let [trace-ev {::fn f-name ::phase :enter}]
-           (doseq [t tracers] (*apply t {:trace/event trace-ev :arg arg}))))
-       (if-let [problems (and (s/get-spec f-name) (s/explain-data f-name arg))]
-         (let [ev {::status :error
+    (let [arg (dissoc arg ::intercept)
+          arg  (if tracers
+                 (reduce (fn [acc t]
+                           (deep-merge acc
+                                       (dissoc
+                                         (*apply t
+                                                (deep-merge (dissoc acc ::tracers)
+                                                            {::tracer
+                                                             {:trace-ev
+                                                              {:f-name f-name
+                                                               :phase :enter}}}))
+                                         ::fn)))
+                         arg tracers)
+                 arg)]
+      (if-let [problems (and (s/get-spec f-name) (s/explain-data f-name arg))]
+        (let [ev {::status :error
                    ::fn  f-name
                    ::message (with-out-str (s/explain f-name arg))
                    ::problems (::s/problems problems)}]
@@ -63,11 +74,19 @@
                                    )) (dissoc patch :fx) fx)
                        patch)
                res (deep-merge arg patch)]
-           (when tracers
-             (let [trace-ev {::fn f-name ::phase :leave}]
-               (doseq [t tracers]
-                 (*apply t {:trace/event trace-ev :arg res}))))
-           res)))))
+           (if tracers
+             (reduce (fn [acc t]
+                       (deep-merge acc
+                                   (dissoc
+                                     (*apply t
+                                            (deep-merge (dissoc acc ::tracers)
+                                                        {::tracer
+                                                         {:trace-ev
+                                                          {:f-name f-name
+                                                           :phase :leave}}}))
+                                     ::fn)))
+                     res tracers)
+             res))))))
 
 (defn *apply [f arg]
   (cond

@@ -487,8 +487,7 @@
              nil?])))))
 
 
-  (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg))
-  )
+  (ftr.utils.core/rmrf (:ftr-path ig-test-env-cfg)))
 
 (t/deftest update-test
   (let [env      {:ig-source-initial     "test/fixture/dehydrated.core/node_modules"
