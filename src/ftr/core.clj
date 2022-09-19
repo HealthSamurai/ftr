@@ -5,7 +5,7 @@
             [ftr.ingestion-coordinator.core]
             [ftr.utils.core]
             [ftr.utils.unifn.core :as u]
-            [progrock.core :as pr]))
+            [ftr.logger.core]))
 
 
 (defmethod u/*fn ::extract-terminology [{:as _ctx, :keys [cfg]}]
@@ -46,52 +46,30 @@
 
 
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result pipeline-opts]
-                            {:keys [ftr-path]} :cfg}]
-  extraction-result
-  (let [render-logs?  (get-in ctx [:cfg :pipeline-opts :render-logs?])
-        statistics    (atom {:patches 0
-                             :tfs     0
-                             :pb (when render-logs?
-                                   (pr/progress-bar (count extraction-result)))})]
-    (when render-logs? (println "\n📦 Commit")) ;;TODO MOVE TO TRACER FN!!!
-    (doseq [[vs-url tf] extraction-result]
-      (let [{:as result,
-             {patch-created? :patch-created?} :patch-generation-result}
-            (u/*apply [::write-terminology-file
-                       ::shape-ftr-layout
-                       :ftr.ingestion-coordinator.core/ingest-terminology-file]
-                      (assoc ctx :extraction-result tf))]
-        (swap! statistics (fn [old-state]
-                            (cond-> old-state
-                              patch-created?
-                              (update :patches inc)
-                              :always
-                              (update :tfs inc))))
-        (when render-logs?
-          (let [pb (-> statistics deref :pb)]
-            (pr/print pb
-                           {:format (format ":progress/:total   :percent%% [:bar] Processing ValueSet: %s" vs-url)})
-            (swap! statistics assoc :pb (pr/tick pb))))))
-
-    (when render-logs?
-      (pr/print (pr/done (-> statistics deref :pb)) {:format ":progress/:total   :percent% [:bar] Processing ValueSet: "})
-      (println (str \newline "Results: "))
-      (println (format "    Terminology Files created: \033[0;1m%s\033[22m" (-> statistics deref :tfs)))
-      (println (format "    Patches created: \033[0;1m%s\033[22m" (-> statistics deref :patches)))
-      (println (format "    FTR Repository size: \033[0;1m%s MB\033[22m" (int (/ (ftr.utils.core/psize ftr-path) 1000000)))))))
+                            {:keys [ftr-path]} :cfg}] extraction-result
+  (doseq [[vs-url tf] extraction-result]
+    (u/*apply [::write-terminology-file
+               ::shape-ftr-layout
+               :ftr.ingestion-coordinator.core/ingest-terminology-file]
+              (assoc ctx
+                     :extraction-result tf
+                     ::feeder {:vs-url vs-url}))))
 
 
 (defn apply-cfg [{:as cfg, :keys [source-type]}]
-  (condp = source-type
-    :flat-table
-    (u/*apply [::extract-terminology
-               ::write-terminology-file
-               ::shape-ftr-layout
-               :ftr.ingestion-coordinator.core/ingest-terminology-file] {:cfg cfg})
+  (let [ctx {:cfg cfg
+             ::u/tracers [:ftr.logger.core/dispatch-logger]
+             :state (atom {})}]
+    (condp = source-type
+      :flat-table
+      (u/*apply [::extract-terminology
+                 ::write-terminology-file
+                 ::shape-ftr-layout
+                 :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx)
 
-    :ig
-    (u/*apply [::extract-terminology
-               ::feeder] {:cfg cfg})))
+      :ig
+      (u/*apply [::extract-terminology
+                 ::feeder] ctx))))
 
 
 (comment

@@ -1,4 +1,4 @@
-(ns unifn.core
+(ns ftr.utils.unifn.core
   (:require [clojure.spec.alpha :as s]
             [clojure.stacktrace :as stacktrace]))
 
@@ -37,8 +37,7 @@
     (let [arg (dissoc arg ::intercept) ]
        (when tracers
          (let [trace-ev {::fn f-name ::phase :enter}]
-           (doseq [t tracers] (*apply t {:event trace-ev :arg arg}))))
-
+           (doseq [t tracers] (*apply t {:trace/event trace-ev :arg arg}))))
        (if-let [problems (and (s/get-spec f-name) (s/explain-data f-name arg))]
          (let [ev {::status :error
                    ::fn  f-name
@@ -65,12 +64,12 @@
                        patch)
                res (deep-merge arg patch)]
            (when tracers
-             (let [trace-ev (merge arg {::phase :leave})]
-               (doseq [t tracers] (*apply t {:event patch :arg res}))))
+             (let [trace-ev {::fn f-name ::phase :leave}]
+               (doseq [t tracers]
+                 (*apply t {:trace/event trace-ev :arg res}))))
            res)))))
 
 (defn *apply [f arg]
-  ;; validate f
   (cond
     (keyword? f) (*apply-impl (assoc arg ::fn f))
     (fn? f)      (*apply-impl (assoc arg ::fn f))
