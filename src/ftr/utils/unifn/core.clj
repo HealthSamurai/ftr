@@ -30,23 +30,26 @@
 
 (declare *apply)
 
+(defn apply-tracers [ctx f-name tracers phase]
+  (reduce (fn [acc t]
+            (deep-merge acc
+                        (dissoc
+                          (*apply t
+                                  (deep-merge (dissoc acc ::tracers)
+                                              {::tracer
+                                               {:trace-ev
+                                                {:f-name f-name
+                                                 :phase phase}}}))
+                          ::fn)))
+          ctx tracers))
+
 (defn *apply-impl [{st ::status inter ::intercept f-name ::fn tracers ::tracers :as arg}]
   (if (and (not (= inter :all))
            (contains? #{:error :stop} st))
     arg
     (let [arg (dissoc arg ::intercept)
           arg  (if tracers
-                 (reduce (fn [acc t]
-                           (deep-merge acc
-                                       (dissoc
-                                         (*apply t
-                                                (deep-merge (dissoc acc ::tracers)
-                                                            {::tracer
-                                                             {:trace-ev
-                                                              {:f-name f-name
-                                                               :phase :enter}}}))
-                                         ::fn)))
-                         arg tracers)
+                 (apply-tracers arg f-name tracers :enter)
                  arg)]
       (if-let [problems (and (s/get-spec f-name) (s/explain-data f-name arg))]
         (let [ev {::status :error
@@ -74,17 +77,7 @@
                        patch)
                res (deep-merge arg patch)]
            (if tracers
-             (reduce (fn [acc t]
-                       (deep-merge acc
-                                   (dissoc
-                                     (*apply t
-                                            (deep-merge (dissoc acc ::tracers)
-                                                        {::tracer
-                                                         {:trace-ev
-                                                          {:f-name f-name
-                                                           :phase :leave}}}))
-                                     ::fn)))
-                     res tracers)
+             (apply-tracers res f-name tracers :leave)
              res))))))
 
 (defn *apply [f arg]

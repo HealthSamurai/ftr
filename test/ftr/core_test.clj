@@ -101,7 +101,7 @@
           (format "tag.%s.ndjson.gz" tag)
 
           _
-          (sut/apply-cfg user-cfg)
+          (sut/apply-cfg {:cfg user-cfg})
 
           ftr-tree
           (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
@@ -149,7 +149,7 @@
           (format "tag.%s.ndjson.gz" tag)
 
           _
-          (sut/apply-cfg user-cfg)
+          (sut/apply-cfg {:cfg user-cfg})
 
           ftr-tree
           (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
@@ -211,7 +211,7 @@
           (format "tag.%s.ndjson.gz" new-tag)
 
           _
-          (sut/apply-cfg user-cfg)
+          (sut/apply-cfg {:cfg user-cfg})
 
           ftr-tree
           (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
@@ -309,7 +309,7 @@
         (format "tag.%s.ndjson.gz" tag)
 
         _
-        (sut/apply-cfg user-cfg)
+        (sut/apply-cfg {:cfg user-cfg})
 
 
         ftr-tree
@@ -377,7 +377,7 @@
           (format "tag.%s.ndjson.gz" tag)
 
           _
-          (sut/apply-cfg user-cfg)
+          (sut/apply-cfg {:cfg user-cfg})
 
           ftr-tree
           (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
@@ -504,7 +504,7 @@
                   :source-type :ig}
 
         _          (ftr.utils.core/rmrf (:ftr-path env))
-        _          (sut/apply-cfg user-cfg)
+        _          (sut/apply-cfg {:cfg user-cfg})
         client-cfg (merge user-cfg
                           {:tag       "v2"
                            :move-tag  {:old-tag "v1"
@@ -515,12 +515,12 @@
                                                 (:module user-cfg)
                                                 (:tag user-cfg)))})]
 
-    (sut/apply-cfg (assoc user-cfg :source-url (:ig-source-updated1 env)))
-    (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated2 env)}))
-    (sut/apply-cfg (merge user-cfg {:source-url (:ig-source-updated3 env)
-                                    :tag        "v2"
-                                    :move-tag   {:old-tag "v1"
-                                                 :new-tag "v2"}}))
+    (sut/apply-cfg {:cfg (assoc user-cfg :source-url (:ig-source-updated1 env))})
+    (sut/apply-cfg {:cfg (merge user-cfg {:source-url (:ig-source-updated2 env)})})
+    (sut/apply-cfg {:cfg (merge user-cfg {:source-url (:ig-source-updated3 env)
+                                          :tag        "v2"
+                                          :move-tag   {:old-tag "v1"
+                                                       :new-tag "v2"}})})
 
 
     (t/testing "do pull/update"
