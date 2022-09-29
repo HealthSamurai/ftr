@@ -10,10 +10,10 @@
                 :or {patch-plan-file-name (str "update-plan-" (ftr.utils.core/gen-uuid))}}]]
   (let [tag-index-path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)
         tag-index (ftr.utils.core/parse-ndjson-gz tag-index-path)
-        patch-plan-file (format "%s/%s.ndjson.gz"
+        patch-plan-file-path (format "%s/%s.ndjson.gz"
                                      ftr-path
                                      patch-plan-file-name)]
-    (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file)]
+    (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
       (doseq [{:as _ti-entry, :keys [hash name]} tag-index
               :let [trimmed-name (second (str/split name #"\." 2))]]
         (let [tf-path (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
@@ -23,7 +23,8 @@
                               hash)]
           (with-open [r (ftr.utils.core/open-gz-reader tf-path)]
             (doseq [l (line-seq r)]
-              (.write w (str l \newline)))))))))
+              (.write w (str l \newline)))))))
+    {:patch-plan patch-plan-file-path}))
 
 
 (defn extract-vs-name [name]
