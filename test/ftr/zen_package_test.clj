@@ -152,7 +152,7 @@
                                :require #{:diagnosis}}}}}})
 
 
-(t/deftest init-test
+(t/deftest ^:kaocha/pending init-test
   (def test-dir-path "/tmp/ftr.zen-package-test")
 
   (rm-fixtures test-dir-path)
@@ -168,4 +168,13 @@
   (zen.core/read-ns ztx 'main)
 
   (t/testing "no errors in package"
-    (t/is (empty? (zen.core/errors ztx)))))
+    (t/is (empty? (zen.core/errors ztx))))
+
+  (t/testing "ftr extracted")
+
+  (t/testing "vs validation works"
+    (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
+                  {:errors [{} nil]})
+
+    (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "W64.0"})
+                  {:errors empty?})))
