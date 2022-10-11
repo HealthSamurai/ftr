@@ -54,7 +54,7 @@
                            :zen.fhir/version "0.5.0"
                            :type zen/map
                            :keys {:diagnosis {:type zen/string
-                                              :zen.fhir.value-set {:symbol diagnosis-vs}}}}}}}
+                                              :zen.fhir/value-set {:symbol diagnosis-vs}}}}}}}
 
    'test-module {:deps '#{profile-lib}
                  :zrc '#{{:ns main
@@ -132,7 +132,7 @@
 
   (t/testing "vs validation works"
     (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
-                  {:errors [{:type ":zen.fhir.value-set"
+                  {:errors [{:type ":zen.fhir/value-set"
                              :path [:diagnosis nil]}
                             nil]})
 

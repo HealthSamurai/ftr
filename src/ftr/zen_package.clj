@@ -64,7 +64,7 @@
                    {} tag-index-paths))))
 
 
-(defmethod zen.v2-validation/compile-key :zen.fhir.value-set
+(defmethod zen.v2-validation/compile-key :zen.fhir/value-set
   [_ ztx vs]
   (let [{:as value-set,
          :keys [uri]
@@ -74,5 +74,5 @@
     {:rule
      (fn [vtx data otps]
        (if-not (contains? values* data)
-         (zen.v2-validation/add-err vtx :zen.fhir.value-set {:message (str "Expected '" data "' in " values*) :type ":zen.fhir.value-set"})
+         (zen.v2-validation/add-err vtx :zen.fhir/value-set {:message (str "Expected '" data "' in " values*) :type ":zen.fhir/value-set"})
          vtx))}))
