@@ -1,7 +1,8 @@
 (ns test-utils
   (:require [clojure.java.shell :as shell]
             [clojure.string :as str]
-            [zen.package]))
+            [zen.package]
+            [clojure.java.io :as io]))
 
 
 (defn sh! [& args]
@@ -88,3 +89,12 @@
 
 (defn rm-fixtures [test-dir-path]
   (rm test-dir-path))
+
+
+(defn fs-tree->tree-map [path]
+  (let [splitted-path (drop 1 (str/split path #"/"))
+        tree-map (reduce
+                   (fn [store path] (assoc-in store path {}))
+                   {}
+                   (map (fn [f] (drop 1 (str/split (str f) #"/"))) (file-seq (io/file path))))]
+    (get-in tree-map splitted-path)))

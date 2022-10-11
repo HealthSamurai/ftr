@@ -5,7 +5,8 @@
             [zen.package]
             [matcho.core :as matcho]
             [ftr.utils.core]
-            [test-utils]))
+            [test-utils]
+            [ftr.zen-package]))
 
 
 (def icd10-no-header-csv-content
@@ -31,7 +32,7 @@
                           :uri "diagnosis-vs"
                           :ftr {:module            "ftr"
                                 :source-url        (str root-path "/profile-lib/resources/icd-10.csv")
-                                :ftr-path          root-path
+                                :ftr-path          (str root-path "/profile-lib")
                                 :tag               "v1"
                                 :source-type       :flat-table
                                 :extractor-options {:format "csv"
@@ -45,14 +46,14 @@
                                                                   :url "http://hl7.org/fhir/sid/icd-10"}
                                                     :value-set   {:id   "icd10"
                                                                   :name "icd10.accidents"
-                                                                  :url  "http://hl7.org/fhir/ValueSet/icd-10"}}}}
+                                                                  :url  "diagnosis-vs"}}}}
 
                          'sch
                          '{:zen/tags #{zen/schema zen.fhir/structure-schema}
                            :zen.fhir/version "0.5.0"
                            :type zen/map
                            :keys {:diagnosis {:type zen/string
-                                              :zen.fhir/value-set {:symbol diagnosis-vs}}}}}}}
+                                              :zen.fhir.value-set {:symbol diagnosis-vs}}}}}}}
 
    'test-module {:deps '#{profile-lib}
                  :zrc '#{{:ns main
@@ -64,14 +65,29 @@
                                :require #{:diagnosis}}}}}})
 
 
-(t/deftest ^:kaocha/pending init-test
+(t/deftest init-test
   (def test-dir-path "/tmp/ftr.zen-package-test")
+  (def profile-lib-path (str test-dir-path "/profile-lib"))
+  (def module-dir-path (str test-dir-path "/test-module"))
 
   (test-utils/rm-fixtures test-dir-path)
 
   (test-utils/mk-fixtures test-dir-path (test-zen-repos test-dir-path))
 
-  (def module-dir-path (str test-dir-path "/test-module"))
+  (t/testing "ftr extracted & shaped correctly"
+    (t/testing "extracting ftr succesfully"
+      (ftr.zen-package/build-ftr ztx))
+
+    (t/testing "built ftr shape is ok"
+      (matcho/match
+        (test-utils/fs-tree->tree-map profile-lib-path)
+        {"ftr" {"tags" {"v1.ndjson.gz" {}}
+                "vs"   {"diagnosis-vs"
+                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
+                         "tag.v1.ndjson.gz" {}}}}})))
+
+  (test-utils/sh! "git" "add" "." :dir profile-lib-path)
+  (test-utils/sh! "git" "commit" "-m" "Ftr initial release" :dir profile-lib-path)
 
   (zen.package/zen-init-deps! module-dir-path)
 
@@ -82,11 +98,38 @@
   (t/testing "no errors in package"
     (t/is (empty? (zen.core/errors ztx))))
 
-  (t/testing "ftr extracted")
+  (t/testing "pulled ftr shape is ok"
+    (matcho/match
+      (test-utils/fs-tree->tree-map module-dir-path)
+      {"zen-packages"
+       {"profile-lib"
+        {"ftr" {"tags" {"v1.ndjson.gz" {}}
+                "vs"   {"diagnosis-vs"
+                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
+                         "tag.v1.ndjson.gz" {}}}}}}}))
+
+  (t/testing "ftr memory-cache builds successfully"
+    (ftr.zen-package/ftr->memory-cache ztx)
+
+    (matcho/match
+      (get @ztx :zen.fhir/ftr-cache)
+      {"v1"
+       {"diagnosis-vs"
+        ["V01-X59"
+         "W00-X59"
+         "W50-W64"
+         "W64"
+         "W64.0"
+         "W64.00"
+         "W64.01"
+         "XX"
+         nil?]}}))
 
   (t/testing "vs validation works"
     (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
-                  {:errors [{} nil]})
+                  {:errors [{:type ":zen.fhir.value-set"
+                             :path [:diagnosis nil]}
+                            nil]})
 
     (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "W64.0"})
                   {:errors empty?})))
