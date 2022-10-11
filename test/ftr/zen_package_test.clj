@@ -6,7 +6,8 @@
             [matcho.core :as matcho]
             [ftr.utils.core]
             [test-utils]
-            [ftr.zen-package]))
+            [ftr.zen-package]
+            [zen.core]))
 
 
 (def icd10-no-header-csv-content
@@ -76,7 +77,11 @@
 
   (t/testing "ftr extracted & shaped correctly"
     (t/testing "extracting ftr succesfully"
-      (ftr.zen-package/build-ftr ztx))
+      (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+
+      (zen.core/read-ns build-ftr-ztx 'profile)
+
+      (ftr.zen-package/build-ftr build-ftr-ztx))
 
     (t/testing "built ftr shape is ok"
       (matcho/match
@@ -95,7 +100,7 @@
 
   (zen.core/read-ns ztx 'main)
 
-  (t/testing "no errors in package"
+  (t/testing "no errors in pulled package"
     (t/is (empty? (zen.core/errors ztx))))
 
   (t/testing "pulled ftr shape is ok"
