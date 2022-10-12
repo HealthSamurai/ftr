@@ -5,6 +5,7 @@
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def uber-file "target/ftr.jar")
+(def uber-file-zen-cli "target/zen.jar")
 
 (defn clean [_]
   (b/delete {:path "target"}))
@@ -16,7 +17,13 @@
   (b/compile-clj {:basis basis
                   :src-dirs ["src"]
                   :class-dir class-dir})
+
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'ftr.cli}))
+           :main 'ftr.cli})
+
+  (b/uber {:class-dir class-dir
+           :uber-file uber-file-zen-cli
+           :basis basis
+           :main 'ftr.zen-cli}))

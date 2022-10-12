@@ -4,15 +4,20 @@
             [ftr.utils.core]
             [clojure.string :as str]
             [zen.v2-validation]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [zen.cli]
+            [clojure.pprint]))
 
 
-(defn build-ftr [ztx]
-  (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets (map (partial zen.core/get-symbol ztx) syms)]
-    (doseq [{:as vs, :keys [ftr]} value-sets]
-      (when ftr
-        (ftr.core/apply-cfg {:cfg ftr})))))
+(defn build-ftr
+  ([args] (build-ftr (zen.cli/load-ztx) args))
+
+  ([ztx _args]
+   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
+         value-sets (map (partial zen.core/get-symbol ztx) syms)]
+     (doseq [{:as vs, :keys [ftr]} value-sets]
+       (when ftr
+         (ftr.core/apply-cfg {:cfg ftr}))))))
 
 
 (defn expand-zen-packages [path]
