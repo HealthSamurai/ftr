@@ -269,12 +269,10 @@
   (let [code-system (get-or-create-codesystem code-systems system)
 
         {:as value-set, vs-url :url}
-        (if-let [vs (get value-sets (:valueSet code-system))]
-          vs #_"TODO: looks like dead code; remove"
-          (ftr.utils.core/strip-nils
-            {:url    (some-> (:url code-system) (str "-entire-code-system"))
-             :name   (some-> (:name code-system) (str "-entire-code-system"))
-             :status "unknown"}))]
+        (ftr.utils.core/strip-nils
+          {:url    (some-> (:url code-system) (str "-entire-code-system"))
+           :name   (some-> (:name code-system) (str "-entire-code-system"))
+           :status "unknown"})]
     (if (contains? acc vs-url)
       (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
       (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
