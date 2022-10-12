@@ -138,3 +138,99 @@
 
     (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "W64.0"})
                   {:errors empty?})))
+
+
+(def gender-codesystem
+  {:resourceType "CodeSystem"
+   :id "gender"
+   :url "gender-cs"
+   :status "active"
+   :content "complete"
+   :concept [{:code "male"
+              :dispaly "Male"}
+             {:code "female"
+              :dispaly "Female"}
+             {:code "other"
+              :dispaly "Other"}
+             {:code "unknown"
+              :dispaly "Unknown"}]})
+
+
+(def gender-valueset
+  {:resourceType "ValueSet"
+   :id "gender"
+   :url "gender-vs"
+   :status "active"
+   :compose {:include {:system "gender-cs"}}})
+
+
+(def ig-manifest
+  {:name "ig.core"
+   :version "0.0.1"
+   :type "ig.core"
+   :title "ig.core"
+   :description "ig.core"
+   :author "hs"
+   :url "dehydrated"})
+
+
+(defn test-zen-repos-ig [root-path]
+  {'profile-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+                 :resources {"ig/node_modules/gender-codesystem.json" (cheshire.core/generate-string gender-codesystem)
+                             "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string gender-valueset)
+                             "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+                 :zrc #{{:ns 'profile
+                         :import #{'zen.fhir}
+
+                         'gender-vs
+                         {:zen/tags #{'zen.fhir/value-set}
+                          :zen.fhir/version "0.5.0"
+                          :uri "diagnosis-vs"
+                          :ftr {:module            "ftr"
+                                :source-url        (str root-path "/profile-lib/resources/ig/node_modules")
+                                :ftr-path          (str root-path "/profile-lib")
+                                :tag               "v1"
+                                :source-type       :ig}}
+
+                         'sch
+                         '{:zen/tags #{zen/schema zen.fhir/structure-schema}
+                           :zen.fhir/version "0.5.0"
+                           :type zen/map
+                           :keys {:diagnosis {:type zen/string
+                                              :zen.fhir/value-set {:symbol gender-vs}}}}}}}
+
+   'test-module {:deps '#{profile-lib}
+                 :zrc '#{{:ns main
+                          :import #{profile}
+
+                          sch {:zen/tags #{zen/schema}
+                               :confirms #{profile/sch}
+                               :type zen/map
+                               :require #{:gender}}}}}})
+
+
+(t/deftest zen-package-with-ig-ftr
+  (def test-dir-path "/tmp/ftr-ig.zen-package-test")
+  (def profile-lib-path (str test-dir-path "/profile-lib"))
+  (def module-dir-path (str test-dir-path "/test-module"))
+
+  (test-utils/rm-fixtures test-dir-path)
+
+  (test-utils/mk-fixtures test-dir-path (test-zen-repos-ig test-dir-path))
+
+  (t/testing "ftr extracted & shaped correctly"
+    (t/testing "extracting ftr succesfully"
+      (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+
+      (zen.core/read-ns build-ftr-ztx 'profile)
+
+      (ftr.zen-package/build-ftr build-ftr-ztx))
+
+    (t/testing "built ftr shape is ok"
+      (matcho/match
+        (test-utils/fs-tree->tree-map profile-lib-path)
+        {"ftr" {"tags" {"v1.ndjson.gz" {}}
+                "vs"   {"diagnosis-vs"
+                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
+                         "tag.v1.ndjson.gz" {}}}}})))
+  )

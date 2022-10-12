@@ -58,8 +58,9 @@
 (defn spit-resources [root-dir-path module-dir-path resources]
   (mkdir (str module-dir-path "/resources/"))
   (doseq [[path content] resources]
-    (spit (str module-dir-path "/resources/" path)
-          content)))
+    (let [res-path (str module-dir-path "/resources/" path)]
+      (io/make-parents res-path)
+      (spit res-path content))))
 
 
 (defn mk-module-fixture [root-dir-path module-name module-params]
