@@ -255,37 +255,51 @@
      :status "unknown"}))
 
 
+(defn index-concepts-by-value-sets-backref [acc vs-url concept system value-sets code-systems]
+  (if (contains? acc vs-url)
+    (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
+    (let [code-system (get-or-create-codesystem code-systems system)
+          value-set (get-in value-sets [vs-url :zen.fhir/resource])]
+      (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
+                         :code-system code-system
+                         :value-set value-set}))))
+
+
+(defn index-concepts-by-vs-for-entire-cs [acc concept system value-sets code-systems]
+  (let [code-system (get-or-create-codesystem code-systems system)
+
+        {:as value-set, vs-url :url}
+        (if-let [vs (get value-sets (:valueSet code-system))]
+          vs #_"TODO: looks like dead code; remove"
+          (ftr.utils.core/strip-nils
+            {:url    (some-> (:url code-system) (str "-entire-code-system"))
+             :name   (some-> (:name code-system) (str "-entire-code-system"))
+             :status "unknown"}))]
+    (if (contains? acc vs-url)
+      (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
+      (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
+                         :code-system code-system
+                         :value-set value-set}))))
+
+
+(defn index-concepts-by-value-set [acc concept-id {:as concept, :keys [valueset system]} value-sets code-systems]
+  (if (seq valueset)
+    (reduce (fn [acc' vs-url]
+              (index-concepts-by-value-sets-backref acc' vs-url concept system value-sets code-systems))
+            acc
+            valueset)
+    (index-concepts-by-vs-for-entire-cs acc concept system value-sets code-systems)))
+
+
 (defmethod u/*fn ::compose-tfs [{:as _ctx, :keys [ztx]}]
   (let [{value-sets "ValueSet"
          concepts "Concept"
          code-systems "CodeSystem"}
-        (select-keys (:fhir/inter @ztx) ["ValueSet" "Concept" "CodeSystem"])]
-    {::result (reduce-kv (fn [acc concept-id {:as concept, :keys [valueset system]}]
-                           (if (seq valueset)
-                             (reduce (fn [acc' vs-url]
-                                       (if (acc' vs-url)
-                                         (update-in acc' [vs-url :concepts] conj (get concept :zen.fhir/resource))
-                                         (let [code-system (get-or-create-codesystem code-systems system)
-                                               value-set (get-in value-sets [vs-url :zen.fhir/resource])]
-                                           (assoc acc' vs-url {:concepts [(get concept :zen.fhir/resource)]
-                                                               :code-system code-system
-                                                               :value-set value-set}))))
-                                     acc valueset)
-                             (let [code-system
-                                   (get-or-create-codesystem code-systems system)
-
-                                   {:as value-set, vs-url :url}
-                                   (if-let [vs (get value-sets (:valueSet code-system))]
-                                     vs
-                                     {:url (str (:url code-system) "-entire-code-system")
-                                      :name (str (:name code-system) "-entire-code-system")
-                                      :status "unknown"})]
-                               (if (acc vs-url)
-                                 (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
-                                 (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
-                                                    :code-system code-system
-                                                    :value-set value-set}))))
-                           ) {} concepts)}))
+        (:fhir/inter @ztx)]
+    {::result (reduce-kv (fn [acc concept-id concept]
+                           (index-concepts-by-value-set acc concept-id concept value-sets code-systems))
+                         {}
+                         concepts)}))
 
 
 (defn import-from-cfg [cfg]
