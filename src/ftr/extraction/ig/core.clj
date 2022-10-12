@@ -255,38 +255,40 @@
      :status "unknown"}))
 
 
-(defn index-concepts-by-value-sets-backref [acc vs-url concept system value-sets code-systems]
-  (if (contains? acc vs-url)
-    (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
+(defn create-vs-for-entire-cs [code-system]
+  (ftr.utils.core/strip-nils
+    {:url    (some-> (:url code-system) (str "-entire-code-system"))
+     :name   (some-> (:name code-system) (str "-entire-code-system"))
+     :status "unknown"}))
+
+
+(defn index-concepts-by-value-set-backref [vs-idx-acc vs-url concept system value-sets code-systems]
+  (if (contains? vs-idx-acc vs-url)
+    (update-in vs-idx-acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
     (let [code-system (get-or-create-codesystem code-systems system)
-          value-set (get-in value-sets [vs-url :zen.fhir/resource])]
-      (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
-                         :code-system code-system
-                         :value-set value-set}))))
+          value-set   (get-in value-sets [vs-url :zen.fhir/resource])]
+      (assoc vs-idx-acc vs-url {:concepts [(get concept :zen.fhir/resource)]
+                                :code-system code-system
+                                :value-set value-set}))))
 
 
-(defn index-concepts-by-vs-for-entire-cs [acc concept system value-sets code-systems]
-  (let [code-system (get-or-create-codesystem code-systems system)
-
-        {:as value-set, vs-url :url}
-        (ftr.utils.core/strip-nils
-          {:url    (some-> (:url code-system) (str "-entire-code-system"))
-           :name   (some-> (:name code-system) (str "-entire-code-system"))
-           :status "unknown"})]
-    (if (contains? acc vs-url)
-      (update-in acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
-      (assoc acc vs-url {:concepts [(get concept :zen.fhir/resource)]
-                         :code-system code-system
-                         :value-set value-set}))))
+(defn index-concepts-by-vs-for-entire-cs [vs-idx-acc concept system code-systems]
+  (let [code-system                  (get-or-create-codesystem code-systems system)
+        {:as value-set, vs-url :url} (create-vs-for-entire-cs code-system)]
+    (if (contains? vs-idx-acc vs-url)
+      (update-in vs-idx-acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
+      (assoc vs-idx-acc vs-url {:concepts [(get concept :zen.fhir/resource)]
+                                :code-system code-system
+                                :value-set value-set}))))
 
 
-(defn index-concepts-by-value-set [acc concept-id {:as concept, :keys [valueset system]} value-sets code-systems]
+(defn index-concepts-by-value-set [vs-idx-acc {:as concept, :keys [valueset system]} value-sets code-systems]
   (if (seq valueset)
-    (reduce (fn [acc' vs-url]
-              (index-concepts-by-value-sets-backref acc' vs-url concept system value-sets code-systems))
-            acc
+    (reduce (fn [vs-idx-acc' vs-url]
+              (index-concepts-by-value-set-backref vs-idx-acc' vs-url concept system value-sets code-systems))
+            vs-idx-acc
             valueset)
-    (index-concepts-by-vs-for-entire-cs acc concept system value-sets code-systems)))
+    (index-concepts-by-vs-for-entire-cs vs-idx-acc concept system code-systems)))
 
 
 (defmethod u/*fn ::compose-tfs [{:as _ctx, :keys [ztx]}]
@@ -294,8 +296,8 @@
          concepts "Concept"
          code-systems "CodeSystem"}
         (:fhir/inter @ztx)]
-    {::result (reduce-kv (fn [acc concept-id concept]
-                           (index-concepts-by-value-set acc concept-id concept value-sets code-systems))
+    {::result (reduce-kv (fn [acc _concept-id concept]
+                           (index-concepts-by-value-set acc concept value-sets code-systems))
                          {}
                          concepts)}))
 
