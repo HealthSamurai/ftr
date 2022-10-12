@@ -113,9 +113,10 @@
 
 
 (defn escape-url [url]
-  (-> url
-      (str/replace #"/" "-")
-      (str/replace #" " "-")))
+  (some-> url
+          str
+          (str/replace #"/" "-")
+          (str/replace #" " "-")))
 
 
 (defn open-gz-writer [output]
