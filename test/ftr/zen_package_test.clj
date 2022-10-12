@@ -7,6 +7,7 @@
             [ftr.utils.core]
             [test-utils]
             [ftr.zen-package]
+            [cheshire.core]
             [zen.core]))
 
 
@@ -142,7 +143,7 @@
 
 (def gender-codesystem
   {:resourceType "CodeSystem"
-   :id "gender"
+   :id "gender-cs-id"
    :url "gender-cs"
    :status "active"
    :content "complete"
@@ -158,10 +159,35 @@
 
 (def gender-valueset
   {:resourceType "ValueSet"
-   :id "gender"
+   :id "gender-vs-id"
    :url "gender-vs"
    :status "active"
    :compose {:include {:system "gender-cs"}}})
+
+
+(def another-gender-codesystem
+  {:resourceType "CodeSystem"
+   :id "another-gender-cs-id"
+   :url "another-gender-cs"
+   :status "active"
+   :content "complete"
+   :valueSet "another-gender-vs"
+   :concept [{:code "male"
+              :dispaly "Male"}
+             {:code "female"
+              :dispaly "Female"}
+             {:code "other"
+              :dispaly "Other"}
+             {:code "unknown"
+              :dispaly "Unknown"}]})
+
+
+(def another-gender-valueset
+  {:resourceType "ValueSet"
+   :id "another-gender-vs-id"
+   :url "another-gender-vs"
+   :status "active"
+   :compose {:include {:system "another-gender-cs"}}})
 
 
 (def ig-manifest
@@ -178,6 +204,8 @@
   {'profile-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
                  :resources {"ig/node_modules/gender-codesystem.json" (cheshire.core/generate-string gender-codesystem)
                              "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string gender-valueset)
+                             "ig/node_modules/another-gender-codesystem.json" (cheshire.core/generate-string another-gender-codesystem)
+                             "ig/node_modules/another-gender-valueset.json" (cheshire.core/generate-string another-gender-valueset)
                              "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
                  :zrc #{{:ns 'profile
                          :import #{'zen.fhir}
@@ -209,7 +237,7 @@
                                :require #{:gender}}}}}})
 
 
-(t/deftest zen-package-with-ig-ftr
+(t/deftest ^:kaocha/pending zen-package-with-ig-ftr
   (def test-dir-path "/tmp/ftr-ig.zen-package-test")
   (def profile-lib-path (str test-dir-path "/profile-lib"))
   (def module-dir-path (str test-dir-path "/test-module"))
@@ -230,7 +258,7 @@
       (matcho/match
         (test-utils/fs-tree->tree-map profile-lib-path)
         {"ftr" {"tags" {"v1.ndjson.gz" {}}
-                "vs"   {"diagnosis-vs"
-                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
-                         "tag.v1.ndjson.gz" {}}}}})))
-  )
+                "vs"   {"gender-cs-entire-code-system" {}
+                        "gender-vs" {}
+                        "another-gender-cs-entire-code-system" nil
+                        "another-gender-vs" {}}}}))))
