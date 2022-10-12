@@ -234,3 +234,115 @@
         {"ftr" {"tags" {"v1.ndjson.gz" {}}
                 "vs"   {"gender-cs-entire-code-system" nil
                         "gender-vs" {}}}}))))
+
+
+(def gender2-codesystem
+  {:resourceType "CodeSystem"
+   :id "gender2-cs-id"
+   :url "gender2-cs"
+   :status "active"
+   :content "complete"
+   :concept gender-concepts})
+
+(def gender2-valueset
+  {:resourceType "ValueSet"
+   :id "gender2-vs-id"
+   :url "gender2-vs"
+   :status "active"
+   :compose {:include [{:system "gender2-cs"}]}})
+
+(def gender3-valueset
+  {:resourceType "ValueSet"
+   :id "gender3-vs-id"
+   :url "gender3-vs"
+   :status "active"
+   :compose {:include [{:system "gender3-cs"}]}})
+
+(def gender4-codesystem
+  {:resourceType "CodeSystem"
+   :id "gender4-cs-id"
+   :url "gender4-cs"
+   :status "active"
+   :content "complete"
+   :concept gender-concepts})
+
+(def gender5-codesystem
+  {:resourceType "CodeSystem"
+   :id "gender5-cs-id"
+   :url "gender5-cs"
+   :status "active"
+   :content "complete"
+   :valueSet "gender5-vs"
+   :concept gender-concepts})
+
+(def gender6-valueset
+  {:resourceType "ValueSet"
+   :id "gender6-vs-id"
+   :url "gender6-vs"
+   :status "active"
+   :compose {:include [{:system "gender6-cs"
+                        :concept gender-concepts}]}})
+
+#_(def gender7-valueset #_"TODO: backport valueset expansion processing"
+  {:resourceType "ValueSet"
+   :id "gender7-vs-id"
+   :url "gender7-vs"
+   :status "active"
+   :compose {:include [{:system "gender7-cs"}]}
+   :expansion {:contains (mapv #(assoc % :system "gender7-cs")
+                               gender-concepts)}})
+
+(defn test-ig-ftr-zen-lib [root-path]
+  {'ftr-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+             :resources {"ig/node_modules/gender2-codesystem.json" (cheshire.core/generate-string gender2-codesystem)
+                         "ig/node_modules/gender2-valueset.json" (cheshire.core/generate-string gender2-valueset)
+                         "ig/node_modules/gender3-valueset.json" (cheshire.core/generate-string gender3-valueset)
+                         "ig/node_modules/gender4-codesystem.json" (cheshire.core/generate-string gender4-codesystem)
+                         "ig/node_modules/gender5-codesystem.json" (cheshire.core/generate-string gender5-codesystem)
+                         "ig/node_modules/gender6-valueset.json" (cheshire.core/generate-string gender6-valueset)
+                         #_#_"ig/node_modules/gender7-valueset.json" (cheshire.core/generate-string gender7-valueset)
+                         "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+             :zrc #{{:ns 'ftr-lib
+                     :import #{'zen.fhir}
+
+                     'gender-vs #_"TODO: separate symbol for each VS"
+                     {:zen/tags #{'zen.fhir/value-set}
+                      :zen.fhir/version "0.5.0"
+                      :uri "diagnosis-vs"
+                      :ftr {:module            "ftr"
+                            :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
+                            :ftr-path          (str root-path "/ftr-lib")
+                            :tag               "v1"
+                            :source-type       :ig}}}}}})
+
+
+(t/deftest ig-ftr-extraction-edge-cases
+  (def test-dir-path "/tmp/ftr-ig.ig-ftr-extraction-edge-cases")
+  (def profile-lib-path (str test-dir-path "/ftr-lib"))
+
+  (test-utils/rm-fixtures test-dir-path)
+
+  (test-utils/mk-fixtures test-dir-path (test-ig-ftr-zen-lib test-dir-path))
+
+  (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+
+  (zen.core/read-ns build-ftr-ztx 'ftr-lib)
+
+  (ftr.zen-package/build-ftr build-ftr-ztx)
+
+  (t/testing "built ftr shape is ok"
+    (matcho/match
+      (test-utils/fs-tree->tree-map profile-lib-path)
+      {"ftr" {"tags" {"v1.ndjson.gz" {}}
+              "vs"   {"gender2-cs-entire-code-system" nil
+                      "gender2-vs" {}
+                      "gender3-cs-entire-code-system" nil
+                      "gender3-vs" nil
+                      "gender4-cs-entire-code-system" {}
+                      "gender4-vs" nil
+                      "gender5-cs-entire-code-system" {}
+                      "gender5-vs" nil
+                      "gender6-cs-entire-code-system" nil
+                      "gender6-vs" {}
+                      #_#_"gender7-cs-entire-code-system" nil
+                      #_#_"gender7-vs" {}}}})))
