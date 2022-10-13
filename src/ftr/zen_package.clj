@@ -42,12 +42,15 @@
                  (group-by value-sets)
                  keys)
         ftr-dirs (mapcat expand-package-path (:package-paths @ztx))
-        ftr-dir (first ftr-dirs) ;;HACK TODO
-        tag-index-paths (map (fn [tag]
-                               {:tag tag
-                                :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)}) tags)]
+        tag-index-paths (mapcat (fn [tag]
+                                  (map (fn [ftr-dir]
+                                         {:tag tag
+                                          :ftr-dir ftr-dir
+                                          :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
+                                       ftr-dirs))
+                                tags)]
     (swap! ztx assoc :zen.fhir/ftr-cache
-           (reduce (fn [acc {:keys [tag path]}]
+           (reduce (fn [acc {:keys [tag path ftr-dir]}]
                      (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
                        (assoc acc tag
                               (reduce (fn [acc {:as ti-entry
