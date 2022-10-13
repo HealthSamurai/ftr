@@ -302,18 +302,20 @@
                          "ig/node_modules/gender6-valueset.json" (cheshire.core/generate-string gender6-valueset)
                          #_#_"ig/node_modules/gender7-valueset.json" (cheshire.core/generate-string gender7-valueset)
                          "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
-             :zrc #{{:ns 'ftr-lib
-                     :import #{'zen.fhir}
-
-                     'gender-vs #_"TODO: separate symbol for each VS"
-                     {:zen/tags #{'zen.fhir/value-set}
-                      :zen.fhir/version "0.5.0"
-                      :uri "diagnosis-vs"
-                      :ftr {:module            "ftr"
-                            :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
-                            :ftr-path          (str root-path "/ftr-lib")
-                            :tag               "v1"
-                            :source-type       :ig}}}}}})
+             :zrc #{(merge {:ns 'ftr-lib
+                            :import #{'zen.fhir}}
+                           (reduce (fn [acc {:keys [url]}]
+                                     (assoc acc (symbol url)
+                                            {:zen/tags #{'zen.fhir/value-set}
+                                             :zen.fhir/version "0.5.0"
+                                             :uri url
+                                             :ftr {:module            "ftr"
+                                                   :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
+                                                   :ftr-path          (str root-path "/ftr-lib")
+                                                   :tag               "v1"
+                                                   :source-type       :ig}}))
+                                   {}
+                                   [gender2-valueset gender3-valueset gender6-valueset]))}}})
 
 
 (t/deftest ig-ftr-extraction-edge-cases
@@ -328,7 +330,16 @@
 
   (zen.core/read-ns build-ftr-ztx 'ftr-lib)
 
-  (ftr.zen-package/build-ftr build-ftr-ztx)
+  (t/testing "ftr.core/apply-cfg called only once"
+    (let [og-apply-cfg ftr.core/apply-cfg
+          fn-calls-count (atom 0)]
+      (with-redefs [ftr.core/apply-cfg (fn [& args]
+                                         (swap! fn-calls-count inc)
+                                         (apply og-apply-cfg args))]
+        (ftr.zen-package/build-ftr build-ftr-ztx)
+        (matcho/match
+          @fn-calls-count
+          1))))
 
   (t/testing "built ftr shape is ok"
     (matcho/match
