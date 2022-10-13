@@ -10,10 +10,13 @@
 
 (defn build-ftr [ztx]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets (map (partial zen.core/get-symbol ztx) syms)]
-    (doseq [{:as vs, :keys [ftr]} value-sets]
-      (when ftr
-        (ftr.core/apply-cfg {:cfg ftr})))))
+        value-sets (map (partial zen.core/get-symbol ztx) syms)
+        ftr-configs (->> value-sets
+                         (group-by :ftr)
+                         keys
+                         (filter identity))]
+    (doseq [ftr ftr-configs]
+      (ftr.core/apply-cfg {:cfg ftr}))))
 
 
 (defn expand-zen-packages [path]
