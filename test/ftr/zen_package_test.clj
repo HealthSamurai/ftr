@@ -357,3 +357,83 @@
                       "gender6-vs" {}
                       #_#_"gender7-cs-entire-code-system" nil
                       #_#_"gender7-vs" {}}}})))
+
+
+(defn test-concept-vs-backrefs [root-path]
+  (let [cs (cheshire.core/generate-string
+             {:resourceType "CodeSystem"
+              :id "gender-cs-id"
+              :url "gender-cs-url"
+              :status "active"
+              :content "complete"
+              :concept [{:code "male" :dispaly "Male"}
+                        {:code "female" :dispaly "Female"}
+                        {:code "other" :dispaly "Other"}
+                        {:code "unknown" :dispaly "Unknown"}]})
+        vs-1 {:resourceType "ValueSet"
+              :id "gender1-vs-id"
+              :url "gender1-vs"
+              :status "active"
+              :compose {:include [{:system "gender-cs-url"}]}}
+        vs-2 {:resourceType "ValueSet"
+              :id "gender2-vs-id"
+              :url "gender2-vs"
+              :status "active"
+              :compose {:include [{:system "gender-cs-url"}]}}]
+    {'ftr-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+               :resources {"ig/node_modules/gender-codesystem.json" cs
+                           "ig/node_modules/gender1-valueset.json" (cheshire.core/generate-string vs-1)
+                           "ig/node_modules/gender2-valueset.json" (cheshire.core/generate-string vs-2)
+                           "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+               :zrc #{(merge {:ns 'ftr-lib
+                              :import #{'zen.fhir}}
+                             (reduce (fn [acc {:keys [url]}]
+                                       (assoc acc (symbol url)
+                                              {:zen/tags #{'zen.fhir/value-set}
+                                               :zen.fhir/version "0.5.0"
+                                               :uri url
+                                               :ftr {:module            "ftr"
+                                                     :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
+                                                     :ftr-path          (str root-path "/ftr-lib")
+                                                     :tag               "v1"
+                                                     :source-type       :ig}}))
+                                     {}
+                                     [vs-1 vs-2]))}}}))
+
+
+(t/deftest concept-in-tf-have-only-one-backref-to-vs
+  (def test-dir-path "/tmp/ftr-ig.ig-ftr-extraction-edge-cases")
+  (def profile-lib-path (str test-dir-path "/ftr-lib"))
+
+  (test-utils/rm-fixtures test-dir-path)
+  (test-utils/mk-fixtures test-dir-path (test-concept-vs-backrefs test-dir-path))
+  (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+
+  (zen.core/read-ns build-ftr-ztx 'ftr-lib)
+
+  (ftr.zen-package/build-ftr build-ftr-ztx)
+
+  (t/testing "built ftr shape is ok"
+    (matcho/match
+      (test-utils/fs-tree->tree-map profile-lib-path)
+      {"ftr" {"tags" {"v1.ndjson.gz" {}}
+              "vs"   {"gender1-vs"
+                      {"tag.v1.ndjson.gz" {}
+                       "tf.1ef8db63330e1f2e766ee31a84ffcb5229fb1a1385daf0b7dcaf613042dc08ec.ndjson.gz" {}}
+                      "gender2-vs"
+                      {"tag.v1.ndjson.gz" {}
+                       "tf.263bb4399a1eb4b623fa8ec62e8070d78e158694cbf1e3f233fc71eb37411d27.ndjson.gz" {}}}}}))
+
+  (t/testing "Each concept in terminology file that represents specific valueset have backreference to this exact valueset"
+    (let [gender1-tf-path (format "%s/ftr/vs/gender1-vs/tf.1ef8db63330e1f2e766ee31a84ffcb5229fb1a1385daf0b7dcaf613042dc08ec.ndjson.gz"
+                                  profile-lib-path)
+          gender2-tf-path (format "%s/ftr/vs/gender2-vs/tf.263bb4399a1eb4b623fa8ec62e8070d78e158694cbf1e3f233fc71eb37411d27.ndjson.gz"
+                                  profile-lib-path)
+          gender1-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender1-tf-path))
+          gender2-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender2-tf-path))]
+
+      (t/testing "valid for gender1-vs tf"
+        (t/is (every? #(= ["gender1-vs"] (:valueset %)) gender1-vs-concepts)))
+
+      (t/testing "valid for gender2-vs tf"
+        (t/is (every? #(= ["gender2-vs"] (:valueset %)) gender2-vs-concepts))))))

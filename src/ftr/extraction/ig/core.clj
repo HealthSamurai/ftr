@@ -262,22 +262,32 @@
      :status "unknown"}))
 
 
+(defn trim-concept-backrefs-to-specific-vs-url [concept vs-url]
+  (assoc concept :valueset [vs-url]))
+
+
 (defn index-concepts-by-value-set-backref [vs-idx-acc vs-url concept system value-sets code-systems]
-  (if (contains? vs-idx-acc vs-url)
-    (update-in vs-idx-acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
-    (let [code-system (get-or-create-codesystem code-systems system)
-          value-set   (get-in value-sets [vs-url :zen.fhir/resource])]
-      (assoc vs-idx-acc vs-url {:concepts [(get concept :zen.fhir/resource)]
-                                :code-system code-system
-                                :value-set value-set}))))
+  (let [concept (trim-concept-backrefs-to-specific-vs-url
+                  (get concept :zen.fhir/resource)
+                  vs-url)]
+    (if (contains? vs-idx-acc vs-url)
+      (update-in vs-idx-acc [vs-url :concepts] conj concept)
+      (let [code-system (get-or-create-codesystem code-systems system)
+            value-set   (get-in value-sets [vs-url :zen.fhir/resource])]
+        (assoc vs-idx-acc vs-url {:concepts [concept]
+                                  :code-system code-system
+                                  :value-set value-set})))))
 
 
 (defn index-concepts-by-vs-for-entire-cs [vs-idx-acc concept system code-systems]
   (let [code-system                  (get-or-create-codesystem code-systems system)
-        {:as value-set, vs-url :url} (create-vs-for-entire-cs code-system)]
+        {:as value-set, vs-url :url} (create-vs-for-entire-cs code-system)
+        concept (trim-concept-backrefs-to-specific-vs-url
+                  (get concept :zen.fhir/resource)
+                  vs-url)]
     (if (contains? vs-idx-acc vs-url)
-      (update-in vs-idx-acc [vs-url :concepts] conj (get concept :zen.fhir/resource))
-      (assoc vs-idx-acc vs-url {:concepts [(get concept :zen.fhir/resource)]
+      (update-in vs-idx-acc [vs-url :concepts] conj concept)
+      (assoc vs-idx-acc vs-url {:concepts [concept]
                                 :code-system code-system
                                 :value-set value-set}))))
 
