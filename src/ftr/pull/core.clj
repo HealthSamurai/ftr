@@ -101,14 +101,17 @@
                                       (rest (ftr.utils.core/parse-ndjson-gz ?patch-file-path)))
                                     (ftr.patch-generator.core/generate-patch! ?old-tf ?new-tf))
                           new-tf-reader (ftr.utils.core/open-ndjson-gz-reader ?new-tf)
-                          new-tf-cs (.readLine new-tf-reader)
-                          new-tf-vs (.readLine new-tf-reader)
+                          codesystems&value-set (loop [line (.readLine new-tf-reader)
+                                                       acc  []]
+                                                  (if (= (:resourceType line) "ValueSet")
+                                                    (conj acc line)
+                                                    (recur (.readLine new-tf-reader) (conj acc line))))
                           {:strs [add remove update]} (group-by :op patch)
                           concepts (->> (into add update)
                                         (map #(dissoc % :op :_source)))
                           ids-to-remove (map :id remove)]
 
-                      (doseq [l (into [new-tf-cs new-tf-vs] concepts)]
+                      (doseq [l (into codesystems&value-set concepts)]
                         (.write w (ftr.utils.core/generate-ndjson-row l)))
 
                       (clojure.core/update acc :remove-plan into ids-to-remove)))))

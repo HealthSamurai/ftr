@@ -560,3 +560,121 @@
          {:code "UNC"}
          {:code "UNK"}
          nil?]))))
+
+
+(t/deftest multiple-cs-in-terminology-file
+  (let [ig-folder "/tmp/ig/"
+
+        ftr-path "/tmp/csigftr"
+
+        ->json cheshire.core/generate-string
+        <-json #(cheshire.core/parse-string % keyword)
+        _ (ftr.utils.core/rmrf ig-folder)
+
+        cs1 {:resourceType "CodeSystem"
+             :id "gender-cs-id"
+             :url "gender-cs-url"
+             :status "active"
+             :content "complete"
+             :concept [{:code "male" :display "Male"}
+                       {:code "female" :display "Female"}
+                       {:code "other" :display "Other"}
+                       {:code "unknown" :display "Unknown"}]}
+
+        cs2 {:resourceType "CodeSystem"
+             :id "shortgender-cs-id"
+             :url "shortgender-cs-url"
+             :status "active"
+             :content "complete"
+             :concept [{:code "m" :display "M"}
+                       {:code "f" :display "F"}]}
+
+        vs {:resourceType "ValueSet"
+            :id "gender-vs-id"
+            :url "gender-vs"
+            :status "active"
+            :compose {:include [{:system "gender-cs-url"}
+                                {:system "shortgender-cs-url"}]}}
+
+        ig-manifest {:name "ig.core"
+                     :version "0.0.1"
+                     :type "ig.core"
+                     :title "ig.core"
+                     :description "ig.core"
+                     :author "hs"
+                     :url "dehydrated"}
+
+        resources (-> {"gender-codesystem.json" cs1
+                       "shortgender-codesystem.json" cs2
+                       "gender-valueset.json" vs
+                       "package.json" ig-manifest}
+                      (update-keys #(str ig-folder %))
+                      (update-vals ->json))
+
+        _ (doseq [[path content] resources] (do (io/make-parents path)
+                                                (spit path content)))
+
+        user-cfg {:module      "dehydrated"
+                  :source-url  ig-folder
+                  :ftr-path    ftr-path
+                  :tag         "v1"
+                  :source-type :ig}
+        _ (ftr.utils.core/rmrf ftr-path)
+        _ (sut/apply-cfg {:cfg user-cfg})
+
+        client-cfg
+        (merge user-cfg
+               {:tag       "v2"
+                :move-tag  {:old-tag "v1"
+                            :new-tag "v2"}
+                :tag-index (ftr.utils.core/parse-ndjson-gz
+                             (format "%s/%s/tags/%s.ndjson.gz"
+                                     ftr-path
+                                     (:module user-cfg)
+                                     (:tag user-cfg)))})
+
+        resources (update-in resources [(str ig-folder "shortgender-codesystem.json")]
+                             (fn [content]
+                               (-> content
+                                   <-json
+                                   (update :concept conj {:code "o" :display "O"})
+                                   ->json)))
+
+        _ (doseq [[path content] resources] (do (io/make-parents path)
+                                                (spit path content)))
+
+        _ (sut/apply-cfg {:cfg (merge user-cfg
+                                      {:tag "v2"
+                                       :move-tag {:old-tag "v1"
+                                                  :new-tag "v2"}})})
+
+        _ (t/testing "ftr shape correct"
+            (matcho/match
+              (get-in (fs-tree->tree-map ftr-path) (drop 1 (str/split ftr-path #"/")))
+              {"dehydrated"
+               {"vs"
+                {"gender-vs"
+                 {"tf.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.ndjson.gz" {}
+                  "patch.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.a7a0bd0dea3521019c98b0d3ca730b48fddb660d2ef5048c4ffa9352b3d170a8.ndjson.gz" {}
+                  "tag.v1.ndjson.gz" {}
+                  "tag.v2.ndjson.gz" {}
+                  "tf.a7a0bd0dea3521019c98b0d3ca730b48fddb660d2ef5048c4ffa9352b3d170a8.ndjson.gz" {}}}
+                "tags" {"v2.ndjson.gz" {} "v1.ndjson.gz" {}}}}))
+
+        update-plan-name "update-plan"
+        update-plan-path (str ftr-path \/ update-plan-name ".ndjson.gz")
+
+        _ (t/testing "pull/migrate create correct update plan, remove plan remains empty"
+            (matcho/match
+              (update (pull-sut/migrate (assoc client-cfg :update-plan-name update-plan-name)) :remove-plan sort)
+              {:patch-plan update-plan-path
+               :remove-plan empty?})
+
+            (t/testing "update plan is correct"
+              (matcho/match
+                (ftr.utils.core/parse-ndjson-gz update-plan-path)
+                [{:resourceType "CodeSystem" :id "gender-cs-id"}
+                 {:resourceType "CodeSystem" :id "shortgender-cs-id"}
+                 {:resourceType "ValueSet"   :id "gender-vs-id"}
+                 {:resourceType "Concept"    :code "o"}
+                 nil?])))]))
