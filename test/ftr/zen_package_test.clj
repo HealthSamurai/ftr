@@ -142,10 +142,10 @@
 
 
 (def gender-concepts
-  [{:code "male" :dispaly "Male"}
-   {:code "female" :dispaly "Female"}
-   {:code "other" :dispaly "Other"}
-   {:code "unknown" :dispaly "Unknown"}])
+  [{:code "male" :display "Male"}
+   {:code "female" :display "Female"}
+   {:code "other" :display "Other"}
+   {:code "unknown" :display "Unknown"}])
 
 
 (def gender-codesystem
@@ -366,10 +366,10 @@
               :url "gender-cs-url"
               :status "active"
               :content "complete"
-              :concept [{:code "male" :dispaly "Male"}
-                        {:code "female" :dispaly "Female"}
-                        {:code "other" :dispaly "Other"}
-                        {:code "unknown" :dispaly "Unknown"}]})
+              :concept [{:code "male" :display "Male"}
+                        {:code "female" :display "Female"}
+                        {:code "other" :display "Other"}
+                        {:code "unknown" :display "Unknown"}]})
         vs-1 {:resourceType "ValueSet"
               :id "gender1-vs-id"
               :url "gender1-vs"
@@ -417,14 +417,14 @@
       {"ftr" {"tags" {"v1.ndjson.gz" {}}
               "vs"   {"gender1-vs"
                       {"tag.v1.ndjson.gz" {}
-                       "tf.d5901df732d82caecbcb60316c0f9f2db8aa60c5eb31771ac9dec1c1222ee611.ndjson.gz" {}}
+                       "tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz" {}}
                       "gender2-vs"
                       {"tag.v1.ndjson.gz" {}
-                       "tf.ed222e105bf6100a08d93fc2c6e3fbf8ed1c418ffe5e0f874ef2b8455f10e091.ndjson.gz" {}}}}}))
+                       "tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz" {}}}}}))
 
-  (let [gender1-tf-path (format "%s/ftr/vs/gender1-vs/tf.d5901df732d82caecbcb60316c0f9f2db8aa60c5eb31771ac9dec1c1222ee611.ndjson.gz"
+  (let [gender1-tf-path (format "%s/ftr/vs/gender1-vs/tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz"
                                 profile-lib-path)
-        gender2-tf-path (format "%s/ftr/vs/gender2-vs/tf.ed222e105bf6100a08d93fc2c6e3fbf8ed1c418ffe5e0f874ef2b8455f10e091.ndjson.gz"
+        gender2-tf-path (format "%s/ftr/vs/gender2-vs/tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz"
                                 profile-lib-path)
         gender1-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender1-tf-path))
         gender2-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender2-tf-path))]
