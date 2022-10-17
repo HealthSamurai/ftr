@@ -18,7 +18,8 @@
                               (assoc :resourceType "CodeSystem")
                               (->> (merge {:status   "unknown"
                                            :content  "not-present"
-                                           :valueSet (get-in cfg [:value-set :url])})))}})
+                                           :valueSet (get-in cfg [:value-set :url])})
+                                   (conj #{})))}})
 
 (defmulti parse-flat-table-row
   (fn [params _s] (keyword (:format params))))

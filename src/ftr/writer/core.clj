@@ -13,10 +13,11 @@
 
 
 (defn spit-tf-file! [writer cs vs c]
-  (let [sorted-concepts (sort-by #(format "%s-%s" (:system %) (:code %))
-                                 c)]
+  (let [sorted-code-systems (sort-by :id cs)
+        sorted-concepts (sort-by #(format "%s-%s" (:system %) (:code %)) c)]
     (with-open [w writer]
-      (.write w (ftr.utils.core/generate-ndjson-row cs))
+      (doseq [cs sorted-code-systems]
+        (.write w (ftr.utils.core/generate-ndjson-row cs)))
       (.write w (ftr.utils.core/generate-ndjson-row vs))
       (doseq [c sorted-concepts]
         (.write w (ftr.utils.core/generate-ndjson-row c))))))

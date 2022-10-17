@@ -271,15 +271,17 @@
 
 
 (defn index-concepts-by-value-set-backref [vs-idx-acc vs-url concept system value-sets code-systems]
-  (let [concept (preprocess-concept
+  (let [code-system (get-or-create-codesystem code-systems system)
+        concept (preprocess-concept
                   (get concept :zen.fhir/resource)
                   vs-url)]
     (if (contains? vs-idx-acc vs-url)
-      (update-in vs-idx-acc [vs-url :concepts] conj concept)
-      (let [code-system (get-or-create-codesystem code-systems system)
-            value-set   (get-in value-sets [vs-url :zen.fhir/resource])]
+      (-> vs-idx-acc
+          (update-in [vs-url :code-system] conj code-system)
+          (update-in [vs-url :concepts] conj concept))
+      (let [value-set   (get-in value-sets [vs-url :zen.fhir/resource])]
         (assoc vs-idx-acc vs-url {:concepts [concept]
-                                  :code-system code-system
+                                  :code-system #{code-system}
                                   :value-set value-set})))))
 
 
@@ -290,9 +292,11 @@
                   (get concept :zen.fhir/resource)
                   vs-url)]
     (if (contains? vs-idx-acc vs-url)
-      (update-in vs-idx-acc [vs-url :concepts] conj concept)
+      (-> vs-idx-acc
+          (update-in [vs-url :code-system] conj code-system)
+          (update-in [vs-url :concepts] conj concept))
       (assoc vs-idx-acc vs-url {:concepts [concept]
-                                :code-system code-system
+                                :code-system #{code-system}
                                 :value-set value-set}))))
 
 

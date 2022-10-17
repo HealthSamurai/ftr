@@ -8,7 +8,8 @@
             [test-utils]
             [ftr.zen-package]
             [cheshire.core]
-            [zen.core]))
+            [zen.core]
+            [clojure.string :as str]))
 
 
 (def icd10-no-header-csv-content
@@ -454,3 +455,74 @@
                        nil?]))))
 
   )
+
+
+(defn test-multiple-codesystems-in-tf [root-path]
+  (let [cs1 (cheshire.core/generate-string
+             {:resourceType "CodeSystem"
+              :id "gender-cs-id"
+              :url "gender-cs-url"
+              :status "active"
+              :content "complete"
+              :concept [{:code "male" :display "Male"}
+                        {:code "female" :display "Female"}
+                        {:code "other" :display "Other"}
+                        {:code "unknown" :display "Unknown"}]})
+        cs2 (cheshire.core/generate-string
+             {:resourceType "CodeSystem"
+              :id "shortgender-cs-id"
+              :url "shortgender-cs-url"
+              :status "active"
+              :content "complete"
+              :concept [{:code "m" :display "M"}
+                        {:code "f" :display "F"}]})
+        vs {:resourceType "ValueSet"
+              :id "gender-vs-id"
+              :url "gender-vs"
+              :status "active"
+            :compose {:include [{:system "gender-cs-url"}
+                                {:system "shortgender-cs-url"}]}}]
+    {'ftr-multcs-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+                      :resources {"ig/node_modules/gender-codesystem.json" cs1
+                                  "ig/node_modules/shortgender-codesystem.json" cs2
+                                  "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string vs)
+                                  "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+                      :zrc #{(merge {:ns 'ftr-multcs-lib
+                                     :import #{'zen.fhir}}
+                                    (reduce (fn [acc {:keys [url]}]
+                                              (assoc acc (symbol url)
+                                                     {:zen/tags #{'zen.fhir/value-set}
+                                                      :zen.fhir/version "0.5.0"
+                                                      :uri url
+                                                      :ftr {:module            "ftr"
+                                                            :source-url        (str root-path "/ftr-multcs-lib/resources/ig/node_modules")
+                                                            :ftr-path          (str root-path "/ftr-multcs-lib")
+                                                            :tag               "v1"
+                                                            :source-type       :ig}}))
+                                            {}
+                                            [vs]))}}}))
+
+
+(t/deftest multiple-codesystems-in-one-terminology-file
+  (def test-dir-path "/tmp/multiple_codesystems")
+  (def profile-lib-path (str test-dir-path "/ftr-multcs-lib"))
+  (test-utils/rm-fixtures test-dir-path)
+  (test-utils/mk-fixtures test-dir-path (test-multiple-codesystems-in-tf test-dir-path))
+  (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+  (zen.core/read-ns build-ftr-ztx 'ftr-multcs-lib)
+
+  (ftr.zen-package/build-ftr build-ftr-ztx)
+
+  (let [tf-path (-> (test-utils/fs-tree->tree-map profile-lib-path)
+                    (get-in ["ftr" "vs" "gender-vs"])
+                    keys
+                    (->>
+                     (filter #(str/starts-with? % "tf"))
+                     first
+                     (format "%s/ftr/vs/gender-vs/%s" profile-lib-path)))
+        tf-codesystems (filter #(= (:resourceType %) "CodeSystem") (ftr.utils.core/parse-ndjson-gz tf-path))]
+    (t/testing "Terminology file contains all CodeSystem resources"
+      (matcho/match tf-codesystems
+                    [{:id "gender-cs-id"}
+                     {:id "shortgender-cs-id"}
+                     nil?]))))
