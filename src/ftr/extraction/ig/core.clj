@@ -262,12 +262,16 @@
      :status "unknown"}))
 
 
-(defn trim-concept-backrefs-to-specific-vs-url [concept vs-url]
-  (assoc concept :valueset [vs-url]))
+(defn preprocess-concept [concept vs-url]
+  (-> concept
+      (assoc :valueset [vs-url]) #_"Trim backrefs to other valuesets"
+      (assoc :id (str (ftr.utils.core/escape-url vs-url)
+                      "-"
+                      (:code concept)))))
 
 
 (defn index-concepts-by-value-set-backref [vs-idx-acc vs-url concept system value-sets code-systems]
-  (let [concept (trim-concept-backrefs-to-specific-vs-url
+  (let [concept (preprocess-concept
                   (get concept :zen.fhir/resource)
                   vs-url)]
     (if (contains? vs-idx-acc vs-url)
@@ -282,7 +286,7 @@
 (defn index-concepts-by-vs-for-entire-cs [vs-idx-acc concept system code-systems]
   (let [code-system                  (get-or-create-codesystem code-systems system)
         {:as value-set, vs-url :url} (create-vs-for-entire-cs code-system)
-        concept (trim-concept-backrefs-to-specific-vs-url
+        concept (preprocess-concept
                   (get concept :zen.fhir/resource)
                   vs-url)]
     (if (contains? vs-idx-acc vs-url)

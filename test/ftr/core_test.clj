@@ -277,16 +277,16 @@
      :ftr-path                    "/tmp/igftr"
      :vs1-name                    "http:--hl7.org-fhir-ValueSet-administrative-gender"
      :vs2-name                    "http:--hl7.org-fhir-ValueSet-codesystem-content-mode"
-     :expected-tf1-sha256         "9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1"
-     :expected-tf1-filename       "tf.9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1.ndjson.gz"
-     :expected-updated-tf1-sha256 "7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3"
-     :expected-updated-tf1-filename "tf.7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3.ndjson.gz"
-     :expected-tf1-patch-filename "patch.9cd86290024e7ce323fefd54a9462ce350df41aafde6a5fac25cdab36cb3f5d1.7d6388be98678cb546ea0b74ba1e296fad911478c591a0769cda2841bffa27a3.ndjson.gz"
-     :expected-tf2-sha256   "a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb"
-     :expected-tf2-filename "tf.a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb.ndjson.gz"
-     :expected-updated-tf2-sha256 "ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b"
-     :expected-updated-tf2-filename "tf.ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b.ndjson.gz"
-     :expected-tf2-patch-filename "patch.a40321eca14464aaf3e5e9e0df0b158dd1cd0d72b1f54e52872266fb345fa5bb.ef7fe0a16510d9dd342dd521d54953327f15aa5e4f5e0fc2a5f9dd9111584a1b.ndjson.gz"
+     :expected-tf1-sha256         "d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d"
+     :expected-tf1-filename       "tf.d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d.ndjson.gz"
+     :expected-updated-tf1-sha256 "47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7"
+     :expected-updated-tf1-filename "tf.47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7.ndjson.gz"
+     :expected-tf1-patch-filename "patch.d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d.47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7.ndjson.gz"
+     :expected-tf2-sha256   "203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4"
+     :expected-tf2-filename "tf.203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4.ndjson.gz"
+     :expected-updated-tf2-sha256 "53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94"
+     :expected-updated-tf2-filename "tf.53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94.ndjson.gz"
+     :expected-tf2-patch-filename "patch.203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4.53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94.ndjson.gz"
      })
 
 
@@ -530,10 +530,10 @@
          :remove-plan
          ["administrative-gender"
           "administrative-gender"
-          "http:--hl7.org-fhir-administrative-gender-female"
-          "http:--hl7.org-fhir-administrative-gender-male"
-          "http:--hl7.org-fhir-administrative-gender-other"
-          "http:--hl7.org-fhir-administrative-gender-unknown"
+          "http:--hl7.org-fhir-ValueSet-administrative-gender-female"
+          "http:--hl7.org-fhir-ValueSet-administrative-gender-male"
+          "http:--hl7.org-fhir-ValueSet-administrative-gender-other"
+          "http:--hl7.org-fhir-ValueSet-administrative-gender-unknown"
           nil?]}))
 
 
