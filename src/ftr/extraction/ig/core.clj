@@ -252,14 +252,16 @@
     {:url system
      :name (ftr.utils.core/escape-url system)
      :content "not-present"
-     :status "unknown"}))
+     :status "unknown"
+     :resourceType "CodeSystem"}))
 
 
 (defn create-vs-for-entire-cs [code-system]
   (ftr.utils.core/strip-nils
     {:url    (some-> (:url code-system) (str "-entire-code-system"))
      :name   (some-> (:name code-system) (str "-entire-code-system"))
-     :status "unknown"}))
+     :status "unknown"
+     :resourceType "ValueSet"}))
 
 
 (defn preprocess-concept [concept vs-url]

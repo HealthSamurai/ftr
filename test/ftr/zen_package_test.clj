@@ -526,3 +526,90 @@
                     [{:id "gender-cs-id"}
                      {:id "shortgender-cs-id"}
                      nil?]))))
+
+
+(defn test-cache-creation [root-path]
+  (let [cs1 (cheshire.core/generate-string
+              {:resourceType "CodeSystem"
+               :id "gender-cs-id"
+               :url "gender-cs-url"
+               :status "active"
+               :content "complete"
+               :concept [{:code "male" :display "Male"}
+                         {:code "female" :display "Female"}
+                         {:code "other" :display "Other"}
+                         {:code "unknown" :display "Unknown"}]})
+        cs2 (cheshire.core/generate-string
+              {:resourceType "CodeSystem"
+               :id "shortgender-cs-id"
+               :url "shortgender-cs-url"
+               :status "active"
+               :content "complete"
+               :concept [{:code "m" :display "M"}
+                         {:code "f" :display "F"}]})
+        vs {:resourceType "ValueSet"
+            :id "gender-vs-id"
+            :url "gender-vs"
+            :status "active"
+            :compose {:include [{:system "gender-cs-url"}]}}]
+    {'ftr-cache-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+                      :resources {"ig/node_modules/gender-codesystem.json" cs1
+                                  "ig/node_modules/shortgender-codesystem.json" cs2
+                                  "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string vs)
+                                  "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+                      :zrc #{(merge {:ns 'ftr-cache-lib
+                                     :import #{'zen.fhir}}
+                                    (reduce (fn [acc {:keys [url]}]
+                                              (assoc acc (symbol url)
+                                                     {:zen/tags #{'zen.fhir/value-set}
+                                                      :zen.fhir/version "0.5.0"
+                                                      :uri url
+                                                      :ftr {:module            "ftr"
+                                                            :source-url        (str root-path "/ftr-cache-lib/resources/ig/node_modules")
+                                                            :ftr-path          (str root-path "/ftr-cache-lib")
+                                                            :tag               "v1"
+                                                            :source-type       :ig}}))
+                                            {}
+                                            [vs]))}}}))
+
+
+(t/deftest cache-creation-test
+  (def test-dir-path "/tmp/cachestuff")
+  (def profile-lib-path (str test-dir-path "/ftr-cache-lib"))
+  (test-utils/rm-fixtures test-dir-path)
+  (test-utils/mk-fixtures test-dir-path (test-cache-creation test-dir-path))
+
+  (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+  (zen.core/read-ns build-ftr-ztx 'ftr-cache-lib)
+
+  (ftr.zen-package/build-ftr build-ftr-ztx)
+
+  (matcho/match
+    (test-utils/fs-tree->tree-map profile-lib-path)
+    {"ftr"
+     {"vs"
+      {"gender-vs" {}
+       "shortgender-cs-url-entire-code-system" {}}
+      "tags" {"v1.ndjson.gz" {}}}})
+
+  (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
+  (matcho/match
+    (get @build-ftr-ztx :zen.fhir/ftr-cache)
+    {"v1"
+     {:valuesets
+      {"shortgender-cs-url-entire-code-system" #{"shortgender-cs-url"}
+       "gender-vs"                             #{"gender-cs-url"}}
+
+      :codesystems
+      {"gender-cs-url" {"male"    {:display  "Male"
+                                   :valueset #{"gender-vs"}}
+                        "female"  {:display  "Female"
+                                   :valueset #{"gender-vs"}}
+                        "other"   {:display  "Other"
+                                   :valueset #{"gender-vs"}}
+                        "unknown" {:display  "Unknown"
+                                   :valueset #{"gender-vs"}}}
+       "shortgender-cs-url" {"m" {:display "M"
+                                  :valueset #{"shortgender-cs-url-entire-code-system"}}
+                             "f" {:display "F"
+                                  :valueset #{"shortgender-cs-url-entire-code-system"}}}}}}))

@@ -35,6 +35,61 @@
       (cons ftr-path))))
 
 
+(defn make-cache-by-tag-index [tag-index ftr-dir]
+  (reduce (fn [{:as tag-cache, :keys [valuesets]}
+               {:as _ti-entry
+                :keys [hash name]}]
+            (let [[_module-name vs-name]
+                  (str/split name #"\." 2)
+
+                  tf-path
+                  (format "%s/vs/%s/tf.%s.ndjson.gz"
+                          ftr-dir
+                          vs-name
+                          hash)
+
+                  new-tf-reader
+                  (ftr.utils.core/open-ndjson-gz-reader tf-path)
+
+                  {codesystems "CodeSystem"
+                   [{vs-url :url}] "ValueSet"}
+                  (loop [line (.readLine new-tf-reader)
+                         css&vs []]
+                    (if (= (:resourceType line) "ValueSet")
+                      (group-by :resourceType (conj css&vs line))
+                      (recur (.readLine new-tf-reader) (conj css&vs line))))
+
+                  codesystems-urls
+                  (map :url codesystems)
+
+                  tag-cache-with-updated-vss
+                  (if (contains? valuesets vs-url)
+                    (update-in tag-cache [:valuesets vs-url] into codesystems-urls)
+                    (assoc-in tag-cache [:valuesets vs-url] (set codesystems-urls)))]
+              (loop [{:as concept, :keys [code system display]}
+                     (.readLine new-tf-reader)
+
+                     {:as tag-cache, :keys [codesystems]}
+                     tag-cache-with-updated-vss]
+
+                (if-not (nil? concept)
+                  (recur
+                    (.readLine new-tf-reader)
+                    (if (get-in codesystems [system code])
+                      (update-in tag-cache [:codesystems system code :valueset] conj vs-url)
+                      (assoc-in tag-cache [:codesystems system code] {:display display
+                                                                      :valueset #{vs-url}})))
+                  tag-cache))))
+          {} tag-index))
+
+
+(defn cache-by-tags [tag-index-paths]
+  (reduce (fn [acc {:keys [tag path ftr-dir]}]
+            (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
+              (assoc acc tag (make-cache-by-tag-index tag-index ftr-dir))))
+          {} tag-index-paths))
+
+
 (defn ftr->memory-cache [ztx]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (map (partial zen.core/get-symbol ztx) syms)
@@ -49,26 +104,25 @@
                                           :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
                                        ftr-dirs))
                                 tags)]
-    (swap! ztx assoc :zen.fhir/ftr-cache
-           (reduce (fn [acc {:keys [tag path ftr-dir]}]
-                     (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
-                       (assoc acc tag
-                              (reduce (fn [acc {:as ti-entry
-                                                :keys [hash name]}]
-                                        (let [[_module-name vs-name]
-                                              (str/split name #"\." 2)
+    (swap! ztx assoc :zen.fhir/ftr-cache (cache-by-tags tag-index-paths))))
 
-                                              tf-path
-                                              (format "%s/vs/%s/tf.%s.ndjson.gz"
-                                                      ftr-dir
-                                                      vs-name
-                                                      hash)
 
-                                              [cs vs & concepts]
-                                              (ftr.utils.core/parse-ndjson-gz tf-path)]
-                                          (assoc acc (:url vs) (map :code concepts))))
-                                      {} tag-index))))
-                   {} tag-index-paths))))
+(defn ftr-to-memory-cache [ztx]
+  (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
+        value-sets (map (partial zen.core/get-symbol ztx) syms)
+        tags (-> (comp :tag :ftr)
+                 (group-by value-sets)
+                 keys)
+        ftr-dirs (mapcat expand-package-path (:package-paths @ztx))
+        tag-index-paths (mapcat (fn [tag]
+                                  (map (fn [ftr-dir]
+                                         {:tag tag
+                                          :ftr-dir ftr-dir
+                                          :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
+                                       ftr-dirs))
+                                tags)
+        ])
+  )
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
