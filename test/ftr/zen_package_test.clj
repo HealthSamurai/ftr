@@ -663,13 +663,13 @@
                             :status "active"
                             :compose {:include [{:system "expanded-gender-cs-url"}]}
                             :expansion {:total 2
-                                         :offset 0
-                                         :contains [{:code "x"
-                                                     :system "expanded-gender-cs-url"
-                                                     :display "X"}
-                                                    {:code "y"
-                                                     :system "expanded-gender-cs-url"
-                                                     :display "Y"}]}}
+                                        :offset 0
+                                        :contains [{:code "x"
+                                                    :system "expanded-gender-cs-url"
+                                                    :display "X"}
+                                                   {:code "y"
+                                                    :system "expanded-gender-cs-url"
+                                                    :display "Y"}]}}
 
         unknown-gender-vs {:resourceType "ValueSet"
                            :id "unknown-gender-vs-id"
@@ -681,11 +681,11 @@
 
         custom-gender-vs {:resourceType "ValueSet"
                           :id "custom-gender-vs-id"
-                          :url "custom-gender-vs"
+                          :url "custom-gender-vs-url"
                           :status "active"
-                          :compose {:include [{:valueset "gender-vs-url"}
-                                              {:valueset "expanded-gender-vs-url"}]
-                                    :exclude [{:valueset "unknown-gender-vs-url"}]}}]
+                          :compose {:include [{:valueSet ["gender-vs-url"]}
+                                              {:valueSet ["expanded-gender-vs-url"]}]
+                                    :exclude [{:valueSet ["unknown-gender-vs-url"]}]}}]
     {'ftr-expansion-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
                          :resources {"ig/node_modules/gender-codesystem.json" gender-cs
                                      "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string gender-vs)
