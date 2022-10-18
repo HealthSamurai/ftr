@@ -742,14 +742,14 @@
 
         :codesystems
         {"gender-cs-url"          {"male"    {:display  "Male"
-                                              :valueset #{"gender-vs" "custom-gender-vs-url"}}
+                                              :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
                                    "female"  {:display  "Female"
-                                              :valueset #{"gender-vs" "custom-gender-vs-url"}}
+                                              :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
                                    "other"   {:display  "Other"
-                                              :valueset #{"gender-vs" "unknown-gender-vs-url"}}
+                                              :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}
                                    "unknown" {:display  "Unknown"
-                                              :valueset #{"gender-vs" "unknown-gender-vs-url"}}}
+                                              :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}}
          "expanded-gender-cs-url"     {"x" {:display  "X"
-                                            :valueset #{"expanded-gender-vs" "custom-gender-vs-url"}}
+                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
                                        "y" {:display  "Y"
-                                            :valueset #{"expanded-gender-vs" "custom-gender-vs-url"}}}}}})))
+                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}})))
