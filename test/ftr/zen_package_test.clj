@@ -637,3 +637,119 @@
                                               :valueset #{"undesc-vs-url"}}
                                     "unk"    {:display  "UNK"
                                               :valueset #{"undesc-vs-url"}}}}}})))
+
+
+(defn test-valueset-expansion [root-path]
+  (let [gender-cs (cheshire.core/generate-string
+                   {:resourceType "CodeSystem"
+                    :id "gender-cs-id"
+                    :url "gender-cs-url"
+                    :status "active"
+                    :content "complete"
+                    :concept [{:code "male" :display "Male"}
+                              {:code "female" :display "Female"}
+                              {:code "other" :display "Other"}
+                              {:code "unknown" :display "Unknown"}]})
+
+        gender-vs {:resourceType "ValueSet"
+                   :id "gender-vs-id"
+                   :url "gender-vs-url"
+                   :status "active"
+                   :compose {:include [{:system "gender-cs-url"}]}}
+
+        expanded-gender-vs {:resourceType "ValueSet"
+                            :id "expanded-gender-vs-id"
+                            :url "expanded-gender-vs-url"
+                            :status "active"
+                            :compose {:include [{:system "expanded-gender-cs-url"}]}
+                            :expansion {:total 2
+                                         :offset 0
+                                         :contains [{:code "x"
+                                                     :system "expanded-gender-cs-url"
+                                                     :display "X"}
+                                                    {:code "y"
+                                                     :system "expanded-gender-cs-url"
+                                                     :display "Y"}]}}
+
+        unknown-gender-vs {:resourceType "ValueSet"
+                           :id "unknown-gender-vs-id"
+                           :url "unknown-gender-vs-url"
+                           :status "active"
+                           :compose {:include [{:system "gender-cs-url"
+                                                :concept [{:code "other" :display "Other"}
+                                                          {:code "unknown" :display "Unknown"}]}]}}
+
+        custom-gender-vs {:resourceType "ValueSet"
+                          :id "custom-gender-vs-id"
+                          :url "custom-gender-vs"
+                          :status "active"
+                          :compose {:include [{:valueset "gender-vs-url"}
+                                              {:valueset "expanded-gender-vs-url"}]
+                                    :exclude [{:valueset "unknown-gender-vs-url"}]}}]
+    {'ftr-expansion-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+                         :resources {"ig/node_modules/gender-codesystem.json" gender-cs
+                                     "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string gender-vs)
+                                     "ig/node_modules/expanded-gender-valueset.json" (cheshire.core/generate-string expanded-gender-vs)
+                                     "ig/node_modules/unknown-gender-valueset.json" (cheshire.core/generate-string unknown-gender-vs)
+                                     "ig/node_modules/custom-gender-valueset.json" (cheshire.core/generate-string custom-gender-vs)
+                                     "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
+                         :zrc #{(merge {:ns 'ftr-expansion-lib
+                                        :import #{'zen.fhir}}
+                                       (reduce (fn [acc {:keys [url]}]
+                                                 (assoc acc (symbol url)
+                                                        {:zen/tags #{'zen.fhir/value-set}
+                                                         :zen.fhir/version "0.5.0"
+                                                         :uri url
+                                                         :ftr {:module            "ftr"
+                                                               :source-url        (str root-path "/ftr-expansion-lib/resources/ig/node_modules")
+                                                               :ftr-path          (str root-path "/ftr-expansion-lib")
+                                                               :tag               "v1"
+                                                               :source-type       :ig}}))
+                                               {}
+                                               [gender-vs expanded-gender-vs unknown-gender-vs custom-gender-vs]))}}}))
+
+
+(t/deftest valueset-expansion-test
+  (def test-dir-path "/tmp/valueset-expansion-test")
+  (def profile-lib-path (str test-dir-path "/ftr-expansion-lib"))
+  (test-utils/rm-fixtures test-dir-path)
+  (test-utils/mk-fixtures test-dir-path (test-valueset-expansion test-dir-path))
+
+  (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
+  (zen.core/read-ns build-ftr-ztx 'ftr-expansion-lib)
+
+  (ftr.zen-package/build-ftr build-ftr-ztx)
+
+  (matcho/match
+   (test-utils/fs-tree->tree-map profile-lib-path)
+    {"ftr"
+     {"vs"
+      {"gender-vs-url" {}
+       "expanded-gender-vs-url" {}
+       "unknown-gender-vs-url" {}
+       "custom-gender-vs-url" {}}
+      "tags" {"v1.ndjson.gz" {}}}})
+
+  (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
+  (t/is
+   (= (get @build-ftr-ztx :zen.fhir/ftr-cache)
+      {"v1"
+       {:valuesets
+        {"gender-vs-url"          #{"gender-cs-url"}
+         "expanded-gender-vs-url" #{"expanded-gender-cs-url"}
+         "unknown-gender-vs-url"  #{"gender-cs-url"}
+         "custom-gender-vs-url"   #{"gender-cs-url" "expanded-gender-cs-url"}}
+
+        :codesystems
+        {"gender-cs-url"          {"male"    {:display  "Male"
+                                              :valueset #{"gender-vs" "custom-gender-vs-url"}}
+                                   "female"  {:display  "Female"
+                                              :valueset #{"gender-vs" "custom-gender-vs-url"}}
+                                   "other"   {:display  "Other"
+                                              :valueset #{"gender-vs" "unknown-gender-vs-url"}}
+                                   "unknown" {:display  "Unknown"
+                                              :valueset #{"gender-vs" "unknown-gender-vs-url"}}}
+         "expanded-gender-cs-url"     {"x" {:display  "X"
+                                            :valueset #{"expanded-gender-vs" "custom-gender-vs-url"}}
+                                       "y" {:display  "Y"
+                                            :valueset #{"expanded-gender-vs" "custom-gender-vs-url"}}}}}})))
