@@ -311,15 +311,32 @@
     (index-concepts-by-vs-for-entire-cs vs-idx-acc concept system code-systems)))
 
 
+(defn re-check-entire-codesystem-valuesets [index concepts]
+  (let [entire-cs-systems (->> index
+                               keys
+                               (filter (fn [k] (str/ends-with? k "-entire-code-system")))
+                               (map (fn [v] (str/replace v "-entire-code-system" ""))))]
+    (reduce
+      (fn [acc sys]
+        (let [vs-url (str sys "-entire-code-system")
+              concepts (->> concepts
+                            (filter (fn [[_ c]] (= sys (get-in c [:zen.fhir/resource :system]))))
+                            (map (fn [[_ c]] (assoc-in c [:zen.fhir/resource :valueset] [vs-url]))))]
+          (assoc-in acc [vs-url :concepts] concepts)))
+      index entire-cs-systems)))
+
+
 (defmethod u/*fn ::compose-tfs [{:as _ctx, :keys [ztx]}]
   (let [{value-sets "ValueSet"
          concepts "Concept"
          code-systems "CodeSystem"}
         (:fhir/inter @ztx)]
-    {::result (reduce-kv (fn [acc _concept-id concept]
-                           (index-concepts-by-value-set acc concept value-sets code-systems))
-                         {}
-                         concepts)}))
+    {::result (re-check-entire-codesystem-valuesets
+                (reduce-kv (fn [acc _concept-id concept]
+                             (index-concepts-by-value-set acc concept value-sets code-systems))
+                           {}
+                           concepts)
+                concepts)}))
 
 
 (defn import-from-cfg [cfg]

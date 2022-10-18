@@ -545,17 +545,35 @@
                :url "shortgender-cs-url"
                :status "active"
                :content "complete"
-               :concept [{:code "m" :display "M"}
-                         {:code "f" :display "F"}]})
-        vs {:resourceType "ValueSet"
-            :id "gender-vs-id"
-            :url "gender-vs"
-            :status "active"
-            :compose {:include [{:system "gender-cs-url"}]}}]
+               :property [{:code "custom"
+                           :type "string"}]
+               :concept [{:code "m" :display "M" :property [{:code "custom"
+                                                             :valueString "0x0"}]}
+                         {:code "f" :display "F" :property [{:code "custom"
+                                                             :valueString "0x1"}]}]})
+        vs1 {:resourceType "ValueSet"
+             :id "gender-vs-id"
+             :url "gender-vs"
+             :status "active"
+             :compose {:include [{:system "gender-cs-url"}]}}
+
+        vs2 {:resourceType "ValueSet"
+             :id "undesc-vs-id"
+             :url "undesc-vs-url"
+             :status "active"
+             :compose {:include [{:system "gender-cs-url"}
+                                 {:system "shortgender-cs-url"
+                                  :filter [{:property "custom"
+                                            :op "="
+                                            :value "0x0"}]}
+                                 {:system "undescribed-system-url"
+                                  :concept [{:code "undesc" :display "UNDESC"}
+                                            {:code "unk" :display "UNK"}]}]}}]
     {'ftr-cache-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
                       :resources {"ig/node_modules/gender-codesystem.json" cs1
                                   "ig/node_modules/shortgender-codesystem.json" cs2
-                                  "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string vs)
+                                  "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string vs1)
+                                  "ig/node_modules/undesc-valueset.json" (cheshire.core/generate-string vs2)
                                   "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
                       :zrc #{(merge {:ns 'ftr-cache-lib
                                      :import #{'zen.fhir}}
@@ -570,7 +588,7 @@
                                                             :tag               "v1"
                                                             :source-type       :ig}}))
                                             {}
-                                            [vs]))}}}))
+                                            [vs1 vs2]))}}}))
 
 
 (t/deftest cache-creation-test
@@ -589,27 +607,33 @@
     {"ftr"
      {"vs"
       {"gender-vs" {}
-       "shortgender-cs-url-entire-code-system" {}}
+       "shortgender-cs-url-entire-code-system" {}
+       "undesc-vs-url" {}}
       "tags" {"v1.ndjson.gz" {}}}})
 
   (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
-  (matcho/match
-    (get @build-ftr-ztx :zen.fhir/ftr-cache)
-    {"v1"
-     {:valuesets
-      {"shortgender-cs-url-entire-code-system" #{"shortgender-cs-url"}
-       "gender-vs"                             #{"gender-cs-url"}}
+  (t/is
+    (= (get @build-ftr-ztx :zen.fhir/ftr-cache)
+       {"v1"
+        {:valuesets
+         {"shortgender-cs-url-entire-code-system" #{"shortgender-cs-url"}
+          "gender-vs"                             #{"gender-cs-url"}
+          "undesc-vs-url"                         #{"gender-cs-url" "undescribed-system-url" "shortgender-cs-url"}}
 
-      :codesystems
-      {"gender-cs-url" {"male"    {:display  "Male"
-                                   :valueset #{"gender-vs"}}
-                        "female"  {:display  "Female"
-                                   :valueset #{"gender-vs"}}
-                        "other"   {:display  "Other"
-                                   :valueset #{"gender-vs"}}
-                        "unknown" {:display  "Unknown"
-                                   :valueset #{"gender-vs"}}}
-       "shortgender-cs-url" {"m" {:display "M"
-                                  :valueset #{"shortgender-cs-url-entire-code-system"}}
-                             "f" {:display "F"
-                                  :valueset #{"shortgender-cs-url-entire-code-system"}}}}}}))
+         :codesystems
+         {"gender-cs-url"          {"male"    {:display  "Male"
+                                               :valueset #{"gender-vs" "undesc-vs-url"}}
+                                    "female"  {:display  "Female"
+                                               :valueset #{"gender-vs" "undesc-vs-url"}}
+                                    "other"   {:display  "Other"
+                                               :valueset #{"gender-vs" "undesc-vs-url"}}
+                                    "unknown" {:display  "Unknown"
+                                               :valueset #{"gender-vs" "undesc-vs-url"}}}
+          "shortgender-cs-url"     {"m" {:display  "M"
+                                         :valueset #{"shortgender-cs-url-entire-code-system" "undesc-vs-url"}}
+                                    "f" {:display  "F"
+                                         :valueset #{"shortgender-cs-url-entire-code-system"}}}
+          "undescribed-system-url" {"undesc" {:display  "UNDESC"
+                                              :valueset #{"undesc-vs-url"}}
+                                    "unk"    {:display  "UNK"
+                                              :valueset #{"undesc-vs-url"}}}}}})))

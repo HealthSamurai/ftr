@@ -107,24 +107,6 @@
     (swap! ztx assoc :zen.fhir/ftr-cache (cache-by-tags tag-index-paths))))
 
 
-(defn ftr-to-memory-cache [ztx]
-  (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets (map (partial zen.core/get-symbol ztx) syms)
-        tags (-> (comp :tag :ftr)
-                 (group-by value-sets)
-                 keys)
-        ftr-dirs (mapcat expand-package-path (:package-paths @ztx))
-        tag-index-paths (mapcat (fn [tag]
-                                  (map (fn [ftr-dir]
-                                         {:tag tag
-                                          :ftr-dir ftr-dir
-                                          :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
-                                       ftr-dirs))
-                                tags)
-        ])
-  )
-
-
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
   [_ ztx vs]
   (let [{:as value-set,
