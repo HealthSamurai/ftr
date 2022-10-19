@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [zen.v2-validation]
             [clojure.java.io :as io]
-            [clojure.pprint]))
+            [clojure.pprint])
+  (:import (java.util UUID)))
 
 
 (defn build-ftr [ztx]
@@ -108,14 +109,171 @@
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
-  [_ ztx vs]
-  (let [{:as value-set,
-         :keys [uri]
-         {:keys [tag]} :ftr} (zen.core/get-symbol ztx (:symbol vs))
-        ftr-cache (get @ztx :zen.fhir/ftr-cache)
-        values* (set (get-in ftr-cache [tag uri]))]
-    {:rule
-     (fn [vtx data otps]
-       (if-not (contains? values* data)
-         (zen.v2-validation/add-err vtx :zen.fhir/value-set {:message (str "Expected '" data "' in " values*) :type ":zen.fhir/value-set"})
-         vtx))}))
+  [_ _ztx value-set]
+  {:rule
+   (fn [vtx data opts]
+     (if (= :required (:strength value-set))
+       (let [schemas-stack (->> (:schema vtx) (partition-by #{:confirms}) (take-nth 2) (map first))]
+         (update-in vtx [:fx :zen.fhir/value-set :value-sets] conj
+                    {:schemas   schemas-stack
+                     :path      (:path vtx)
+                     :data      data
+                     :value-set (:symbol value-set)
+                     :strength  (:strength value-set)}))
+       vtx))})
+
+
+(defn prefix? [a b]
+  (= a (take (count a) b)))
+
+
+(defn choose-validation-defer-to-use
+  [defers]
+  (reduce (fn [acc vs]
+            (let [{:keys [result found]}
+                  (some #(cond
+                           (prefix? (:schemas %) (:schemas vs))
+                           {:result :lose, :found %}
+
+                           (prefix? (:schemas vs) (:schemas %))
+                           {:result :win, :found %})
+                        acc)]
+              (case result
+                :lose acc
+                :win  (-> acc (conj vs) (disj found))
+                (conj acc vs))))
+          #{}
+          defers))
+
+
+(defn substack? [a b]
+  (= a (take-last (count a) b)))
+
+
+(defn filter-duplicate-value-sets [vs-group]
+  (reduce (fn [group g-vs]
+            (let [group-without-this (disj group g-vs)]
+              (if (some #(substack? (:schemas g-vs) (:schemas %))
+                        group-without-this)
+                group-without-this
+                group)))
+          (set vs-group)
+          vs-group))
+
+
+(defn choose-bindings-to-use [bindings]
+  (->> (group-by :value-set bindings )
+       vals
+       (mapcat filter-duplicate-value-sets)
+       (choose-validation-defer-to-use)
+       (group-by (juxt :path :value-set))
+       vals
+       (into #{}
+             (map (fn [group]
+                    (let [binding (select-keys (first group) #{:path :value-set :data :strength})
+                          schemas (into #{} (map :schemas) group)]
+                      (assoc binding :schemas schemas)))))) )
+
+
+(defn normalize-value-set-data
+  "Takes data which can be validated with the binding
+  and transforms it into an array of Codings"
+  [data]
+  (cond
+    (string? data) ;; FHIR code & string
+    [{:code data}]
+
+    (sequential? data) ;; FHIR CodeableConcept.coding
+    (mapv #(select-keys % [:code :system])
+          data)
+
+    (and (map? data) (:coding data)) ;; FHIR CodeableConcept
+    (mapv #(select-keys % [:code :system])
+          (:coding data))
+
+    (map? data) ;; FHIR Coding
+    [(select-keys data [:code :system])]
+
+
+    :else
+    (assert false (str "Unknown data format: " (pr-str data)))
+    #_data))
+
+
+(defn validate-concept-via-memory-cache [ztx {{:as concept, :keys [code display]} :concept
+                                              :keys [valueset valueset-ftr-tag]}]
+  (let [cache (get-in @ztx [:zen.fhir/ftr-cache valueset-ftr-tag])
+        codesystems-used-in-this-valueset (get-in cache [:valuesets valueset])
+        code-to-compare-with (->> codesystems-used-in-this-valueset
+                                  (map (fn [cs] {:code (get-in cache [:codesystems cs code])
+                                                 :codesystem cs}))
+                                  (filter :code)
+                                  first)]
+    (if display
+      (= display (:display code-to-compare-with))
+      code-to-compare-with)))
+
+(defn validate-value-sets-via-memory-cache [ztx bindings]
+  (let [concepts-to-validate (mapcat (fn [binding]
+                                       (for [concept (:concepts binding)]
+                                         {:binding_id (:id binding)
+                                          :concept    concept
+                                          :valueset (get-in binding [:value-set-sch :uri])
+                                          :valueset-ftr-tag (get-in binding [:value-set-sch :ftr :tag])}))
+                                     (vals bindings))]
+
+    (reduce (fn [failed-concepts concept]
+              (if (validate-concept-via-memory-cache ztx concept)
+                failed-concepts
+                (conj failed-concepts concept)))
+            [] concepts-to-validate)))
+
+
+(defn validate-value-sets [ztx zen-validation-acc]
+  (when-let [bindings
+             (some->> (get-in zen-validation-acc [:fx :zen.fhir/value-set :value-sets])
+                      (group-by :path)
+                      vals
+                      (into {}
+                            (comp (mapcat choose-bindings-to-use)
+                                  (keep #(when-let [vs-sch (zen.core/get-symbol ztx (:value-set %))]
+                                           (let [id (str (UUID/randomUUID))]
+                                             [id (-> %
+                                                     (assoc :value-set-sch vs-sch)
+                                                     (assoc :concepts (normalize-value-set-data (:data %)))
+                                                     (assoc :id id))])))))
+                      not-empty)]
+    (let [failed-checks (validate-value-sets-via-memory-cache ztx bindings)
+          errors (for [[binding-id checks] (group-by :binding_id failed-checks)
+                       :let [binding (get bindings binding-id)
+                             all-checks-failed? (= (count (:concepts binding)) (count checks))]
+                       :when all-checks-failed?
+                       :let [code-systems-content-status (reduce (fn [acc {url :fhir/url, content :zen.fhir/content}]
+                                                                   (assoc acc url content))
+                                                                 {}
+                                                                 (get-in binding [:value-set-sch :fhir/code-systems]))
+                             all-systems-bundled?        (every? #(= :bundled %) (vals code-systems-content-status))
+                             all-used-systems-bundled?   (every? (fn [{:keys [system]}]
+                                                                   (or (and (some? system)
+                                                                            (= :bundled (get code-systems-content-status system)))
+                                                                       all-systems-bundled?))
+                                                                 (:concepts binding))]
+                       :when all-used-systems-bundled?]
+                   {:type    ":zen.fhir/value-set"
+                    :path    (:path binding)
+                    :message (str "Expected '" (pr-str (:data binding))
+                                  "' to be in the value set " (get-in binding [:value-set-sch :zen/name]))})]
+
+      (-> zen-validation-acc
+          (dissoc :value-sets)
+          (update :errors (fnil into []) errors)) )))
+
+
+(defn validate-effects [ztx result]
+  (when ztx
+    (validate-value-sets ztx result)))
+
+
+(defn validate [ztx symbols data]
+  (let [validation-result (zen.v2-validation/validate ztx symbols data)]
+    (validate-effects ztx (dissoc validation-result :errors))))

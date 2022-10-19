@@ -56,7 +56,8 @@
                            :zen.fhir/version "0.5.0"
                            :type zen/map
                            :keys {:diagnosis {:type zen/string
-                                              :zen.fhir/value-set {:symbol diagnosis-vs}}}}}}}
+                                              :zen.fhir/value-set {:symbol diagnosis-vs
+                                                                   :strength :required}}}}}}}
 
    'test-module {:deps '#{profile-lib}
                  :zrc '#{{:ns main
@@ -121,25 +122,48 @@
     (matcho/match
       (get @ztx :zen.fhir/ftr-cache)
       {"v1"
-       {"diagnosis-vs"
-        ["V01-X59"
-         "W00-X59"
-         "W50-W64"
-         "W64"
-         "W64.0"
-         "W64.00"
-         "W64.01"
-         "XX"
-         nil?]}}))
+       {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}}
+        :codesystems
+        {"http://hl7.org/fhir/sid/icd-10"
+         {"V01-X59"
+          {:display "Accidents"
+           :valueset #{"diagnosis-vs"}}
+          "W00-X59"
+          {:display "Other external causes of accidental injury"
+           :valueset #{"diagnosis-vs"}}
+          "W50-W64"
+          {:display "Exposure to animate mechanical forces"
+           :valueset #{"diagnosis-vs"}}
+          "W64"
+          {:display "Exposure to other and unspecified animate mechanical forces"
+           :valueset #{"diagnosis-vs"}}
+          "W64.0"
+          {:display
+           "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity"
+           :valueset #{"diagnosis-vs"}}
+          "W64.00"
+          {:display
+           "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity"
+           :valueset #{"diagnosis-vs"}}
+          "W64.01"
+          {:display
+           "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity"
+           :valueset #{"diagnosis-vs"}}
+          "XX"
+          {:display "External causes of morbidity and mortality"
+           :valueset #{"diagnosis-vs"}}}}}}))
 
   (t/testing "vs validation works"
-    (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
+    (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
                   {:errors [{:type ":zen.fhir/value-set"
                              :path [:diagnosis nil]}
                             nil]})
 
-    (matcho/match (zen.core/validate ztx #{'main/sch} {:diagnosis "W64.0"})
-                  {:errors empty?})))
+    (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:diagnosis "W64.0"})
+                  {:errors empty?})
+
+
+    ))
 
 
 (def gender-concepts
