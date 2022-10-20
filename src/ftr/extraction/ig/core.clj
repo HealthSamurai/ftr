@@ -323,7 +323,7 @@
 
 
 (defn re-check-entire-codesystem-valuesets [index concepts]
-  (let [entire-cs-systems (->> index
+  (let [entire-cs-systems (->> (dissoc index nil)
                                keys
                                (filter (fn [k] (str/ends-with? k "-entire-code-system")))
                                (map (fn [v] (str/replace v "-entire-code-system" ""))))]
