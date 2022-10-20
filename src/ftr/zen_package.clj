@@ -205,7 +205,8 @@
   (let [cache (get-in @ztx [:zen.fhir/ftr-cache valueset-ftr-tag])
         codesystems-used-in-this-valueset (get-in cache [:valuesets valueset])
         code-to-compare-with (->> codesystems-used-in-this-valueset
-                                  (map (fn [cs] {:code (get-in cache [:codesystems cs code])
+                                  (map (fn [cs] {:code (and (contains? (get-in cache [:codesystems cs code :valueset]) valueset)
+                                                            (get-in cache [:codesystems cs code]))
                                                  :codesystem cs}))
                                   (filter :code)
                                   first)]
