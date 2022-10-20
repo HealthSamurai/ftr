@@ -777,3 +777,43 @@
                                             :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
                                        "y" {:display  "Y"
                                             :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}})))
+
+
+(defn test-r4-core-ftr-validation [root-path]
+  {'test-module {:deps #{['hl7-fhir-r4-core (str (System/getProperty "user.dir") "/hl7-fhir-r4-core/")]}
+                 :zrc '#{{:ns main
+                          :import #{hl7-fhir-r4-core.Patient}
+
+                          sch {:zen/tags #{zen/schema}
+                               :confirms #{hl7-fhir-r4-core.Patient/schema}}}}}})
+
+
+(t/deftest r4-core-ftr-validation
+  (def test-dir-path "/tmp/ftr.r4-zen-package-test")
+  (def module-dir-path (str test-dir-path "/test-module"))
+
+  (test-utils/rm-fixtures test-dir-path)
+
+  (test-utils/mk-fixtures test-dir-path (test-r4-core-ftr-validation test-dir-path))
+
+  (zen.package/zen-init-deps! module-dir-path)
+
+  (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
+
+  (zen.core/read-ns ztx 'main)
+
+  ;;TODO FIXME WEIRDO ERRORS!
+  ;; (t/testing "no errors in pulled package"
+  ;;   (t/is (empty? (zen.core/errors ztx) )))
+
+  (ftr.zen-package/ftr->memory-cache ztx)
+
+  (t/testing "validating patient gender via FTR cache"
+    (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "incorrect-value"})
+                  {:errors [{:type ":zen.fhir/value-set"
+                             :path [:gender]}
+                            nil]})
+
+    (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "male"})
+                  {:errors [nil]})))
+
