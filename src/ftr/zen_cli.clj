@@ -2,12 +2,16 @@
   (:gen-class)
   (:require [zen.cli]
             [ftr.zen-package]
-            [zen.core]))
+            [zen.core]
+            [zen.store]))
 
 (def cfg (-> zen.cli/cfg
              (update :subcommands conj {:description "Builds FTR from this zen fhir package"
                                         :command "build-ftr"
-                                        :runs ftr.zen-package/build-ftr})))
+                                        :runs ftr.zen-package/build-ftr})
+             (update :subcommands conj {:description "Builds FTR from this zen fhir package"
+                                        :command "get-ftr-index-info"
+                                        :runs ftr.zen-package/get-ftr-index-info})))
 
 
 (defn -main

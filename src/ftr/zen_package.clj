@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [zen.v2-validation]
             [clojure.java.io :as io]
-            [clojure.pprint])
+            [clojure.pprint]
+            [zen.cli])
   (:import (java.util UUID)))
 
 
@@ -278,3 +279,28 @@
 (defn validate [ztx symbols data]
   (let [validation-result (zen.v2-validation/validate ztx symbols data)]
     (validate-effects ztx (dissoc validation-result :errors))))
+
+
+(defn total-memory [obj]
+  (let [baos (java.io.ByteArrayOutputStream.)]
+    (with-open [oos (java.io.ObjectOutputStream. baos)]
+      (.writeObject oos obj))
+    (count (.toByteArray baos))))
+
+
+(defn get-ftr-index-info
+  ([args] (get-ftr-index-info (zen.cli/load-ztx args) args))
+  ([ztx & _]
+   (zen.cli/load-used-namespaces ztx #{})
+   (doseq [[tag {:as cache, :keys [valuesets codesystems]}] (get @ztx :zen.fhir/ftr-cache)]
+     (let [cache-size-in-mbs                (int (/ (total-memory cache) 1000000))
+           amount-of-vs                     (count (keys valuesets))
+           amount-of-cs                     (count (keys codesystems))
+           cses                             (sort-by (comp count keys second) > codesystems)
+           largest-cs                       (ffirst cses)
+           amount-of-concepts-in-largest-cs (count (keys (second (first cses))))]
+       (println (format "Tag: \033[0;1m%s\033[22m" tag))
+       (println (format "    FTR Cache size: \033[0;1m%s MB\033[22m" cache-size-in-mbs))
+       (println (format "    ValueSets: \033[0;1m%s\033[22m" amount-of-vs))
+       (println (format "    CodeSystems: \033[0;1m%s\033[22m" amount-of-cs))
+       (println (format "    Largest CodeSystem: \033[0;1m%s\033[22m, \033[0;1m%s\033[22m codes" largest-cs amount-of-concepts-in-largest-cs))))))
