@@ -97,7 +97,8 @@
         value-sets (map (partial zen.core/get-symbol ztx) syms)
         tags (-> (comp :tag :ftr)
                  (group-by value-sets)
-                 keys)
+                 keys
+                 (->> (filter identity)))
         ftr-dirs (mapcat expand-package-path (:package-paths @ztx))
         tag-index-paths (mapcat (fn [tag]
                                   (map (fn [ftr-dir]
