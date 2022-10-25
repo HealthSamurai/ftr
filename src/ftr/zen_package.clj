@@ -25,12 +25,12 @@
   (let [modules (io/file path)]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
-           (map (fn [x] (str x "/ftr")))
+           (map (fn [x] (str x "/ftr/ig/")))
            (filter #(.isDirectory (io/file %)))))))
 
 
 (defn expand-package-path [package-path]
-  (let [ftr-path         (str package-path "/ftr")
+  (let [ftr-path         (str package-path "/ftr/ig")
         zen-packages-path (str package-path "/zen-packages")]
     (cond->> (expand-zen-packages zen-packages-path)
       (.exists (io/file ftr-path))
