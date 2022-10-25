@@ -37,8 +37,8 @@
       (cons ftr-path))))
 
 
-(defn make-cache-by-tag-index [tag-index ftr-dir]
-  (reduce (fn [{:as tag-cache, :keys [valuesets]}
+(defn make-ftr-index-by-tag-index [tag-index ftr-dir]
+  (reduce (fn [{:as ftr-index-by-tag, :keys [valuesets]}
                {:as _ti-entry
                 :keys [hash name]}]
             (let [[_module-name vs-name]
@@ -64,35 +64,35 @@
                   codesystems-urls
                   (map :url codesystems)
 
-                  tag-cache-with-updated-vss
+                  ftr-index-by-tag-with-updated-vss
                   (if (contains? valuesets vs-url)
-                    (update-in tag-cache [:valuesets vs-url] into codesystems-urls)
-                    (assoc-in tag-cache [:valuesets vs-url] (set codesystems-urls)))]
+                    (update-in ftr-index-by-tag [:valuesets vs-url] into codesystems-urls)
+                    (assoc-in ftr-index-by-tag [:valuesets vs-url] (set codesystems-urls)))]
               (loop [{:as concept, :keys [code system display]}
                      (.readLine new-tf-reader)
 
-                     {:as tag-cache, :keys [codesystems]}
-                     tag-cache-with-updated-vss]
+                     {:as ftr-index-by-tag, :keys [codesystems]}
+                     ftr-index-by-tag-with-updated-vss]
 
                 (if-not (nil? concept)
                   (recur
                     (.readLine new-tf-reader)
                     (if (get-in codesystems [system code])
-                      (update-in tag-cache [:codesystems system code :valueset] conj vs-url)
-                      (assoc-in tag-cache [:codesystems system code] {:display display
-                                                                      :valueset #{vs-url}})))
-                  tag-cache))))
+                      (update-in ftr-index-by-tag [:codesystems system code :valueset] conj vs-url)
+                      (assoc-in ftr-index-by-tag [:codesystems system code] {:display display
+                                                                             :valueset #{vs-url}})))
+                  ftr-index-by-tag))))
           {} tag-index))
 
 
-(defn cache-by-tags [tag-index-paths]
+(defn index-by-tags [tag-index-paths]
   (reduce (fn [acc {:keys [tag path ftr-dir]}]
             (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
-              (assoc acc tag (make-cache-by-tag-index tag-index ftr-dir))))
+              (assoc acc tag (make-ftr-index-by-tag-index tag-index ftr-dir))))
           {} tag-index-paths))
 
 
-(defn ftr->memory-cache [ztx]
+(defn build-ftr-index [ztx]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (map (partial zen.core/get-symbol ztx) syms)
         tags (-> (comp :tag :ftr)
@@ -107,7 +107,7 @@
                                           :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
                                        ftr-dirs))
                                 tags)]
-    (swap! ztx assoc :zen.fhir/ftr-cache (cache-by-tags tag-index-paths))))
+    (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
@@ -202,13 +202,13 @@
     #_data))
 
 
-(defn validate-concept-via-memory-cache [ztx {{:as concept, :keys [code display]} :concept
+(defn validate-concept-via-ftr-index [ztx {{:as concept, :keys [code display]} :concept
                                               :keys [valueset valueset-ftr-tag]}]
-  (let [cache (get-in @ztx [:zen.fhir/ftr-cache valueset-ftr-tag])
-        codesystems-used-in-this-valueset (get-in cache [:valuesets valueset])
+  (let [ftr-index (get-in @ztx [:zen.fhir/ftr-index valueset-ftr-tag])
+        codesystems-used-in-this-valueset (get-in ftr-index [:valuesets valueset])
         code-to-compare-with (->> codesystems-used-in-this-valueset
-                                  (map (fn [cs] {:code (and (contains? (get-in cache [:codesystems cs code :valueset]) valueset)
-                                                            (get-in cache [:codesystems cs code]))
+                                  (map (fn [cs] {:code (and (contains? (get-in ftr-index [:codesystems cs code :valueset]) valueset)
+                                                            (get-in ftr-index [:codesystems cs code]))
                                                  :codesystem cs}))
                                   (filter :code)
                                   first)]
@@ -216,7 +216,7 @@
       (= display (:display code-to-compare-with))
       code-to-compare-with)))
 
-(defn validate-value-sets-via-memory-cache [ztx bindings]
+(defn validate-value-sets-via-ftr-index [ztx bindings]
   (let [concepts-to-validate (mapcat (fn [binding]
                                        (for [concept (:concepts binding)]
                                          {:binding_id (:id binding)
@@ -226,7 +226,7 @@
                                      (vals bindings))]
 
     (reduce (fn [failed-concepts concept]
-              (if (validate-concept-via-memory-cache ztx concept)
+              (if (validate-concept-via-ftr-index ztx concept)
                 failed-concepts
                 (conj failed-concepts concept)))
             [] concepts-to-validate)))
@@ -246,7 +246,7 @@
                                                      (assoc :concepts (normalize-value-set-data (:data %)))
                                                      (assoc :id id))])))))
                       not-empty)]
-    (let [failed-checks (validate-value-sets-via-memory-cache ztx bindings)
+    (let [failed-checks (validate-value-sets-via-ftr-index ztx bindings)
           errors (for [[binding-id checks] (group-by :binding_id failed-checks)
                        :let [binding (get bindings binding-id)
                              all-checks-failed? (= (count (:concepts binding)) (count checks))]
@@ -293,15 +293,15 @@
   ([args] (get-ftr-index-info (zen.cli/load-ztx args) args))
   ([ztx & _]
    (zen.cli/load-used-namespaces ztx #{})
-   (doseq [[tag {:as cache, :keys [valuesets codesystems]}] (get @ztx :zen.fhir/ftr-cache)]
-     (let [cache-size-in-mbs                (int (/ (total-memory cache) 1000000))
+   (doseq [[tag {:as ftr-index, :keys [valuesets codesystems]}] (get @ztx :zen.fhir/ftr-index)]
+     (let [ftr-index-size-in-mbs                (int (/ (total-memory ftr-index) 1000000))
            amount-of-vs                     (count (keys valuesets))
            amount-of-cs                     (count (keys codesystems))
            cses                             (sort-by (comp count keys second) > codesystems)
            largest-cs                       (ffirst cses)
            amount-of-concepts-in-largest-cs (count (keys (second (first cses))))]
        (println (format "Tag: \033[0;1m%s\033[22m" tag))
-       (println (format "    FTR Cache size: \033[0;1m%s MB\033[22m" cache-size-in-mbs))
+       (println (format "    FTR index size: \033[0;1m%s MB\033[22m" ftr-index-size-in-mbs))
        (println (format "    ValueSets: \033[0;1m%s\033[22m" amount-of-vs))
        (println (format "    CodeSystems: \033[0;1m%s\033[22m" amount-of-cs))
        (println (format "    Largest CodeSystem: \033[0;1m%s\033[22m, \033[0;1m%s\033[22m codes" largest-cs amount-of-concepts-in-largest-cs))))))

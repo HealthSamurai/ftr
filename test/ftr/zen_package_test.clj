@@ -121,10 +121,10 @@
                     "tag.v1.ndjson.gz" {}}}}}}}}))
 
   (t/testing "ftr memory-cache builds successfully"
-    (ftr.zen-package/ftr->memory-cache ztx)
+    (ftr.zen-package/build-ftr-index ztx)
 
     (matcho/match
-      (get @ztx :zen.fhir/ftr-cache)
+      (get @ztx :zen.fhir/ftr-index)
       {"v1"
        {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}}
         :codesystems
@@ -646,9 +646,9 @@
         "undesc-vs-url" {}}
        "tags" {"v1.ndjson.gz" {}}}}})
 
-  (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
+  (ftr.zen-package/build-ftr-index build-ftr-ztx)
   (t/is
-    (= (get @build-ftr-ztx :zen.fhir/ftr-cache)
+    (= (get @build-ftr-ztx :zen.fhir/ftr-index)
        {"v1"
         {:valuesets
          {"shortgender-cs-url-entire-code-system" #{"shortgender-cs-url"}
@@ -766,9 +766,9 @@
        "custom-gender-vs-url" {}}
       "tags" {"v1.ndjson.gz" {}}}}})
 
-  (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
+  (ftr.zen-package/build-ftr-index build-ftr-ztx)
   (t/is
-   (= (get @build-ftr-ztx :zen.fhir/ftr-cache)
+   (= (get @build-ftr-ztx :zen.fhir/ftr-index)
       {"v1"
        {:valuesets
         {"gender-vs-url"          #{"gender-cs-url"}
@@ -818,7 +818,7 @@
   ;; (t/testing "no errors in pulled package"
   ;;   (t/is (empty? (zen.core/errors ztx) )))
 
-  (ftr.zen-package/ftr->memory-cache ztx)
+  (ftr.zen-package/build-ftr-index ztx)
 
   (t/testing "validating patient gender via FTR cache"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "incorrect-value"})
