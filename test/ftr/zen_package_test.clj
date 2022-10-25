@@ -120,7 +120,7 @@
                    {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
                     "tag.v1.ndjson.gz" {}}}}}}}}))
 
-  (t/testing "ftr memory-cache builds successfully"
+  (t/testing "ftr index builds successfully"
     (ftr.zen-package/build-ftr-index ztx)
 
     (matcho/match
@@ -562,7 +562,7 @@
                      nil?]))))
 
 
-(defn test-cache-creation [root-path]
+(defn test-ftr-index-creation [root-path]
   (let [cs1 (cheshire.core/generate-string
               {:resourceType "CodeSystem"
                :id "gender-cs-id"
@@ -603,13 +603,13 @@
                                  {:system "undescribed-system-url"
                                   :concept [{:code "undesc" :display "UNDESC"}
                                             {:code "unk" :display "UNK"}]}]}}]
-    {'ftr-cache-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
+    {'ftr-index-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
                       :resources {"ig/node_modules/gender-codesystem.json" cs1
                                   "ig/node_modules/shortgender-codesystem.json" cs2
                                   "ig/node_modules/gender-valueset.json" (cheshire.core/generate-string vs1)
                                   "ig/node_modules/undesc-valueset.json" (cheshire.core/generate-string vs2)
                                   "ig/node_modules/package.json" (cheshire.core/generate-string ig-manifest)}
-                      :zrc #{(merge {:ns 'ftr-cache-lib
+                      :zrc #{(merge {:ns 'ftr-index-lib
                                      :import #{'zen.fhir}}
                                     (reduce (fn [acc {:keys [url]}]
                                               (assoc acc (symbol url)
@@ -617,22 +617,22 @@
                                                       :zen.fhir/version "0.5.0"
                                                       :uri url
                                                       :ftr {:module            "ig"
-                                                            :source-url        (str root-path "/ftr-cache-lib/resources/ig/node_modules")
-                                                            :ftr-path          (str root-path "/ftr-cache-lib" "/ftr")
+                                                            :source-url        (str root-path "/ftr-index-lib/resources/ig/node_modules")
+                                                            :ftr-path          (str root-path "/ftr-index-lib" "/ftr")
                                                             :tag               "v1"
                                                             :source-type       :ig}}))
                                             {}
                                             [vs1 vs2]))}}}))
 
 
-(t/deftest cache-creation-test
-  (def test-dir-path "/tmp/cachestuff")
-  (def profile-lib-path (str test-dir-path "/ftr-cache-lib"))
+(t/deftest ftr-index-creation-test
+  (def test-dir-path "/tmp/ftrindexstuff")
+  (def profile-lib-path (str test-dir-path "/ftr-index-lib"))
   (test-utils/rm-fixtures test-dir-path)
-  (test-utils/mk-fixtures test-dir-path (test-cache-creation test-dir-path))
+  (test-utils/mk-fixtures test-dir-path (test-ftr-index-creation test-dir-path))
 
   (def build-ftr-ztx (zen.core/new-context {:package-paths [profile-lib-path]}))
-  (zen.core/read-ns build-ftr-ztx 'ftr-cache-lib)
+  (zen.core/read-ns build-ftr-ztx 'ftr-index-lib)
 
   (ftr.zen-package/build-ftr build-ftr-ztx)
 
@@ -820,7 +820,7 @@
 
   (ftr.zen-package/build-ftr-index ztx)
 
-  (t/testing "validating patient gender via FTR cache"
+  (t/testing "validating patient gender via FTR index"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "incorrect-value"})
                   {:errors [{:type ":zen.fhir/value-set"
                              :path [:gender]}
