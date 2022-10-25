@@ -110,21 +110,6 @@
     (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
 
 
-(defmethod zen.v2-validation/compile-key :zen.fhir/value-set
-  [_ _ztx value-set]
-  {:rule
-   (fn [vtx data opts]
-     (if (= :required (:strength value-set))
-       (let [schemas-stack (->> (:schema vtx) (partition-by #{:confirms}) (take-nth 2) (map first))]
-         (update-in vtx [:fx :zen.fhir/value-set :value-sets] conj
-                    {:schemas   schemas-stack
-                     :path      (:path vtx)
-                     :data      data
-                     :value-set (:symbol value-set)
-                     :strength  (:strength value-set)}))
-       vtx))})
-
-
 (defn prefix? [a b]
   (= a (take (count a) b)))
 
