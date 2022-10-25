@@ -261,6 +261,7 @@
   (if-let [cs (get-in code-systems [system :zen.fhir/resource])]
     cs
     {:url system
+     :id  (ftr.utils.core/gen-uuid)
      :name (ftr.utils.core/escape-url system)
      :content "not-present"
      :status "unknown"
@@ -269,7 +270,8 @@
 
 (defn create-vs-for-entire-cs [code-system]
   (ftr.utils.core/strip-nils
-    {:url    (some-> (:url code-system) (str "-entire-code-system"))
+    {:id (ftr.utils.core/gen-uuid)
+     :url    (some-> (:url code-system) (str "-entire-code-system"))
      :name   (some-> (:name code-system) (str "-entire-code-system"))
      :status "unknown"
      :resourceType "ValueSet"}))

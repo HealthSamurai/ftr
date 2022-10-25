@@ -12,15 +12,21 @@
             (ftr.utils.core/gen-uuid))))
 
 
+(defn fhir-preflight [res]
+  (cond-> res
+    (nil? (:id res))
+    (assoc :id (ftr.utils.core/gen-uuid))))
+
+
 (defn spit-tf-file! [writer cs vs c]
   (let [sorted-code-systems (sort-by :id cs)
         sorted-concepts (sort-by #(format "%s-%s" (:system %) (:code %)) c)]
     (with-open [w writer]
       (doseq [cs sorted-code-systems]
-        (.write w (ftr.utils.core/generate-ndjson-row cs)))
-      (.write w (ftr.utils.core/generate-ndjson-row vs))
+        (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight cs))))
+      (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight vs)))
       (doseq [c sorted-concepts]
-        (.write w (ftr.utils.core/generate-ndjson-row c))))))
+        (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight c)))))))
 
 
 (defn write-terminology-file!
