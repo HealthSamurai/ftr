@@ -33,9 +33,9 @@
                          {:zen/tags #{'zen.fhir/value-set}
                           :zen.fhir/version "0.5.0"
                           :uri "diagnosis-vs"
-                          :ftr {:module            "ftr"
+                          :ftr {:module            "ig"
                                 :source-url        (str root-path "/profile-lib/resources/icd-10.csv")
-                                :ftr-path          (str root-path "/profile-lib")
+                                :ftr-path          (str root-path "/profile-lib" "/ftr")
                                 :tag               "v1"
                                 :source-type       :flat-table
                                 :extractor-options {:format "csv"
@@ -89,10 +89,12 @@
     (t/testing "built ftr shape is ok"
       (matcho/match
         (test-utils/fs-tree->tree-map profile-lib-path)
-        {"ftr" {"tags" {"v1.ndjson.gz" {}}
-                "vs"   {"diagnosis-vs"
-                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
-                         "tag.v1.ndjson.gz" {}}}}})))
+        {"ftr"
+         {"ig"
+          {"tags" {"v1.ndjson.gz" {}}
+           "vs"   {"diagnosis-vs"
+                   {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
+                    "tag.v1.ndjson.gz" {}}}}}})))
 
   (test-utils/sh! "git" "add" "." :dir profile-lib-path)
   (test-utils/sh! "git" "commit" "-m" "Ftr initial release" :dir profile-lib-path)
@@ -111,10 +113,12 @@
       (test-utils/fs-tree->tree-map module-dir-path)
       {"zen-packages"
        {"profile-lib"
-        {"ftr" {"tags" {"v1.ndjson.gz" {}}
-                "vs"   {"diagnosis-vs"
-                        {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
-                         "tag.v1.ndjson.gz" {}}}}}}}))
+        {"ftr"
+         {"ig"
+          {"tags" {"v1.ndjson.gz" {}}
+           "vs"   {"diagnosis-vs"
+                   {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
+                    "tag.v1.ndjson.gz" {}}}}}}}}))
 
   (t/testing "ftr memory-cache builds successfully"
     (ftr.zen-package/ftr->memory-cache ztx)
@@ -213,9 +217,9 @@
                          {:zen/tags #{'zen.fhir/value-set}
                           :zen.fhir/version "0.5.0"
                           :uri "diagnosis-vs"
-                          :ftr {:module            "ftr"
+                          :ftr {:module            "ig"
                                 :source-url        (str root-path "/profile-lib/resources/ig/node_modules")
-                                :ftr-path          (str root-path "/profile-lib")
+                                :ftr-path          (str root-path "/profile-lib" "/ftr")
                                 :tag               "v1"
                                 :source-type       :ig}}
 
@@ -256,9 +260,11 @@
     (t/testing "built ftr shape is ok"
       (matcho/match
         (test-utils/fs-tree->tree-map profile-lib-path)
-        {"ftr" {"tags" {"v1.ndjson.gz" {}}
-                "vs"   {"gender-cs-entire-code-system" nil
-                        "gender-vs" {}}}}))))
+        {"ftr"
+         {"ig"
+          {"tags" {"v1.ndjson.gz" {}}
+           "vs"   {"gender-cs-entire-code-system" nil
+                   "gender-vs" {}}}}}))))
 
 
 (def gender2-codesystem
@@ -334,9 +340,9 @@
                                             {:zen/tags #{'zen.fhir/value-set}
                                              :zen.fhir/version "0.5.0"
                                              :uri url
-                                             :ftr {:module            "ftr"
+                                             :ftr {:module            "ig"
                                                    :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
-                                                   :ftr-path          (str root-path "/ftr-lib")
+                                                   :ftr-path          (str root-path "/ftr-lib" "/ftr")
                                                    :tag               "v1"
                                                    :source-type       :ig}}))
                                    {}
@@ -369,19 +375,21 @@
   (t/testing "built ftr shape is ok"
     (matcho/match
       (test-utils/fs-tree->tree-map profile-lib-path)
-      {"ftr" {"tags" {"v1.ndjson.gz" {}}
-              "vs"   {"gender2-cs-entire-code-system" nil
-                      "gender2-vs" {}
-                      "gender3-cs-entire-code-system" nil
-                      "gender3-vs" nil
-                      "gender4-cs-entire-code-system" {}
-                      "gender4-vs" nil
-                      "gender5-cs-entire-code-system" {}
-                      "gender5-vs" nil
-                      "gender6-cs-entire-code-system" nil
-                      "gender6-vs" {}
-                      #_#_"gender7-cs-entire-code-system" nil
-                      #_#_"gender7-vs" {}}}})))
+      {"ftr"
+       {"ig"
+        {"tags" {"v1.ndjson.gz" {}}
+         "vs"   {"gender2-cs-entire-code-system" nil
+                 "gender2-vs" {}
+                 "gender3-cs-entire-code-system" nil
+                 "gender3-vs" nil
+                 "gender4-cs-entire-code-system" {}
+                 "gender4-vs" nil
+                 "gender5-cs-entire-code-system" {}
+                 "gender5-vs" nil
+                 "gender6-cs-entire-code-system" nil
+                 "gender6-vs" {}
+                 #_#_"gender7-cs-entire-code-system" nil
+                 #_#_"gender7-vs" {}}}}})))
 
 
 (defn test-concept-vs-backrefs [root-path]
@@ -417,9 +425,9 @@
                                               {:zen/tags #{'zen.fhir/value-set}
                                                :zen.fhir/version "0.5.0"
                                                :uri url
-                                               :ftr {:module            "ftr"
+                                               :ftr {:module            "ig"
                                                      :source-url        (str root-path "/ftr-concept-lib/resources/ig/node_modules")
-                                                     :ftr-path          (str root-path "/ftr-concept-lib")
+                                                     :ftr-path          (str root-path "/ftr-concept-lib" "/ftr")
                                                      :tag               "v1"
                                                      :source-type       :ig}}))
                                      {}
@@ -439,17 +447,19 @@
   (t/testing "built ftr shape is ok"
     (matcho/match
       (test-utils/fs-tree->tree-map profile-lib-path)
-      {"ftr" {"tags" {"v1.ndjson.gz" {}}
-              "vs"   {"gender1-vs"
-                      {"tag.v1.ndjson.gz" {}
-                       "tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz" {}}
-                      "gender2-vs"
-                      {"tag.v1.ndjson.gz" {}
-                       "tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz" {}}}}}))
+      {"ftr"
+       {"ig"
+        {"tags" {"v1.ndjson.gz" {}}
+         "vs"   {"gender1-vs"
+                 {"tag.v1.ndjson.gz" {}
+                  "tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz" {}}
+                 "gender2-vs"
+                 {"tag.v1.ndjson.gz" {}
+                  "tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz" {}}}}}}))
 
-  (let [gender1-tf-path (format "%s/ftr/vs/gender1-vs/tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz"
+  (let [gender1-tf-path (format "%s/ftr/ig/vs/gender1-vs/tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz"
                                 profile-lib-path)
-        gender2-tf-path (format "%s/ftr/vs/gender2-vs/tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz"
+        gender2-tf-path (format "%s/ftr/ig/vs/gender2-vs/tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz"
                                 profile-lib-path)
         gender1-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender1-tf-path))
         gender2-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender2-tf-path))]
@@ -518,9 +528,9 @@
                                                      {:zen/tags #{'zen.fhir/value-set}
                                                       :zen.fhir/version "0.5.0"
                                                       :uri url
-                                                      :ftr {:module            "ftr"
+                                                      :ftr {:module            "ig"
                                                             :source-url        (str root-path "/ftr-multcs-lib/resources/ig/node_modules")
-                                                            :ftr-path          (str root-path "/ftr-multcs-lib")
+                                                            :ftr-path          (str root-path "/ftr-multcs-lib" "/ftr")
                                                             :tag               "v1"
                                                             :source-type       :ig}}))
                                             {}
@@ -538,12 +548,12 @@
   (ftr.zen-package/build-ftr build-ftr-ztx)
 
   (let [tf-path (-> (test-utils/fs-tree->tree-map profile-lib-path)
-                    (get-in ["ftr" "vs" "gender-vs"])
+                    (get-in ["ftr" "ig" "vs" "gender-vs"])
                     keys
                     (->>
                      (filter #(str/starts-with? % "tf"))
                      first
-                     (format "%s/ftr/vs/gender-vs/%s" profile-lib-path)))
+                     (format "%s/ftr/ig/vs/gender-vs/%s" profile-lib-path)))
         tf-codesystems (filter #(= (:resourceType %) "CodeSystem") (ftr.utils.core/parse-ndjson-gz tf-path))]
     (t/testing "Terminology file contains all CodeSystem resources"
       (matcho/match tf-codesystems
@@ -606,9 +616,9 @@
                                                      {:zen/tags #{'zen.fhir/value-set}
                                                       :zen.fhir/version "0.5.0"
                                                       :uri url
-                                                      :ftr {:module            "ftr"
+                                                      :ftr {:module            "ig"
                                                             :source-url        (str root-path "/ftr-cache-lib/resources/ig/node_modules")
-                                                            :ftr-path          (str root-path "/ftr-cache-lib")
+                                                            :ftr-path          (str root-path "/ftr-cache-lib" "/ftr")
                                                             :tag               "v1"
                                                             :source-type       :ig}}))
                                             {}
@@ -629,11 +639,12 @@
   (matcho/match
     (test-utils/fs-tree->tree-map profile-lib-path)
     {"ftr"
-     {"vs"
-      {"gender-vs" {}
-       "shortgender-cs-url-entire-code-system" {}
-       "undesc-vs-url" {}}
-      "tags" {"v1.ndjson.gz" {}}}})
+     {"ig"
+      {"vs"
+       {"gender-vs" {}
+        "shortgender-cs-url-entire-code-system" {}
+        "undesc-vs-url" {}}
+       "tags" {"v1.ndjson.gz" {}}}}})
 
   (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
   (t/is
@@ -724,9 +735,9 @@
                                                         {:zen/tags #{'zen.fhir/value-set}
                                                          :zen.fhir/version "0.5.0"
                                                          :uri url
-                                                         :ftr {:module            "ftr"
+                                                         :ftr {:module            "ig"
                                                                :source-url        (str root-path "/ftr-expansion-lib/resources/ig/node_modules")
-                                                               :ftr-path          (str root-path "/ftr-expansion-lib")
+                                                               :ftr-path          (str root-path "/ftr-expansion-lib" "/ftr")
                                                                :tag               "v1"
                                                                :source-type       :ig}}))
                                                {}
@@ -746,13 +757,14 @@
 
   (matcho/match
    (test-utils/fs-tree->tree-map profile-lib-path)
-    {"ftr"
+   {"ftr"
+    {"ig"
      {"vs"
       {"gender-vs-url" {}
        "expanded-gender-vs-url" {}
        "unknown-gender-vs-url" {}
        "custom-gender-vs-url" {}}
-      "tags" {"v1.ndjson.gz" {}}}})
+      "tags" {"v1.ndjson.gz" {}}}}})
 
   (ftr.zen-package/ftr->memory-cache build-ftr-ztx)
   (t/is
