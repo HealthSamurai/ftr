@@ -332,7 +332,7 @@
         (let [vs-url (str sys "-entire-code-system")
               concepts (->> concepts
                             (filter (fn [[_ c]] (= sys (get-in c [:zen.fhir/resource :system]))))
-                            (map (fn [[_ c]] (assoc-in c [:zen.fhir/resource :valueset] [vs-url]))))]
+                            (map (fn [[_ c]] (:zen.fhir/resource (assoc-in c [:zen.fhir/resource :valueset] [vs-url])))))]
           (assoc-in acc [vs-url :concepts] concepts)))
       index entire-cs-systems)))
 
