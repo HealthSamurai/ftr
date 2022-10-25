@@ -25,19 +25,19 @@
   (let [modules (io/file path)]
     (when (and (.exists modules) (.isDirectory modules))
       (->> (.listFiles modules)
-           (map (fn [x] (str x "/ftr/ig/")))
+           (map (fn [x] (str x "/ftr/")))
            (filter #(.isDirectory (io/file %)))))))
 
 
 (defn expand-package-path [package-path]
-  (let [ftr-path         (str package-path "/ftr/ig")
+  (let [ftr-path         (str package-path "/ftr")
         zen-packages-path (str package-path "/zen-packages")]
     (cond->> (expand-zen-packages zen-packages-path)
       (.exists (io/file ftr-path))
       (cons ftr-path))))
 
 
-(defn make-ftr-index-by-tag-index [tag-index ftr-dir]
+(defn make-ftr-index-by-tag-index [tag-index ftr-dir module]
   (reduce (fn [{:as ftr-index-by-tag, :keys [valuesets]}
                {:as _ti-entry
                 :keys [hash name]}]
@@ -45,8 +45,9 @@
                   (str/split name #"\." 2)
 
                   tf-path
-                  (format "%s/vs/%s/tf.%s.ndjson.gz"
+                  (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
                           ftr-dir
+                          module
                           vs-name
                           hash)
 
@@ -86,27 +87,56 @@
 
 
 (defn index-by-tags [tag-index-paths]
-  (reduce (fn [acc {:keys [tag path ftr-dir]}]
+  (reduce (fn [acc {:keys [tag path ftr-dir module]}]
             (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
-              (assoc acc tag (make-ftr-index-by-tag-index tag-index ftr-dir))))
+              (assoc acc tag (make-ftr-index-by-tag-index tag-index ftr-dir module))))
           {} tag-index-paths))
+
+
+(defn infer-zen-package-name [ftr-path]
+  (let [normalized-ftr-path
+        (-> ftr-path
+            (str/split #"/")
+            (->> (filter seq)))
+        package-name (if (str/includes? ftr-path "zen-packages")
+                       (second (drop-while (complement #{"zen-packages"}) normalized-ftr-path))
+                       (last (take-while (complement #{"ftr"}) normalized-ftr-path)))]
+    {package-name {:ftr-path (str "/" (str/join "/" normalized-ftr-path))}}))
+
+
+(defn get-ftr-dirs-normalized-by-package-name [ztx]
+  (let [ftr-paths
+        (mapcat ftr.zen-package/expand-package-path (-> ztx
+                                                        deref
+                                                        :package-paths))
+
+        ftr-paths-with-inferred-zen-package-names (into {} (map infer-zen-package-name) ftr-paths)]
+    ftr-paths-with-inferred-zen-package-names))
 
 
 (defn build-ftr-index [ztx]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (map (partial zen.core/get-symbol ztx) syms)
-        tags (-> (comp :tag :ftr)
-                 (group-by value-sets)
-                 keys
-                 (->> (filter identity)))
-        ftr-dirs (mapcat expand-package-path (:package-paths @ztx))
-        tag-index-paths (mapcat (fn [tag]
-                                  (map (fn [ftr-dir]
-                                         {:tag tag
-                                          :ftr-dir ftr-dir
-                                          :path (format "%s/tags/%s.ndjson.gz" ftr-dir tag)})
-                                       ftr-dirs))
-                                tags)]
+        ftr-cfgs-grouped-by-package-name
+        (-> (group-by :ftr value-sets)
+            keys
+            (->>
+              (filter identity)
+              (group-by :zen/package-name))
+            (update-vals (fn [cfgs]
+                           (-> (group-by (juxt :tag :module) cfgs)
+                               keys
+                               (->> (filter identity))))))
+        ftr-dirs-normalized-by-package-name (get-ftr-dirs-normalized-by-package-name ztx)
+        tag-index-paths (mapcat (fn [[package-name tag&module-pairs]]
+                                  (let [ftr-path (get-in ftr-dirs-normalized-by-package-name [package-name :ftr-path])]
+                                    (map (fn [[tag module]]
+                                           {:tag tag
+                                            :module module
+                                            :ftr-dir ftr-path
+                                            :path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)})
+                                         tag&module-pairs)))
+                                ftr-cfgs-grouped-by-package-name)]
     (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
 
 
