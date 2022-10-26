@@ -89,7 +89,7 @@
 (defn index-by-tags [tag-index-paths]
   (reduce (fn [acc {:keys [tag path ftr-dir module]}]
             (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
-              (assoc acc tag (make-ftr-index-by-tag-index tag-index ftr-dir module))))
+              (update acc tag ftr.utils.core/deep-merge (make-ftr-index-by-tag-index tag-index ftr-dir module))))
           {} tag-index-paths))
 
 
@@ -230,6 +230,7 @@
     (if display
       (= display (:display code-to-compare-with))
       code-to-compare-with)))
+
 
 (defn validate-value-sets-via-ftr-index [ztx bindings]
   (let [concepts-to-validate (mapcat (fn [binding]
