@@ -3,7 +3,8 @@
   (:require [zen.cli]
             [ftr.zen-package]
             [zen.core]
-            [zen.store]))
+            [zen.store]
+            [cli-matic.core]))
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
@@ -24,7 +25,10 @@
 (def cfg (-> zen.cli/cfg
              (update :subcommands conj {:description "Builds FTR from this zen fhir package"
                                         :command "build-ftr"
-                                        :runs ftr.zen-package/build-ftr})
+                                        :runs (fn [args]
+                                                (let [ztx (zen.cli/load-ztx args)]
+                                                  (zen.cli/load-used-namespaces ztx #{})
+                                                  (ftr.zen-package/build-ftr ztx)))})
              (update :subcommands conj {:description "Builds FTR from this zen fhir package"
                                         :command "get-ftr-index-info"
                                         :runs ftr.zen-package/get-ftr-index-info})))

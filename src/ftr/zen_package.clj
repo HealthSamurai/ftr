@@ -128,15 +128,17 @@
                                keys
                                (->> (filter identity))))))
         ftr-dirs-normalized-by-package-name (get-ftr-dirs-normalized-by-package-name ztx)
-        tag-index-paths (mapcat (fn [[package-name tag&module-pairs]]
-                                  (let [ftr-path (get-in ftr-dirs-normalized-by-package-name [package-name :ftr-path])]
-                                    (map (fn [[tag module]]
-                                           {:tag tag
-                                            :module module
-                                            :ftr-dir ftr-path
-                                            :path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)})
-                                         tag&module-pairs)))
-                                ftr-cfgs-grouped-by-package-name)]
+        tag-index-paths (filter (fn [{:keys [path]}]
+                                  (.exists (io/file path)))
+                                (mapcat (fn [[package-name tag&module-pairs]]
+                                          (let [ftr-path (get-in ftr-dirs-normalized-by-package-name [package-name :ftr-path])]
+                                            (map (fn [[tag module]]
+                                                   {:tag tag
+                                                    :module module
+                                                    :ftr-dir ftr-path
+                                                    :path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)})
+                                                 tag&module-pairs)))
+                                        ftr-cfgs-grouped-by-package-name))]
     (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
 
 
@@ -218,7 +220,7 @@
 
 
 (defn validate-concept-via-ftr-index [ztx {{:as concept, :keys [code display]} :concept
-                                              :keys [valueset valueset-ftr-tag]}]
+                                           :keys [valueset valueset-ftr-tag]}]
   (let [ftr-index (get-in @ztx [:zen.fhir/ftr-index valueset-ftr-tag])
         codesystems-used-in-this-valueset (get-in ftr-index [:valuesets valueset])
         code-to-compare-with (->> codesystems-used-in-this-valueset
