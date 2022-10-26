@@ -8,12 +8,13 @@
 (defn update-tf-tag! [tf-tag-path new-sha256]
   (let [tf-tag (ftr.utils.core/parse-ndjson-gz tf-tag-path)
         current-sha256 (get-in tf-tag [0 :hash])]
-    (->> (-> tf-tag
-             (update 0 assoc :hash new-sha256)
-             (conj {:from current-sha256 :to new-sha256}))
-         (ftr.utils.core/spit-ndjson-gz! tf-tag-path))
-    {:ingestion-coordinator {:generate-patch? true
-                             :old-sha256 current-sha256}}))
+    (when (not= current-sha256 new-sha256)
+      (->> (-> tf-tag
+               (update 0 assoc :hash new-sha256)
+               (conj {:from current-sha256 :to new-sha256}))
+           (ftr.utils.core/spit-ndjson-gz! tf-tag-path))
+      {:ingestion-coordinator {:generate-patch? true
+                               :old-sha256 current-sha256}})))
 
 
 (defn create-tf-tag! [tf-tag-path tag sha256

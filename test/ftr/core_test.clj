@@ -621,6 +621,25 @@
                   :source-type :ig}
         _ (ftr.utils.core/rmrf ftr-path)
         _ (sut/apply-cfg {:cfg user-cfg})
+        _ (sut/apply-cfg {:cfg user-cfg})
+
+        _ (t/testing "ftr shape correct"
+            (matcho/match
+              (get-in (fs-tree->tree-map ftr-path) (drop 1 (str/split ftr-path #"/")))
+              {"dehydrated"
+               {"vs"
+                {"gender-vs"
+                 {"tf.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.ndjson.gz" {}
+                  "tag.v1.ndjson.gz" {}}}
+                "tags" {"v1.ndjson.gz" {}}}}))
+
+        _ (t/testing "gender-vs v1.tag file doesn't have duplicate from-to entry"
+            (matcho/match
+              (ftr.utils.core/parse-ndjson-gz (str ftr-path "/dehydrated" "/vs" "/gender-vs" "/tag.v1.ndjson.gz"))
+              [{:hash
+                "3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137"
+                :tag "v1"}
+               nil?]))
 
         client-cfg
         (merge user-cfg
