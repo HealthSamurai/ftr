@@ -4,4 +4,4 @@ test:
 	clojure -M:dev:kaocha
 
 build:
-	clj -T:build uber
+	clojure -T:build uber
