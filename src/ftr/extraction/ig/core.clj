@@ -342,12 +342,12 @@
          concepts "Concept"
          code-systems "CodeSystem"}
         (:fhir/inter @ztx)]
-    {::result (re-check-entire-codesystem-valuesets
-                (reduce-kv (fn [acc _concept-id concept]
-                             (index-concepts-by-value-set acc concept value-sets code-systems))
-                           {}
-                           concepts)
-                concepts)}))
+    {::result (dissoc (re-check-entire-codesystem-valuesets
+                        (reduce-kv (fn [acc _concept-id concept]
+                                     (index-concepts-by-value-set acc concept value-sets code-systems))
+                                   {}
+                                   concepts)
+                        concepts) nil)}))
 
 
 (defn import-from-cfg [cfg]

@@ -826,7 +826,7 @@
   ;; (t/testing "no errors in pulled package"
   ;;   (t/is (empty? (zen.core/errors ztx) )))
 
-  #_(ftr.zen-package/build-ftr-index ztx)
+  (ftr.zen-package/build-ftr-index ztx)
 
   (t/testing "validating patient gender via FTR index"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "incorrect-value"})
