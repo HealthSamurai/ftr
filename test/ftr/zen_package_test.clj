@@ -92,10 +92,11 @@
         (test-utils/fs-tree->tree-map profile-lib-path)
         {"ftr"
          {"ig"
-          {"tags" {"v1.ndjson.gz" {}}
-           "vs"   {"diagnosis-vs"
-                   {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
-                    "tag.v1.ndjson.gz" {}}}}}})))
+          {"vs"
+           {"diagnosis-vs"
+            {"tag.v1.ndjson.gz" {}
+             "tf.6c2e3657629516187bbf1c8ea0b7c4e3ae73427d3ef52af5a2ecc3b6e90c2d5b.ndjson.gz" {}}}
+           "tags" {"v1.ndjson.gz" {}}}}})))
 
   (test-utils/sh! "git" "add" "." :dir profile-lib-path)
   (test-utils/sh! "git" "commit" "-m" "Ftr initial release" :dir profile-lib-path)
@@ -116,10 +117,11 @@
        {"profile-lib"
         {"ftr"
          {"ig"
-          {"tags" {"v1.ndjson.gz" {}}
-           "vs"   {"diagnosis-vs"
-                   {"tf.19a60d6f399157796ebc47975b7e5b882cbbb2ac8833483a1dae74c76a255a9f.ndjson.gz" {}
-                    "tag.v1.ndjson.gz" {}}}}}}}}))
+          {"vs"
+           {"diagnosis-vs"
+            {"tag.v1.ndjson.gz" {}
+             "tf.6c2e3657629516187bbf1c8ea0b7c4e3ae73427d3ef52af5a2ecc3b6e90c2d5b.ndjson.gz" {}}}
+           "tags" {"v1.ndjson.gz" {}}}}}}}))
 
   (t/testing "ftr index builds successfully"
     (ftr.zen-package/build-ftr-index ztx)
@@ -453,17 +455,18 @@
       (test-utils/fs-tree->tree-map profile-lib-path)
       {"ftr"
        {"ig"
-        {"tags" {"v1.ndjson.gz" {}}
-         "vs"   {"gender1-vs"
-                 {"tag.v1.ndjson.gz" {}
-                  "tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz" {}}
-                 "gender2-vs"
-                 {"tag.v1.ndjson.gz" {}
-                  "tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz" {}}}}}}))
+        {"vs"
+         {"gender1-vs"
+          {"tf.460ff5b24c7d411d7e6cc0f3ad01d9408964fabe1df0c286449a8e61dc34e47d.ndjson.gz" {}
+           "tag.v1.ndjson.gz" {}}
+          "gender2-vs"
+          {"tag.v1.ndjson.gz" {}
+           "tf.c6d5e0999776894e819d311bd38356d7ab607cecff813704267e1f3707677fe2.ndjson.gz" {}}}
+         "tags" {"v1.ndjson.gz" {}}}}}))
 
-  (let [gender1-tf-path (format "%s/ftr/ig/vs/gender1-vs/tf.ad113051910e4e7dfe7918309878b20fff71bf38ff052300daa5bc67cbf819dd.ndjson.gz"
+  (let [gender1-tf-path (format "%s/ftr/ig/vs/gender1-vs/tf.460ff5b24c7d411d7e6cc0f3ad01d9408964fabe1df0c286449a8e61dc34e47d.ndjson.gz"
                                 profile-lib-path)
-        gender2-tf-path (format "%s/ftr/ig/vs/gender2-vs/tf.394a8a326de7d73aa74963b3a273e51d1960f1f3403a05dec587b04cbf5343d4.ndjson.gz"
+        gender2-tf-path (format "%s/ftr/ig/vs/gender2-vs/tf.c6d5e0999776894e819d311bd38356d7ab607cecff813704267e1f3707677fe2.ndjson.gz"
                                 profile-lib-path)
         gender1-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender1-tf-path))
         gender2-vs-concepts (filter #(= (:resourceType %) "Concept") (ftr.utils.core/parse-ndjson-gz gender2-tf-path))]
@@ -478,21 +481,19 @@
     (t/testing "Each concept id follows this pattern <valueset.url-concept.code>"
       (t/testing "valid for gender1-vs tf"
         (matcho/match gender1-vs-concepts
-                      [{:id "gender1-vs-female"}
-                       {:id "gender1-vs-male"}
-                       {:id "gender1-vs-other"}
-                       {:id "gender1-vs-unknown"}
+                      [{:id "gender-cs-url-gender1-vs-female"}
+                       {:id "gender-cs-url-gender1-vs-male"}
+                       {:id "gender-cs-url-gender1-vs-other"}
+                       {:id "gender-cs-url-gender1-vs-unknown"}
                        nil?]))
 
       (t/testing "valid for gender2-vs tf"
         (matcho/match gender2-vs-concepts
-                      [{:id "gender2-vs-female"}
-                       {:id "gender2-vs-male"}
-                       {:id "gender2-vs-other"}
-                       {:id "gender2-vs-unknown"}
-                       nil?]))))
-
-  )
+                      [{:id "gender-cs-url-gender2-vs-female"}
+                       {:id "gender-cs-url-gender2-vs-male"}
+                       {:id "gender-cs-url-gender2-vs-other"}
+                       {:id "gender-cs-url-gender2-vs-unknown"}
+                       nil?])))))
 
 
 (defn test-multiple-codesystems-in-tf [root-path]

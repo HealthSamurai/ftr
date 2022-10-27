@@ -12,10 +12,26 @@
             (ftr.utils.core/gen-uuid))))
 
 
-(defn fhir-preflight [res]
-  (cond-> res
-    (nil? (:id res))
-    (assoc :id (ftr.utils.core/gen-uuid))))
+(defn generate-id-if-not-present [res]
+  (if-not (:id res)
+    (let [generated-id
+          (case (:resourceType res)
+            "CodeSystem"
+            (:url res)
+
+            "ValueSet"
+            (:url res))
+          escaped-generated-id (ftr.utils.core/escape-url generated-id)]
+      (assoc res :id escaped-generated-id))
+    res))
+
+
+
+
+
+(defn generate-concept-id [concept vs]
+  (assoc concept :id (ftr.utils.core/escape-url
+                       (str (:system concept)  "-" (:url vs) "-" (:code concept)))))
 
 
 (defn spit-tf-file! [writer cs vs c]
@@ -23,10 +39,10 @@
         sorted-concepts (sort-by #(format "%s-%s" (:system %) (:code %)) c)]
     (with-open [w writer]
       (doseq [cs sorted-code-systems]
-        (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight cs))))
-      (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight vs)))
+        (.write w (ftr.utils.core/generate-ndjson-row (generate-id-if-not-present cs))))
+      (.write w (ftr.utils.core/generate-ndjson-row (generate-id-if-not-present vs)))
       (doseq [c sorted-concepts]
-        (.write w (ftr.utils.core/generate-ndjson-row (fhir-preflight c)))))))
+        (.write w (ftr.utils.core/generate-ndjson-row (generate-concept-id c vs)))))))
 
 
 (defn write-terminology-file!

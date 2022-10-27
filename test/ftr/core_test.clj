@@ -19,14 +19,14 @@
                        :csv-source-updated           "/tmp/ftr-fixtures/icd10updated.csv"
                        :csv-source-tag               "/tmp/ftr-fixtures/icd10newtag.csv"
                        :ftr-path                     "/tmp/ftr"
-                       :expected-tf-sha256           "70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976"
-                       :expected-tf-filename         "tf.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.ndjson.gz"
-                       :expected-updated-tf-sha256   "476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5"
-                       :expected-updated-tf-filename "tf.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.ndjson.gz"
-                       :expected-tag-tf-sha256       "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"
-                       :expected-tag-tf-filename     "tf.a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b.ndjson.gz"
-                       :expected-patch-filename      "patch.70c1225a2ddd108c869a18a87a405c029f48a30c0401268869f19959a4723976.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.ndjson.gz"
-                       :expected-patch2-filename     "patch.476b3dbcdab7fe4e8522451f7495c185317acb3530178b31c91a888e173f94f5.a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b.ndjson.gz"})
+                       :expected-tf-sha256           "9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f"
+                       :expected-tf-filename         "tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz"
+                       :expected-updated-tf-sha256   "9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9"
+                       :expected-updated-tf-filename "tf.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
+                       :expected-tag-tf-sha256       "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"
+                       :expected-tag-tf-filename     "tf.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"
+                       :expected-patch-filename      "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
+                       :expected-patch2-filename     "patch.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"})
 
 
 (def csv-user-cfg {:module            "icd10"
@@ -240,7 +240,7 @@
 
         (matcho/match
           (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/tags/%s.ndjson.gz" (:ftr-path csv-test-env-cfg) new-tag))
-          [{:name (format "%s.%s" module value-set-name) :hash "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"}
+          [{:name (format "%s.%s" module value-set-name) :hash "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"}
            nil?]))
 
       (t/testing "sees terminology tag file"
@@ -254,8 +254,8 @@
         (t/testing (format "%s tag" new-tag)
           (matcho/match
             (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name new-tf-tag-file-name))
-            [{:tag new-tag :hash "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b" :from-tag old-tag}
-             {:from (:expected-updated-tf-sha256 csv-test-env-cfg) :to "a68ffc7e6b868ea62d2696563cbd1c57e42c4adc2ebf90324da4208c443aff3b"}
+            [{:tag new-tag :hash "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff" :from-tag old-tag}
+             {:from (:expected-updated-tf-sha256 csv-test-env-cfg) :to "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"}
              nil?])))
 
       (t/testing "sees new patch file"
@@ -277,16 +277,16 @@
      :ftr-path                    "/tmp/igftr"
      :vs1-name                    "http:--hl7.org-fhir-ValueSet-administrative-gender"
      :vs2-name                    "http:--hl7.org-fhir-ValueSet-codesystem-content-mode"
-     :expected-tf1-sha256         "d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d"
-     :expected-tf1-filename       "tf.d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d.ndjson.gz"
-     :expected-updated-tf1-sha256 "47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7"
-     :expected-updated-tf1-filename "tf.47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7.ndjson.gz"
-     :expected-tf1-patch-filename "patch.d1cde1236239c9de4764a476a8db06e304e9d87571856f808f1b6c6dace240d.47f1fde5fec62c337a810302eab62838ec6da0cb03c5bec9d54c1a26afd19ca7.ndjson.gz"
-     :expected-tf2-sha256   "203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4"
-     :expected-tf2-filename "tf.203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4.ndjson.gz"
-     :expected-updated-tf2-sha256 "53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94"
-     :expected-updated-tf2-filename "tf.53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94.ndjson.gz"
-     :expected-tf2-patch-filename "patch.203796722462e123d5177ea5d828b9469d5961cdafe3d8d88d2eb648680920c4.53a6b6d9c0d49d4decf574292f76805cc37824fdd40ddf5a542ba3bfc4dbcd94.ndjson.gz"
+     :expected-tf1-sha256         "cf470821d2fc2aa31221ecce73e2239837a735a4bf2a94e80eba17985c00b162"
+     :expected-tf1-filename       "tf.cf470821d2fc2aa31221ecce73e2239837a735a4bf2a94e80eba17985c00b162.ndjson.gz"
+     :expected-updated-tf1-sha256 "b035cc432cc6044eff1dbee4b71a4136068b762160fe30fdf181dd92638dd1b3"
+     :expected-updated-tf1-filename "tf.b035cc432cc6044eff1dbee4b71a4136068b762160fe30fdf181dd92638dd1b3.ndjson.gz"
+     :expected-tf1-patch-filename "patch.cf470821d2fc2aa31221ecce73e2239837a735a4bf2a94e80eba17985c00b162.b035cc432cc6044eff1dbee4b71a4136068b762160fe30fdf181dd92638dd1b3.ndjson.gz"
+     :expected-tf2-sha256   "612a2239b16753161f2328a212ccea619de2a32553651540b89490d4d87904fc"
+     :expected-tf2-filename "tf.612a2239b16753161f2328a212ccea619de2a32553651540b89490d4d87904fc.ndjson.gz"
+     :expected-updated-tf2-sha256 "30aebaf54e705e685c26ce28f8f6f5c2a603647166a16e8fc60b6efd37d9c15c"
+     :expected-updated-tf2-filename "tf.30aebaf54e705e685c26ce28f8f6f5c2a603647166a16e8fc60b6efd37d9c15c.ndjson.gz"
+     :expected-tf2-patch-filename "patch.612a2239b16753161f2328a212ccea619de2a32553651540b89490d4d87904fc.30aebaf54e705e685c26ce28f8f6f5c2a603647166a16e8fc60b6efd37d9c15c.ndjson.gz"
      })
 
 
@@ -530,10 +530,10 @@
          :remove-plan
          ["administrative-gender"
           "administrative-gender"
-          "http:--hl7.org-fhir-ValueSet-administrative-gender-female"
-          "http:--hl7.org-fhir-ValueSet-administrative-gender-male"
-          "http:--hl7.org-fhir-ValueSet-administrative-gender-other"
-          "http:--hl7.org-fhir-ValueSet-administrative-gender-unknown"
+          "http:--hl7.org-fhir-administrative-gender-http:--hl7.org-fhir-ValueSet-administrative-gender-female"
+          "http:--hl7.org-fhir-administrative-gender-http:--hl7.org-fhir-ValueSet-administrative-gender-male"
+          "http:--hl7.org-fhir-administrative-gender-http:--hl7.org-fhir-ValueSet-administrative-gender-other"
+          "http:--hl7.org-fhir-administrative-gender-http:--hl7.org-fhir-ValueSet-administrative-gender-unknown"
           nil?]}))
 
 
@@ -629,7 +629,7 @@
               {"dehydrated"
                {"vs"
                 {"gender-vs"
-                 {"tf.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.ndjson.gz" {}
+                 {"tf.d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530.ndjson.gz" {}
                   "tag.v1.ndjson.gz" {}}}
                 "tags" {"v1.ndjson.gz" {}}}}))
 
@@ -637,7 +637,7 @@
             (matcho/match
               (ftr.utils.core/parse-ndjson-gz (str ftr-path "/dehydrated" "/vs" "/gender-vs" "/tag.v1.ndjson.gz"))
               [{:hash
-                "3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137"
+                "d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530"
                 :tag "v1"}
                nil?]))
 
@@ -673,11 +673,11 @@
               {"dehydrated"
                {"vs"
                 {"gender-vs"
-                 {"tf.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.ndjson.gz" {}
-                  "patch.3c48b18363317391da09cab6aef194bc84df26c3e52b5bdb206c410a9adaa137.a7a0bd0dea3521019c98b0d3ca730b48fddb660d2ef5048c4ffa9352b3d170a8.ndjson.gz" {}
+                 {"tf.935b647b83da220fd0d351634a98a40dd53efa2e26461159e512e15e89a19e7b.ndjson.gz" {}
+                  "tf.d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530.ndjson.gz" {}
                   "tag.v1.ndjson.gz" {}
-                  "tag.v2.ndjson.gz" {}
-                  "tf.a7a0bd0dea3521019c98b0d3ca730b48fddb660d2ef5048c4ffa9352b3d170a8.ndjson.gz" {}}}
+                  "patch.d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530.935b647b83da220fd0d351634a98a40dd53efa2e26461159e512e15e89a19e7b.ndjson.gz" {}
+                  "tag.v2.ndjson.gz" {}}}
                 "tags" {"v2.ndjson.gz" {} "v1.ndjson.gz" {}}}}))
 
         update-plan-name "update-plan"
