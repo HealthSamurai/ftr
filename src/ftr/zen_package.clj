@@ -94,17 +94,19 @@
 
 
 (defn enrich-vs [vs]
-  (let [zen-file (:zen/file vs)
-        path-to-package (->> (str/split zen-file #"/")
-                             (take-while (complement #{"zrc"})))
-        zen-package-name (last path-to-package)
-        inferred-ftr-dir (-> path-to-package
-                             vec
-                             (conj "ftr")
-                             (->> (str/join "/")))]
-    (-> vs
-        (assoc-in [:ftr :zen/package-name] zen-package-name)
-        (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir))))
+  (if (contains? vs :ftr)
+    (let [zen-file         (:zen/file vs)
+          path-to-package  (->> (str/split zen-file #"/")
+                               (take-while (complement #{"zrc"})))
+          zen-package-name (last path-to-package)
+          inferred-ftr-dir (-> path-to-package
+                               vec
+                               (conj "ftr")
+                               (->> (str/join "/")))]
+      (-> vs
+          (assoc-in [:ftr :zen/package-name] zen-package-name)
+          (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir)))
+    vs))
 
 
 (defn build-ftr-index [ztx]
