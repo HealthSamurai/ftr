@@ -20,4 +20,6 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@9.5
         with:
           cli: 1.11.1.1155
+      - run: git config --global user.email "hello@health-samurai.io" && git config --global user.name "ftr"
+        name: Set up git config
       - run: make test
