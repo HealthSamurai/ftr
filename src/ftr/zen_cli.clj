@@ -22,22 +22,17 @@
        vtx))})
 
 
-(def cfg (-> zen.cli/cfg
-             (update :subcommands conj {:description "Builds FTR from this zen fhir package"
-                                        :command "build-ftr"
-                                        :runs (fn [args]
-                                                (let [ztx (zen.cli/load-ztx args)]
-                                                  (zen.cli/load-used-namespaces ztx #{})
-                                                  (ftr.zen-package/build-ftr ztx)))})
-             (update :subcommands conj {:description "Builds FTR from this zen fhir package"
-                                        :command "get-ftr-index-info"
-                                        :runs ftr.zen-package/get-ftr-index-info})))
+(def cfg (-> zen.cli/commands
+             (assoc "build-ftr" (fn [opts]
+                                  (let [ztx (zen.cli/load-ztx opts)]
+                                    (zen.cli/load-used-namespaces ztx #{})
+                                    (ftr.zen-package/build-ftr ztx))))
+             (assoc "get-ftr-index-info" ftr.zen-package/get-ftr-index-info)))
 
 
 (defn -main
   [& args]
-  (let [og-read-ns zen.core/read-ns
-        og-validate zen.core/validate]
+  (let [og-read-ns zen.core/read-ns]
     (with-redefs
       [zen.core/read-ns (fn [ztx zen-ns]
                           (og-read-ns ztx zen-ns)

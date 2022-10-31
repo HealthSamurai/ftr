@@ -301,7 +301,7 @@
 
 
 (defn get-ftr-index-info
-  ([args] (get-ftr-index-info (zen.cli/load-ztx args) args))
+  ([opts] (get-ftr-index-info (zen.cli/load-ztx opts) opts))
   ([ztx & _]
    (zen.cli/load-used-namespaces ztx #{})
    (doseq [[tag {:as ftr-index, :keys [valuesets codesystems]}] (get @ztx :zen.fhir/ftr-index)]
