@@ -38,7 +38,6 @@
                                 :ftr-path          (str root-path "/profile-lib" "/ftr")
                                 :tag               "v1"
                                 :source-type       :flat-table
-                                :zen/package-name  "profile-lib"
                                 :extractor-options {:format "csv"
                                                     :csv-format {:delimiter ";"
                                                                  :quote     "'"}
@@ -221,7 +220,6 @@
                           :zen.fhir/version "0.5.0"
                           :uri "diagnosis-vs"
                           :ftr {:module            "ig"
-                                :zen/package-name "profile-lib"
                                 :source-url        (str root-path "/profile-lib/resources/ig/node_modules")
                                 :ftr-path          (str root-path "/profile-lib" "/ftr")
                                 :tag               "v1"
@@ -345,7 +343,6 @@
                                              :zen.fhir/version "0.5.0"
                                              :uri url
                                              :ftr {:module            "ig"
-                                                   :zen/package-name  "ftr-lib"
                                                    :source-url        (str root-path "/ftr-lib/resources/ig/node_modules")
                                                    :ftr-path          (str root-path "/ftr-lib" "/ftr")
                                                    :tag               "v1"
@@ -431,7 +428,6 @@
                                                :zen.fhir/version "0.5.0"
                                                :uri url
                                                :ftr {:module            "ig"
-                                                     :zen/package-name  "ftr-concept-lib"
                                                      :source-url        (str root-path "/ftr-concept-lib/resources/ig/node_modules")
                                                      :ftr-path          (str root-path "/ftr-concept-lib" "/ftr")
                                                      :tag               "v1"
@@ -534,7 +530,6 @@
                                                       :zen.fhir/version "0.5.0"
                                                       :uri url
                                                       :ftr {:module            "ig"
-                                                            :zen/package-name  "ftr-multcs-lib"
                                                             :source-url        (str root-path "/ftr-multcs-lib/resources/ig/node_modules")
                                                             :ftr-path          (str root-path "/ftr-multcs-lib" "/ftr")
                                                             :tag               "v1"
@@ -623,7 +618,6 @@
                                                       :zen.fhir/version "0.5.0"
                                                       :uri url
                                                       :ftr {:module            "ig"
-                                                            :zen/package-name  "ftr-index-lib"
                                                             :source-url        (str root-path "/ftr-index-lib/resources/ig/node_modules")
                                                             :ftr-path          (str root-path "/ftr-index-lib" "/ftr")
                                                             :tag               "v1"
@@ -743,7 +737,6 @@
                                                          :zen.fhir/version "0.5.0"
                                                          :uri url
                                                          :ftr {:module            "ig"
-                                                               :zen/package-name  "ftr-expansion-lib"
                                                                :source-url        (str root-path "/ftr-expansion-lib/resources/ig/node_modules")
                                                                :ftr-path          (str root-path "/ftr-expansion-lib" "/ftr")
                                                                :tag               "v1"
@@ -808,7 +801,7 @@
                                :confirms #{hl7-fhir-r4-core.Patient/schema}}}}}})
 
 
-(t/deftest ^:kaocha/pending r4-core-ftr-validation
+(t/deftest r4-core-ftr-validation
   (def test-dir-path "/tmp/ftr.r4-zen-package-test")
   (def module-dir-path (str test-dir-path "/test-module"))
 
@@ -821,10 +814,6 @@
   (def ztx (zen.core/new-context {:package-paths [module-dir-path]}))
 
   (zen.core/read-ns ztx 'main)
-
-  ;;TODO FIXME WEIRDO ERRORS!
-  ;; (t/testing "no errors in pulled package"
-  ;;   (t/is (empty? (zen.core/errors ztx) )))
 
   (ftr.zen-package/build-ftr-index ztx)
 
