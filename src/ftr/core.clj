@@ -46,7 +46,7 @@
 
 
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
-                            {:keys [ftr-path]} :cfg}] extraction-result
+                            {:keys [ftr-path]} :cfg}]
   (doseq [[vs-url tf] extraction-result]
     (u/*apply [::write-terminology-file
                ::shape-ftr-layout
@@ -56,40 +56,45 @@
                      ::feeder {:vs-url vs-url}))))
 
 
-(defn apply-cfg [{:as ctx, {:keys [source-type]} :cfg}]
-  (case source-type
-    :flat-table
-    (u/*apply [::extract-terminology
-               ::write-terminology-file
-               ::shape-ftr-layout
-               :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx)
-
-    :ig
-    (u/*apply [::extract-terminology
-               ::feeder] ctx)))
+(defmulti apply-cfg
+  (fn [{:as _ctx, {:keys [source-type]} :cfg}]
+    source-type))
 
 
-(comment
-  (def usr-cfg
-    {:module            "fhir"
-     :ftr-path          "/tmp/ftr"
-     :tag               "r3"
-     :source-type       :ig
-     :source-url "/tmp/r3"})
+(defmethod apply-cfg :flat-table [ctx]
+  (u/*apply [::extract-terminology
+             ::write-terminology-file
+             ::shape-ftr-layout
+             :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx))
 
-  (def usr-cfg-2
-    {:module            "fhir"
-     :ftr-path          "/tmp/ftr"
-     :move-tag {:old-tag "r3"
-                :new-tag "r4"}
-     :tag               "r4"
-     :source-type       :ig
-     :source-url "/tmp/r4"})
 
-  (time (do (apply-cfg usr-cfg)
-            :done))
+(defmethod apply-cfg :ig [ctx]
+  (u/*apply [::extract-terminology
+             ::feeder] ctx))
 
-  (time (do (apply-cfg usr-cfg-2)
-            :done))
 
-  )
+;; `apply-cfg` split into 2 separate processes, is used in zen-lang/fhir CI pipeline
+(defmulti extract
+  (fn [{:as _ctx, {:keys [source-type]} :cfg}]
+    source-type))
+
+
+(defmethod extract :igs [ctx]
+  (u/*apply [::extract-terminology]
+            ctx))
+
+
+(defmulti spit-ftr
+  (fn [{:as _ctx, {:keys [source-type]} :cfg}]
+    source-type))
+
+
+(defmethod u/*fn ::select-package-valuesets [{:as _ctx, :keys [extraction-result]
+                                              {:keys [vs-urls]} :cfg}]
+  ^:non-deep-merge {:extraction-result (select-keys extraction-result vs-urls)})
+
+
+(defmethod spit-ftr :igs [ctx]
+  (u/*apply [::select-package-valuesets
+             ::feeder]
+            ctx))
