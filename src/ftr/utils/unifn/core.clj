@@ -75,7 +75,10 @@
                                        (assoc-in res pth fx-res)))
                                    )) (dissoc patch :fx) fx)
                        patch)
-               res (deep-merge arg patch)]
+               res ((if (:non-deep-merge (meta patch))
+                      merge
+                      deep-merge)
+                    arg patch)]
            (if tracers
              (apply-tracers res f-name tracers :leave)
              res))))))
