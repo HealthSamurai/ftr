@@ -9,4 +9,5 @@
                              :node-modules-folder source-url)]
     (condp = source-type
       :flat-table (flat-table/import-from-cfg extractor-cfg)
-      :ig (ftr.extraction.ig.core/import-from-cfg extractor-cfg))))
+      :ig (ftr.extraction.ig.core/import-from-cfg extractor-cfg)
+      :igs (ftr.extraction.ig.core/import-from-cfg extractor-cfg))))
