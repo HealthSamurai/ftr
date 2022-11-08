@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [zen.cli]
             [ftr.zen-package]
+            [clojure.pprint]
             [zen.core]
             [zen.store]
             [cli-matic.core]))
@@ -31,7 +32,7 @@
 
 
 (defn -main
-  [& args]
+  [& [cmd-name & args]]
   (let [og-read-ns zen.core/read-ns]
     (with-redefs
       [zen.core/read-ns (fn [ztx zen-ns]
@@ -40,6 +41,7 @@
        zen.core/validate (fn [ztx symbols data]
                            (-> (ftr.zen-package/validate ztx symbols data)
                                (select-keys [:errors :warnings :effects])))]
-      (if (seq args)
-        (cli-matic.core/run-cmd args cfg)
-        (zen.cli/repl cfg)))))
+      (if (some? cmd-name)
+        (clojure.pprint/pprint (zen.cli/cmd cfg cmd-name args))
+        (zen.cli/repl cfg))
+      (System/exit 0))))
