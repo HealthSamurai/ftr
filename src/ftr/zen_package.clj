@@ -306,15 +306,16 @@
   ([opts] (get-ftr-index-info (zen.cli/load-ztx opts) opts))
   ([ztx & _]
    (zen.cli/load-used-namespaces ztx #{})
-   (doseq [[tag {:as ftr-index, :keys [valuesets codesystems]}] (get @ztx :zen.fhir/ftr-index)]
-     (let [ftr-index-size-in-mbs                (int (/ (total-memory ftr-index) 1000000))
-           amount-of-vs                     (count (keys valuesets))
-           amount-of-cs                     (count (keys codesystems))
-           cses                             (sort-by (comp count keys second) > codesystems)
-           largest-cs                       (ffirst cses)
-           amount-of-concepts-in-largest-cs (count (keys (second (first cses))))]
-       (println (format "Tag: \033[0;1m%s\033[22m" tag))
-       (println (format "    FTR index size: \033[0;1m%s MB\033[22m" ftr-index-size-in-mbs))
-       (println (format "    ValueSets: \033[0;1m%s\033[22m" amount-of-vs))
-       (println (format "    CodeSystems: \033[0;1m%s\033[22m" amount-of-cs))
-       (println (format "    Largest CodeSystem: \033[0;1m%s\033[22m, \033[0;1m%s\033[22m codes" largest-cs amount-of-concepts-in-largest-cs))))))
+   {:result
+    (update-vals (get @ztx :zen.fhir/ftr-index)
+                 (fn [{:as ftr-index, :keys [valuesets codesystems]}]
+                   (let [ftr-index-size-in-mbs            (int (/ (total-memory ftr-index) 1000000))
+                         amount-of-vs                     (count valuesets)
+                         amount-of-cs                     (count codesystems)
+                         largest-cs                       (apply max-key (comp count val) codesystems)
+                         amount-of-concepts-in-largest-cs (count (keys (val largest-cs)))]
+                     {:ftr-index           {:size ftr-index-size-in-mbs, :unit :MB}
+                      :value-sets          amount-of-vs
+                      :code-systems        amount-of-cs
+                      :largest-code-system {:code-system (key largest-cs)
+                                            :concepts    amount-of-concepts-in-largest-cs}})))}))
