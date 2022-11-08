@@ -313,9 +313,11 @@
                          amount-of-vs                     (count valuesets)
                          amount-of-cs                     (count codesystems)
                          largest-cs                       (apply max-key (comp count val) codesystems)
+                         amount-of-concepts               (transduce (map count) + 0 (vals codesystems))
                          amount-of-concepts-in-largest-cs (count (keys (val largest-cs)))]
                      {:ftr-index           {:size ftr-index-size-in-mbs, :unit :MB}
                       :value-sets          amount-of-vs
                       :code-systems        amount-of-cs
+                      :concepts            amount-of-concepts
                       :largest-code-system {:code-system (key largest-cs)
                                             :concepts    amount-of-concepts-in-largest-cs}})))}))
