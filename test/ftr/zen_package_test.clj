@@ -789,18 +789,18 @@
          "custom-gender-vs-url"   #{"gender-cs-url" "expanded-gender-cs-url" "expanded-gender-with-filter-cs-url"}}
 
         :codesystems
-        {"gender-cs-url"          {"male"    {:display  "Male"
-                                              :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
-                                   "female"  {:display  "Female"
-                                              :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
-                                   "other"   {:display  "Other"
-                                              :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}
-                                   "unknown" {:display  "Unknown"
-                                              :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}}
-         "expanded-gender-cs-url"     {"x" {:display  "X"
-                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
-                                       "y" {:display  "Y"
-                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}
+        {"gender-cs-url"                      {"male"    {:display  "Male"
+                                                          :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
+                                               "female"  {:display  "Female"
+                                                          :valueset #{"gender-vs-url" "custom-gender-vs-url"}}
+                                               "other"   {:display  "Other"
+                                                          :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}
+                                               "unknown" {:display  "Unknown"
+                                                          :valueset #{"gender-vs-url" "unknown-gender-vs-url"}}}
+         "expanded-gender-cs-url"             {"x" {:display  "X"
+                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
+                                               "y" {:display  "Y"
+                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}
          "expanded-gender-with-filter-cs-url" {"a" {:display  "A"
                                                     :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
                                                "b" {:display  "B"

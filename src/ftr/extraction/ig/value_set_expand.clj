@@ -127,19 +127,19 @@
 
 (defn compose [ztx vs]
   (let [expansion-contains (get-in vs [:expansion :contains])
-        full-expansion? (and (= (count expansion-contains) (get-in vs [:expansion :total]))
-                             (empty? (get-in vs [:expansion :parameter])))
-        expansion-fn (if-let [expansion-contains (not-empty expansion-contains)]
-                       (let [concept-identity-keys [:code :system :version]
-                             expansion-concepts (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
-                         (fn [{concept :zen.fhir/resource}]
-                           (let [concept-identifier (select-keys concept concept-identity-keys)]
-                             (contains? expansion-concepts concept-identifier))))
-                       (constantly false))
+        full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
+                                (empty? (get-in vs [:expansion :parameter])))
+        expansion-fn       (if-let [expansion-contains (not-empty expansion-contains)]
+                             (let [concept-identity-keys [:code :system :version]
+                                   expansion-concepts    (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
+                               (fn [{concept :zen.fhir/resource}]
+                                 (let [concept-identifier (select-keys concept concept-identity-keys)]
+                                   (contains? expansion-concepts concept-identifier))))
+                             (constantly false))
 
         includes   (some->> (get-in vs [:compose :include])
-                            (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
-                            not-empty)
+                                    (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
+                                    not-empty)
         include-fn (or (some->> includes
                                 (map :check-fn)
                                 (apply some-fn))
@@ -162,10 +162,10 @@
 
         includes-and-excludes (concat includes excludes)
 
-        systems    (into #{}
-                         (mapcat (comp not-empty :systems))
-                         includes-and-excludes)]
-    {:systems    (not-empty systems)
+        systems (into #{}
+                      (mapcat (comp not-empty :systems))
+                      includes-and-excludes)]
+    {:systems          (not-empty systems)
      :check-concept-fn check-concept-fn}))
 
 
