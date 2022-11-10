@@ -126,7 +126,18 @@
 
 
 (defn compose [ztx vs]
-  (let [includes   (some->> (get-in vs [:compose :include])
+  (let [expansion-contains (get-in vs [:expansion :contains])
+        full-expansion? (and (= (count expansion-contains) (get-in vs [:expansion :total]))
+                             (empty? (get-in vs [:expansion :parameter])))
+        expansion-fn (if-let [expansion-contains (not-empty expansion-contains)]
+                       (let [concept-identity-keys [:code :system :version]
+                             expansion-concepts (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
+                         (fn [{concept :zen.fhir/resource}]
+                           (let [concept-identifier (select-keys concept concept-identity-keys)]
+                             (contains? expansion-concepts concept-identifier))))
+                       (constantly false))
+
+        includes   (some->> (get-in vs [:compose :include])
                             (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
                             not-empty)
         include-fn (some->> includes
@@ -148,10 +159,11 @@
                          includes-and-excludes)]
     {:systems    (not-empty systems)
      :compose-fn
-     (or (some->> [include-fn exclude-fn]
+     (or (some->> [(constantly (not full-expansion?)) include-fn exclude-fn]
                   (remove nil?)
                   not-empty
-                  (apply every-pred))
+                  (apply every-pred)
+                  (some-fn expansion-fn))
          #_(assert (some? include-fn) (str "ValueSet.compose.include is required. Value set url is " (:url vs)))
          (constantly false))}))
 

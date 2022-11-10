@@ -697,15 +697,26 @@
                             :id "expanded-gender-vs-id"
                             :url "expanded-gender-vs-url"
                             :status "active"
-                            :compose {:include [{:system "expanded-gender-cs-url"}]}
-                            :expansion {:total 2
+                            :compose {:include [{:system "expanded-gender-cs-url"}
+                                                ;; Checking that expansions with filter work
+                                                {:system "expanded-gender-with-filter-cs-url"
+                                                 :filter [{:op "descendent-of"
+                                                           :value "abc"
+                                                           :property "concept"}]}]}
+                            :expansion {:total 4
                                         :offset 0
                                         :contains [{:code "x"
                                                     :system "expanded-gender-cs-url"
                                                     :display "X"}
                                                    {:code "y"
                                                     :system "expanded-gender-cs-url"
-                                                    :display "Y"}]}}
+                                                    :display "Y"}
+                                                   {:code "a"
+                                                    :system "expanded-gender-with-filter-cs-url"
+                                                    :display "A"}
+                                                   {:code "b"
+                                                    :system "expanded-gender-with-filter-cs-url"
+                                                    :display "B"}]}}
 
         unknown-gender-vs {:resourceType "ValueSet"
                            :id "unknown-gender-vs-id"
@@ -773,9 +784,9 @@
       {"v1"
        {:valuesets
         {"gender-vs-url"          #{"gender-cs-url"}
-         "expanded-gender-vs-url" #{"expanded-gender-cs-url"}
+         "expanded-gender-vs-url" #{"expanded-gender-cs-url" "expanded-gender-with-filter-cs-url"}
          "unknown-gender-vs-url"  #{"gender-cs-url"}
-         "custom-gender-vs-url"   #{"gender-cs-url" "expanded-gender-cs-url"}}
+         "custom-gender-vs-url"   #{"gender-cs-url" "expanded-gender-cs-url" "expanded-gender-with-filter-cs-url"}}
 
         :codesystems
         {"gender-cs-url"          {"male"    {:display  "Male"
@@ -789,7 +800,11 @@
          "expanded-gender-cs-url"     {"x" {:display  "X"
                                             :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
                                        "y" {:display  "Y"
-                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}})))
+                                            :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}
+         "expanded-gender-with-filter-cs-url" {"a" {:display  "A"
+                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
+                                               "b" {:display  "B"
+                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}})))
 
 
 (defn test-r4-core-ftr-validation [root-path]

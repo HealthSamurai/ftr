@@ -136,7 +136,6 @@
                             concepts (or (some->> [:expansion :contains]
                                                   (get-in res)
                                                   not-empty
-                                                  (map #(assoc % :valueset [(:url res)]))
                                                   (group-by :system)
                                                   (reduce-kv (fn [acc system concepts]
                                                                (conj acc {:system system :concept concepts}))
