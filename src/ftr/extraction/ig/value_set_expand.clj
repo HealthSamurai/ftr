@@ -130,7 +130,7 @@
         full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
                                 (empty? (get-in vs [:expansion :parameter])))
         expansion-fn       (if-let [expansion-contains (not-empty expansion-contains)]
-                             (let [concept-identity-keys [:code :system :version]
+                             (let [concept-identity-keys [:code :system]
                                    expansion-concepts    (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
                                (fn [{concept :zen.fhir/resource}]
                                  (let [concept-identifier (select-keys concept concept-identity-keys)]
