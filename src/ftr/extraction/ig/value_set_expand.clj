@@ -93,7 +93,7 @@
                       not-empty)]
     (when-let [check-fn
                (some->> composes
-                        (keep :compose-fn)
+                        (keep :check-concept-fn)
                         not-empty
                         (apply every-pred))]
       {:systems (mapcat :systems composes)
@@ -140,17 +140,25 @@
         includes   (some->> (get-in vs [:compose :include])
                             (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
                             not-empty)
-        include-fn (some->> includes
-                            (map :check-fn)
-                            (apply some-fn))
+        include-fn (or (some->> includes
+                                (map :check-fn)
+                                (apply some-fn))
+                       (constantly false))
 
         excludes   (some->> (get-in vs [:compose :exclude])
                             (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
                             not-empty)
-        exclude-fn (some->> excludes
-                            (map :check-fn)
-                            (apply some-fn)
-                            complement)
+        exclude-fn (or (some->> excludes
+                                (map :check-fn)
+                                (apply some-fn)
+                                complement)
+                       (constantly true))
+
+        include-and-exclude-fn (every-pred include-fn exclude-fn)
+
+        check-concept-fn (if full-expansion?
+                           expansion-fn
+                           (some-fn expansion-fn include-and-exclude-fn))
 
         includes-and-excludes (concat includes excludes)
 
@@ -158,21 +166,14 @@
                          (mapcat (comp not-empty :systems))
                          includes-and-excludes)]
     {:systems    (not-empty systems)
-     :compose-fn
-     (or (some->> [(constantly (not full-expansion?)) include-fn exclude-fn]
-                  (remove nil?)
-                  not-empty
-                  (apply every-pred)
-                  (some-fn expansion-fn))
-         #_(assert (some? include-fn) (str "ValueSet.compose.include is required. Value set url is " (:url vs)))
-         (constantly false))}))
+     :check-concept-fn check-concept-fn}))
 
 
 (defn denormalize-into-concepts [ztx valuesets concepts-map]
   (reduce
     (fn [concepts-acc vs]
       (let [{systems        :systems
-             concept-in-vs? :compose-fn}
+             concept-in-vs? :check-concept-fn}
             (compose ztx vs)]
         (reduce
           (fn [acc [system concepts]]
