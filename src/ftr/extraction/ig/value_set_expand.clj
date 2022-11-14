@@ -125,17 +125,26 @@
        :check-fn  check-fn})))
 
 
-(defn compose [ztx vs]
+(defn update-ftr-expansion-index [ztx vs]
   (let [expansion-contains (get-in vs [:expansion :contains])
         full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
-                                (empty? (get-in vs [:expansion :parameter])))
-        expansion-fn       (if-let [expansion-contains (not-empty expansion-contains)]
-                             (let [concept-identity-keys [:code :system]
-                                   expansion-concepts    (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
-                               (fn [{concept :zen.fhir/resource}]
-                                 (let [concept-identifier (select-keys concept concept-identity-keys)]
-                                   (contains? expansion-concepts concept-identifier))))
-                             (constantly false))
+                             (empty? (get-in vs [:expansion :parameter])))]
+    (swap! ztx assoc-in [:fhir/vs-expansion-index (:url vs)] {:contains expansion-contains
+                                                              :full?    full-expansion?})))
+
+
+(defn compose [ztx vs]
+  (let [_ (when (and (get-in vs [:expansion :contains])
+                     (not (get-in @ztx [:fhir/vs-expansion-index (:url vs)])))
+            (update-ftr-expansion-index ztx vs))
+        full-expansion? (get-in @ztx [:fhir/vs-expansion-index (:url vs) :full?])
+        expansion-fn (fn [{concept :zen.fhir/resource}]
+                       (let [expansion             (get-in @ztx [:fhir/vs-expansion-index (:url vs)])
+                             expansion-contains    (:contains expansion)
+                             concept-identity-keys [:code :system]
+                             expansion-concepts    (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)
+                             concept-identifier    (select-keys concept concept-identity-keys)]
+                         (contains? expansion-concepts concept-identifier)))
 
         includes   (some->> (get-in vs [:compose :include])
                                     (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
