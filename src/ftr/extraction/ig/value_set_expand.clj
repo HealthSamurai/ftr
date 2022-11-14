@@ -125,7 +125,7 @@
        :check-fn  check-fn})))
 
 
-(defn update-ftr-expansion-index [ztx vs concept-identity-keys]
+(defn update-fhir-vs-expansion-index [ztx vs concept-identity-keys]
   (let [expansion-contains (get-in vs [:expansion :contains])
         full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
                                 (empty? (get-in vs [:expansion :parameter])))
@@ -138,7 +138,7 @@
   (let [concept-identity-keys [:code :system]
         _ (when (and (get-in vs [:expansion :contains])
                      (not (get-in @ztx [:fhir/vs-expansion-index (:url vs)])))
-            (update-ftr-expansion-index ztx vs concept-identity-keys))
+            (update-fhir-vs-expansion-index ztx vs concept-identity-keys))
         full-expansion? (get-in @ztx [:fhir/vs-expansion-index (:url vs) :full?])
         expansion-fn (fn [{concept :zen.fhir/resource}]
                        (let [expansion             (get-in @ztx [:fhir/vs-expansion-index (:url vs)])
