@@ -1,6 +1,7 @@
 (ns ftr.extraction.core
   (:require [ftr.extraction.flat-table :as flat-table]
-            [ftr.extraction.ig.core]))
+            [ftr.extraction.ig.core]
+            [ftr.extraction.snomed]))
 
 (defn extract [cfg]
   (let [{:keys [source-type source-url extractor-options]} cfg
@@ -10,4 +11,5 @@
     (condp = source-type
       :flat-table (flat-table/import-from-cfg extractor-cfg)
       :ig (ftr.extraction.ig.core/import-from-cfg extractor-cfg)
-      :igs (ftr.extraction.ig.core/import-from-cfg extractor-cfg))))
+      :igs (ftr.extraction.ig.core/import-from-cfg extractor-cfg)
+      :snomed (ftr.extraction.snomed/import-from-cfg extractor-cfg))))

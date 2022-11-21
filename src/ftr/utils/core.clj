@@ -1,7 +1,8 @@
 (ns ftr.utils.core
   (:require [clojure.java.io :as io]
             [cheshire.core :as json]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.walk]))
 
 
 (defn dissoc-when
@@ -69,8 +70,16 @@
                  (cheshire.core/parse-string json-row keyword))))))
 
 
+(defn prepare-map-for-canonical-json-generation [m]
+  (clojure.walk/postwalk (fn [node]
+                           (if (map? node)
+                             (into (sorted-map) node)
+                             node))
+                         m))
+
+
 (defn generate-ndjson-row [obj]
-  (format "%s\n" (cheshire.core/generate-string (into (sorted-map) obj))))
+  (format "%s\n" (cheshire.core/generate-string (prepare-map-for-canonical-json-generation obj))))
 
 
 (defn file-exists? [path]

@@ -1,8 +1,10 @@
 (ns ftr.writer.core
   (:require [clojure.java.io :as io]
             [ftr.utils.core]
-            [clojure.string :as str]
-            [ftr.utils.core]))
+            [cheshire.core])
+  (:import [java.sql
+            PreparedStatement
+            ResultSet]))
 
 
 (defn create-temp-tf-path! [ftr-path]
@@ -26,23 +28,27 @@
     res))
 
 
-
-
-
 (defn generate-concept-id [concept vs]
   (assoc concept :id (ftr.utils.core/escape-url
                        (str (:system concept)  "-" (:url vs) "-" (:code concept)))))
 
 
 (defn spit-tf-file! [writer cs vs c]
-  (let [sorted-code-systems (sort-by :id cs)
-        sorted-concepts (sort-by #(format "%s-%s" (:system %) (:code %)) c)]
+  (let [sorted-code-systems (sort-by :id cs)]
     (with-open [w writer]
       (doseq [cs sorted-code-systems]
         (.write w (ftr.utils.core/generate-ndjson-row (generate-id-if-not-present cs))))
       (.write w (ftr.utils.core/generate-ndjson-row (generate-id-if-not-present vs)))
-      (doseq [c sorted-concepts]
-        (.write w (ftr.utils.core/generate-ndjson-row (generate-concept-id c vs)))))))
+      (if (coll? c) ;; TODO Smells? Move to multimethod? c - can be regular clojure collection OR PreparedStatement obj
+        (doseq [c (sort-by #(format "%s-%s" (:system %) (:code %)) c)]
+          (.write w (ftr.utils.core/generate-ndjson-row (generate-concept-id c vs))))
+        (with-open [^PreparedStatement pstmnt c]
+          (with-open [^ResultSet rset (.executeQuery pstmnt)]
+            (while (.next rset)
+              (.write w (-> (.getString rset "snomed")
+                            (cheshire.core/parse-string keyword)
+                            (generate-concept-id vs)
+                            (ftr.utils.core/generate-ndjson-row))))))))))
 
 
 (defn write-terminology-file!

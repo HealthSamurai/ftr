@@ -73,6 +73,13 @@
              ::feeder] ctx))
 
 
+(defmethod apply-cfg :snomed [ctx]
+  (u/*apply [::extract-terminology
+             ::write-terminology-file
+             ::shape-ftr-layout
+             :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx))
+
+
 ;; `apply-cfg` split into 2 separate processes, is used in zen-lang/fhir CI pipeline
 (defmulti extract
   (fn [{:as _ctx, {:keys [source-type]} :cfg}]
@@ -98,3 +105,36 @@
   (u/*apply [::select-package-valuesets
              ::feeder]
             ctx))
+
+
+(comment
+  (apply-cfg {:cfg {:module            "snomed"
+                    :source-url        "/Users/ghrp/Downloads/SnomedCT_USEditionRF2_PRODUCTION_20220301T120000Z"
+                    :ftr-path          "/tmp"
+                    :tag               "init"
+                    :source-type       :snomed
+                    :extractor-options {:db "jdbc:postgresql://localhost:55002/postgres?user=postgres&password=postgrespw"
+                                        :code-system {:resourceType "CodeSystem"
+                                                      :id "snomedct"
+                                                      :url "http://snomed.info/sct"
+                                                      :date "2022-03-01"
+                                                      :description "SNOMEDCT US edition snapshot US1000124"
+                                                      :content "complete"
+                                                      :version "03"
+                                                      :name "SNOMEDCT"
+                                                      :publisher "National Library of Medicine (NLM)"
+                                                      :status "active"
+                                                      :caseSensitive true}
+                                        :value-set   {:id "snomedct"
+                                                      :resourceType "ValueSet"
+                                                      :compose { :include [{:system "http://snomed.info/sct"}]}
+                                                      :date "2022-03-01"
+                                                      :version "03"
+                                                      :status "active"
+                                                      :name "SNOMEDCT"
+                                                      :description "Includes all concepts from SNOMEDCT US edition snapshot US1000124. Both active and inactive concepts included, but is-a relationships only stored for active concepts"
+                                                      :url "http://snomed.info/sct"}}}})
+
+
+
+  )
