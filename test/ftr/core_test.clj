@@ -30,22 +30,22 @@
 
 
 (def csv-user-cfg {:module            "icd10"
-               :source-url        (:csv-source-initial csv-test-env-cfg)
-               :ftr-path          (:ftr-path csv-test-env-cfg)
-               :tag               "v1"
-               :source-type       :flat-table
-               :extractor-options {:format "csv"
-                                   :csv-format      {:delimiter ";"
-                                                     :quote     "'"}
-                                   :header      false
-                                   :data-row    0
-                                   :mapping     {:concept {:code    {:column 2}
-                                                           :display {:column 3}}}
-                                   :code-system {:id  "icd10"
-                                                 :url "http://hl7.org/fhir/sid/icd-10"}
-                                   :value-set   {:id   "icd10"
-                                                 :name "icd10.accidents"
-                                                 :url  "http://hl7.org/fhir/ValueSet/icd-10"}}})
+                   :source-url        (:csv-source-initial csv-test-env-cfg)
+                   :ftr-path          (:ftr-path csv-test-env-cfg)
+                   :tag               "v1"
+                   :source-type       :flat-table
+                   :extractor-options {:format "csv"
+                                       :csv-format      {:delimiter ";"
+                                                         :quote     "'"}
+                                       :header      false
+                                       :data-row    0
+                                       :mapping     {:concept {:code    {:column 2}
+                                                               :display {:column 3}}}
+                                       :code-system {:id  "icd10"
+                                                     :url "http://hl7.org/fhir/sid/icd-10"}
+                                       :value-set   {:id   "icd10"
+                                                     :name "icd10.accidents"
+                                                     :url  "http://hl7.org/fhir/ValueSet/icd-10"}}})
 
 
 (defn prepare-test-env! [{:as _cfg, :keys [csv-source-initial
@@ -697,3 +697,75 @@
                  {:resourceType "ValueSet"   :id "gender-vs-id"}
                  {:resourceType "Concept"    :code "o"}
                  nil?])))]))
+
+
+(t/deftest tag-index-hash-side-file-creation
+  (let [csv-source-initial           "/tmp/ftr-fixtures/icd10initial.csv"
+        csv-source-updated           "/tmp/ftr-fixtures/icd10updated.csv"
+        ftr-path                     "/tmp/ftr"
+
+        csv-user-cfg {:module            "icd10"
+                      :source-url        csv-source-initial
+                      :ftr-path          ftr-path
+                      :tag               "v1"
+                      :source-type       :flat-table
+                      :extractor-options {:format "csv"
+                                          :csv-format      {:delimiter ";"
+                                                            :quote     "'"}
+                                          :header      false
+                                          :data-row    0
+                                          :mapping     {:concept {:code    {:column 2}
+                                                                  :display {:column 3}}}
+                                          :code-system {:id  "icd10"
+                                                        :url "http://hl7.org/fhir/sid/icd-10"}
+                                          :value-set   {:id   "icd10"
+                                                        :name "icd10.accidents"
+                                                        :url  "http://hl7.org/fhir/ValueSet/icd-10"}}}
+        value-set-name (ftr.utils.core/escape-url (get-in csv-user-cfg [:extractor-options :value-set :url]))
+
+        _prepared-test-env (let [fixture-file-1 (io/file csv-source-initial)
+                                 fixture-file-2 (io/file csv-source-updated)]
+
+                             (io/make-parents fixture-file-1)
+                             (spit
+                               fixture-file-1
+"10344;20;XX;External causes of morbidity and mortality;;;1;
+16003;2001;V01-X59;Accidents;10344;;1;
+15062;20012;W00-X59;Other external causes of accidental injury;16003;;1;10/07/2020")
+
+                             (spit fixture-file-2
+"10343;766;AA;loh and mortality;;;1;
+10343;666;X;morbidity and mortality;;;1;
+10344;20;XX;External causes of morbidity and mortality;;;1;
+16003;2001;V01-X59;Updated accidents;10344;;1;"))
+
+        _ (t/testing "Newly generated FTR has correct layout"
+            (sut/apply-cfg {:cfg csv-user-cfg})
+
+            (matcho/match
+              (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))
+              {(:module csv-user-cfg)
+               {"tags" {(str (:tag csv-user-cfg) ".ndjson.gz") {}
+                        (str (:tag csv-user-cfg) ".hash") {}}
+                "vs" {value-set-name {}}}})
+
+            (t/testing "Tag index hash is correct"
+              (matcho/match
+                (try (slurp (format "%s/%s/tags/%s.hash" ftr-path (:module csv-user-cfg) (:tag csv-user-cfg)))
+                     (catch Exception _ :file-not-exists))
+                "68430c6867f892e215a267e1a8c819cc97e1bb746f6fce2517ce1356a7c17526")))
+        _ (t/testing "Updated FTR has correct layout"
+            (sut/apply-cfg {:cfg (assoc csv-user-cfg :source-url csv-source-updated)})
+
+            (matcho/match
+              (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))
+              {(:module csv-user-cfg)
+               {"tags" {(str (:tag csv-user-cfg) ".ndjson.gz") {}
+                        (str (:tag csv-user-cfg) ".hash") {}}
+                "vs" {value-set-name {}}}})
+
+            (t/testing "Updated tag index hash is correct"
+              (matcho/match
+                (try (slurp (format "%s/%s/tags/%s.hash" ftr-path (:module csv-user-cfg) (:tag csv-user-cfg)))
+                     (catch Exception _ :file-not-exists))
+                "e3b60170e660d9ffd98868d0ba02456c50318aa574b2cb471bd91226f1fe02f9")))]))
