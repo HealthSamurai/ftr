@@ -68,10 +68,7 @@
                                       {:keys [tf-sha256 value-set]} :write-result
                                       {:keys [tag-index-path
                                               new-tag-index-path]} :ftr-layout}]
-  (if new-tag-index-path
-    (if (ftr.utils.core/file-exists? new-tag-index-path)
-      (update-tag-index! new-tag-index-path (ftr.utils.core/escape-url (:url value-set)) module tf-sha256)
-      (create-tag-index! new-tag-index-path (ftr.utils.core/escape-url (:url value-set)) module tf-sha256))
+  (let [tag-index-path (or new-tag-index-path tag-index-path)]
     (if (ftr.utils.core/file-exists? tag-index-path)
       (update-tag-index! tag-index-path (ftr.utils.core/escape-url (:url value-set)) module tf-sha256)
       (create-tag-index! tag-index-path (ftr.utils.core/escape-url (:url value-set)) module tf-sha256))))
