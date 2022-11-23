@@ -45,15 +45,28 @@
       :new-tag-index-path (when ?new-tag (format "%s/%s.ndjson.gz" tags-path ?new-tag))}}))
 
 
+(defmethod u/*fn ::write-tag-index-hash [{:as _ctx, :keys [ftr-layout cfg]}]
+  (let [{:keys [tag]}                cfg
+        {:keys [tags-path
+                tag-index-path
+                new-tag-index-path]} ftr-layout
+        tag-index-path               (or new-tag-index-path tag-index-path)
+        tag-index-side-file-path     (format "%s/%s.hash" tags-path tag)
+        tag-index-hash               (ftr.utils.core/gzipped-file-content->sha256 tag-index-path)]
+    (spit tag-index-side-file-path
+          (str tag-index-hash \newline))))
+
+
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
                             {:keys [ftr-path]} :cfg}]
-  (doseq [[vs-url tf] extraction-result]
-    (u/*apply [::write-terminology-file
-               ::shape-ftr-layout
-               :ftr.ingestion-coordinator.core/ingest-terminology-file]
-              (assoc ctx
-                     :extraction-result tf
-                     ::feeder {:vs-url vs-url}))))
+  (last
+   (for [[vs-url tf] extraction-result]
+     (u/*apply [::write-terminology-file
+                ::shape-ftr-layout
+                :ftr.ingestion-coordinator.core/ingest-terminology-file]
+               (assoc ctx
+                      :extraction-result tf
+                      ::feeder {:vs-url vs-url})))))
 
 
 (defmulti apply-cfg
@@ -65,19 +78,22 @@
   (u/*apply [::extract-terminology
              ::write-terminology-file
              ::shape-ftr-layout
-             :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx))
+             :ftr.ingestion-coordinator.core/ingest-terminology-file
+             ::write-tag-index-hash] ctx))
 
 
 (defmethod apply-cfg :ig [ctx]
   (u/*apply [::extract-terminology
-             ::feeder] ctx))
+             ::feeder
+             ::write-tag-index-hash] ctx))
 
 
 (defmethod apply-cfg :snomed [ctx]
   (u/*apply [::extract-terminology
              ::write-terminology-file
              ::shape-ftr-layout
-             :ftr.ingestion-coordinator.core/ingest-terminology-file] ctx))
+             :ftr.ingestion-coordinator.core/ingest-terminology-file
+             ::write-tag-index-hash] ctx))
 
 
 ;; `apply-cfg` split into 2 separate processes, is used in zen-lang/fhir CI pipeline

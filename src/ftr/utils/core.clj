@@ -49,6 +49,18 @@
      :digest (fn [] (format "%032x" (BigInteger. 1 (.digest digest))))}))
 
 
+(defn gzipped-file-content->sha256 [path]
+  (let [file   (io/file path)
+        digest (java.security.MessageDigest/getInstance "SHA-256")
+        digest-stream (-> file
+                          (java.io.FileInputStream.)
+                          (java.util.zip.GZIPInputStream.)
+                          (java.security.DigestInputStream. digest))]
+    ;; Reading the whole stream to calculate SHA256 digest
+    (while (not= -1 (.read digest-stream)))
+    (format "%032x" (BigInteger. 1 (.digest digest)))))
+
+
 (defn gen-uuid []
   (str (java.util.UUID/randomUUID)))
 

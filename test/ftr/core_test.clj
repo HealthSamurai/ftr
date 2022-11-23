@@ -753,7 +753,7 @@
               (matcho/match
                 (try (slurp (format "%s/%s/tags/%s.hash" ftr-path (:module csv-user-cfg) (:tag csv-user-cfg)))
                      (catch Exception _ :file-not-exists))
-                "68430c6867f892e215a267e1a8c819cc97e1bb746f6fce2517ce1356a7c17526")))
+                "68430c6867f892e215a267e1a8c819cc97e1bb746f6fce2517ce1356a7c17526\n")))
         _ (t/testing "Updated FTR has correct layout"
             (sut/apply-cfg {:cfg (assoc csv-user-cfg :source-url csv-source-updated)})
 
@@ -768,4 +768,4 @@
               (matcho/match
                 (try (slurp (format "%s/%s/tags/%s.hash" ftr-path (:module csv-user-cfg) (:tag csv-user-cfg)))
                      (catch Exception _ :file-not-exists))
-                "e3b60170e660d9ffd98868d0ba02456c50318aa574b2cb471bd91226f1fe02f9")))]))
+                "e3b60170e660d9ffd98868d0ba02456c50318aa574b2cb471bd91226f1fe02f9\n")))]))
