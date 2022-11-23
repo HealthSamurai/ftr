@@ -513,7 +513,19 @@
                                         (format "%s/%s/tags/%s.ndjson.gz"
                                                 (:ftr-path env)
                                                 (:module user-cfg)
-                                                (:tag user-cfg)))})]
+                                                (:tag user-cfg)))
+                           :tag-index-hash (slurp (format "%s/%s/tags/%s.hash"
+                                                          (:ftr-path env)
+                                                          (:module user-cfg)
+                                                          (:tag user-cfg)))})]
+
+    (t/testing "do pull/update on unchanged master ftr state"
+      (t/testing "no update plan has been created"
+        (matcho/match
+          (pull-sut/migrate (-> client-cfg
+                                (assoc :update-plan-name (:update-plan-name env) :tag (:tag user-cfg))
+                                (dissoc :move-tag)))
+          nil?)))
 
     (sut/apply-cfg {:cfg (assoc user-cfg :source-url (:ig-source-updated1 env))})
     (sut/apply-cfg {:cfg (merge user-cfg {:source-url (:ig-source-updated2 env)})})
