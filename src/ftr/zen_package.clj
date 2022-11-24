@@ -38,6 +38,10 @@
       (cons ftr-path))))
 
 
+(defn read-ndjson-line! [^java.io.BufferedReader buffered-reader]
+  (cheshire.core/parse-string (.readLine buffered-reader) keyword))
+
+
 (defn make-ftr-index-by-tag-index [tag-index ftr-dir module]
   (reduce (fn [{:as ftr-index-by-tag, :keys [valuesets]}
                {:as _ti-entry
@@ -57,13 +61,11 @@
 
                   {codesystems "CodeSystem"
                    [{vs-url :url}] "ValueSet"}
-                  (loop [line (-> (.readLine new-tf-reader)
-                                  (cheshire.core/parse-string keyword))
+                  (loop [line (read-ndjson-line! new-tf-reader)
                          css&vs []]
                     (if (= (:resourceType line) "ValueSet")
                       (group-by :resourceType (conj css&vs line))
-                      (recur (-> (.readLine new-tf-reader)
-                                 (cheshire.core/parse-string keyword))
+                      (recur (read-ndjson-line! new-tf-reader)
                              (conj css&vs line))))
 
                   codesystems-urls
@@ -74,16 +76,14 @@
                     (update-in ftr-index-by-tag [:valuesets vs-url] into codesystems-urls)
                     (assoc-in ftr-index-by-tag [:valuesets vs-url] (set codesystems-urls)))]
               (loop [{:as concept, :keys [code system display]}
-                     (-> (.readLine new-tf-reader)
-                         (cheshire.core/parse-string keyword))
+                     (read-ndjson-line! new-tf-reader)
 
                      {:as ftr-index-by-tag, :keys [codesystems]}
                      ftr-index-by-tag-with-updated-vss]
 
                 (if-not (nil? concept)
                   (recur
-                    (-> (.readLine new-tf-reader)
-                        (cheshire.core/parse-string keyword))
+                    (read-ndjson-line! new-tf-reader)
                     (if (get-in codesystems [system code])
                       (update-in ftr-index-by-tag [:codesystems system code :valueset] conj vs-url)
                       (assoc-in ftr-index-by-tag [:codesystems system code] {:display display
