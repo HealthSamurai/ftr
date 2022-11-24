@@ -149,7 +149,7 @@
       (java.io.BufferedWriter.)))
 
 
-(defn open-gz-reader [input]
+(defn open-gz-reader ^java.io.BufferedReader [input]
   (-> input
       (io/input-stream)
       (java.util.zip.GZIPInputStream.)
