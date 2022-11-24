@@ -62,7 +62,60 @@
             [] all-keys)))
 
 
-(defn migrate [{:as _cfg, :keys [ftr-path module tag tag-index tag-index-hash patch-plan-file-name]
+(defn infer-patch-chain [{:as cfg,
+                          :keys [vs-path tf-tag-path from-hash to-hash]}]
+  (let [[header & from&to-entries
+         :as _parsed-tf-tag-file]
+        (ftr.utils.core/parse-ndjson-gz tf-tag-path)
+
+        {:as   predecessor-tag-patch-chain,
+         :keys [patch-chain finalized?]
+         :or   {patch-chain []}}
+        (when-let [from-tag-directive (get header :from-tag)]
+          (infer-patch-chain (assoc cfg :tf-tag-path (format "%s/tag.%s.ndjson.gz" vs-path from-tag-directive))))]
+    (if finalized?
+      predecessor-tag-patch-chain
+      (loop [from from-hash
+             patch-chain patch-chain]
+        (let [{:as from&to-entry,
+               :keys [_from to]} (first (filter #(= from (:from %)) from&to-entries))]
+          (cond
+            (= to to-hash)
+            {:patch-chain (conj patch-chain from&to-entry)
+             :finalized? true}
+
+            from&to-entry
+            (recur to (conj patch-chain from&to-entry))
+
+            (nil? from&to-entry)
+            {:patch-chain patch-chain
+             :finalized? false}))))))
+
+
+(defn generate-intermediate-patch-plan [{:as cfg, :keys [vs-path]}]
+  (let [{:keys [patch-chain]} (infer-patch-chain cfg)
+        patches-paths (map #(format "%s/patch.%s.%s.ndjson.gz" vs-path (:from %) (:to %)) patch-chain)]
+    (reduce (fn [acc patch-path]
+              (let [[_header & patch-entries] (ftr.utils.core/parse-ndjson-gz patch-path)]
+                (reduce (fn [acc {:as patch-entry, :keys [op id]}]
+                          (case op
+                            "add"
+                            (assoc-in acc [:patch-plan id] patch-entry)
+
+                            "update"
+                            (assoc-in acc [:patch-plan id] patch-entry)
+
+                            "remove"
+                            (-> acc
+                                (update :remove-plan conj id)
+                                (update :patch-plan dissoc id))))
+                        acc patch-entries)))
+            {:patch-plan {}
+             :remove-plan #{}}
+            patches-paths)))
+
+
+(defn migrate [{:as cfg, :keys [ftr-path module tag tag-index tag-index-hash patch-plan-file-name]
                 :or {patch-plan-file-name "update-plan"}}]
   (when-not (= tag-index-hash
                (slurp (format "%s/%s/tags/%s.hash" ftr-path module tag)))
@@ -92,31 +145,27 @@
 
                      :updated
                      (let [tag-file-path (->vs-path (format "tag.%s.ndjson.gz" tag))
-                           tag-file (ftr.utils.core/parse-ndjson-gz tag-file-path)
-                           ?patch-file-path (first
-                                              (keep (fn [m] (when (= m (dissoc tag-entry :vs-name))
-                                                              (->vs-path (format "patch.%s.%s.ndjson.gz"
-                                                                                 from
-                                                                                 to))))
-                                                    (rest tag-file)))
-                           patch (or (when (and ?patch-file-path (-> ?patch-file-path io/file .exists))
-                                       (rest (ftr.utils.core/parse-ndjson-gz ?patch-file-path)))
-                                     (ftr.patch-generator.core/generate-patch! ?old-tf ?new-tf))
                            new-tf-reader (ftr.utils.core/open-ndjson-gz-reader ?new-tf)
                            codesystems&value-set (loop [line (.readLine new-tf-reader)
                                                         acc  []]
                                                    (if (= (:resourceType line) "ValueSet")
                                                      (conj acc line)
                                                      (recur (.readLine new-tf-reader) (conj acc line))))
-                           {:strs [add remove update]} (group-by :op patch)
-                           concepts (->> (into add update)
-                                         (map #(dissoc % :op :_source)))
-                           ids-to-remove (map :id remove)]
+
+                           {:as _intermediate-patch-plan
+                            :keys [patch-plan remove-plan]}
+                           (generate-intermediate-patch-plan (assoc cfg
+                                                                    :vs-path (format "%s/%s/vs/%s/" ftr-path module vs-name)
+                                                                    :tf-tag-path tag-file-path
+                                                                    :from-hash from
+                                                                    :to-hash to))
+                           concepts (->> (vals patch-plan)
+                                         (map #(dissoc % :op :_source)))]
 
                        (doseq [l (into codesystems&value-set concepts)]
                          (.write w (ftr.utils.core/generate-ndjson-row l)))
 
-                       (clojure.core/update acc :remove-plan into ids-to-remove)))))
+                       (clojure.core/update acc :remove-plan into remove-plan)))))
                {:remove-plan []
                 :patch-plan patch-plan-file-path}
                tag-indexes-diff)))))
