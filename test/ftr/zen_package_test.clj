@@ -159,85 +159,85 @@
 
     (matcho/match
      (get @ztx :zen.fhir/ftr-index)
-      {"v1"
-       {:valuesets
-        {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"},
-         "another-diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
-        :codesystems
-        {"http://hl7.org/fhir/sid/icd-10"
-         {"V01-X59"
-          {:display "Accidents",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W00-X59"
-          {:display "Other external causes of accidental injury",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W50-W64"
-          {:display "Exposure to animate mechanical forces",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W64"
-          {:display
-           "Exposure to other and unspecified animate mechanical forces",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W64.0"
-          {:display
-           "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W64.00"
-          {:display
-           "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "W64.01"
-          {:display
-           "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
-          "XX"
-          {:display "External causes of morbidity and mortality",
-           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}}}}}}))
+      {:result
+       {"v1"
+        {:valuesets {"diagnosis-vs"         #{"http://hl7.org/fhir/sid/icd-10"}
+                     "another-diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
+         :codesystems
+         {"http://hl7.org/fhir/sid/icd-10"
+          {"V01-X59"
+           {:display "Accidents",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W00-X59"
+           {:display "Other external causes of accidental injury",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W50-W64"
+           {:display "Exposure to animate mechanical forces",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W64"
+           {:display
+            "Exposure to other and unspecified animate mechanical forces",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W64.0"
+           {:display
+            "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W64.00"
+           {:display
+            "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "W64.01"
+           {:display
+            "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
+           "XX"
+           {:display "External causes of morbidity and mortality",
+            :valueset #{"diagnosis-vs" "another-diagnosis-vs"}}}}}}
+       :complete? true}))
 
   (t/testing "incremental ftr index builds successfully"
     (swap! ztx dissoc :zen.fhir/ftr-index)
     (ftr.zen-package/enrich-ftr-index-with-vs ztx 'profile/diagnosis-vs)
 
     (t/is (get @ztx :zen.fhir/ftr-index)
-          {"v1"
-           {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
-            :codesystems
-            {"http://hl7.org/fhir/sid/icd-10"
-             {"V01-X59" {:display "Accidents", :valueset #{"diagnosis-vs"}},
-              "W00-X59"
-              {:display "Other external causes of accidental injury",
-               :valueset #{"diagnosis-vs"}},
-              "W50-W64"
-              {:display "Exposure to animate mechanical forces",
-               :valueset #{"diagnosis-vs"}},
-              "W64"
-              {:display
-               "Exposure to other and unspecified animate mechanical forces",
-               :valueset #{"diagnosis-vs"}},
-              "W64.0"
-              {:display
-               "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
-               :valueset #{"diagnosis-vs"}},
-              "W64.00"
-              {:display
-               "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
-               :valueset #{"diagnosis-vs"}},
-              "W64.01"
-              {:display
-               "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
-               :valueset #{"diagnosis-vs"}},
-              "XX"
-              {:display "External causes of morbidity and mortality",
-               :valueset #{"diagnosis-vs"}}}}}})
+          {:result
+           {"v1"
+            {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
+             :codesystems
+             {"http://hl7.org/fhir/sid/icd-10"
+              {"V01-X59" {:display "Accidents", :valueset #{"diagnosis-vs"}},
+               "W00-X59"
+               {:display "Other external causes of accidental injury",
+                :valueset #{"diagnosis-vs"}},
+               "W50-W64"
+               {:display "Exposure to animate mechanical forces",
+                :valueset #{"diagnosis-vs"}},
+               "W64"
+               {:display
+                "Exposure to other and unspecified animate mechanical forces",
+                :valueset #{"diagnosis-vs"}},
+               "W64.0"
+               {:display
+                "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
+                :valueset #{"diagnosis-vs"}},
+               "W64.00"
+               {:display
+                "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
+                :valueset #{"diagnosis-vs"}},
+               "W64.01"
+               {:display
+                "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
+                :valueset #{"diagnosis-vs"}},
+               "XX"
+               {:display "External causes of morbidity and mortality",
+                :valueset #{"diagnosis-vs"}}}}}}
+           :complete? false?})
 
     (t/testing "with unknown symbols remembered"
       (ftr.zen-package/enrich-ftr-index-with-vs ztx 'profile/no-ftr-vs)
 
-      (t/is (= (get-in @ztx [:zen.fhir/ftr-index "v1" :valuesets "no-ftr-vs"])
-               nil))
-
-      (t/is (= (get @ztx :zen.fhir/ftr-index-unknown)
-               #{'profile/no-ftr-vs}))))
+      (t/is (= (get-in @ztx [:zen.fhir/ftr-index :result "v1" :valuesets "no-ftr-vs"])
+               nil))))
 
   (t/testing "vs validation works"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
@@ -729,7 +729,7 @@
 
   (ftr.zen-package/build-complete-ftr-index build-ftr-ztx)
   (t/is
-    (= (get @build-ftr-ztx :zen.fhir/ftr-index)
+   (= (get-in @build-ftr-ztx [:zen.fhir/ftr-index :result])
        {"v1"
         {:valuesets
          {"shortgender-cs-url-entire-code-system" #{"shortgender-cs-url"}
@@ -860,7 +860,7 @@
 
   (ftr.zen-package/build-complete-ftr-index build-ftr-ztx)
   (t/is
-   (= (get @build-ftr-ztx :zen.fhir/ftr-index)
+   (= (get-in @build-ftr-ztx [:zen.fhir/ftr-index :result])
       {"v1"
        {:valuesets
         {"gender-vs-url"          #{"gender-cs-url"}

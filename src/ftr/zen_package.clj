@@ -140,7 +140,9 @@
                                                tag&module-pairs))
                                         ftr-cfgs-grouped-by-package-name))]
 
-    (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
+    (swap! ztx (fn [ztx-val]
+                 (assoc ztx-val :zen.fhir/ftr-index {:result (index-by-tags tag-index-paths)
+                                                     :complete? true})))))
 
 
 (defn- enrich-ftr-index-with-tf [ftr-index ftr-tag tf-path]
@@ -202,7 +204,7 @@
         (when (every? some? [ftr-path ftr-module ftr-tag])
           (-> (format "%s/%s/tags/%s.ndjson.gz" ftr-path ftr-module ftr-tag)
               ftr.utils.core/parse-ndjson-gz))]
-    (if tag-index
+    (when tag-index
       (let [ftr-vs-name
             (ftr.utils.core/escape-url vs-uri)
 
@@ -215,8 +217,7 @@
                     ftr-module
                     ftr-vs-name
                     ftr-vs-hash)]
-        (swap! ztx update :zen.fhir/ftr-index enrich-ftr-index-with-tf ftr-tag tf-path))
-      (swap! ztx update-in [:zen.fhir/ftr-index-unknown] (fnil conj #{}) vs-sym))))
+        (swap! ztx update-in [:zen.fhir/ftr-index :result] enrich-ftr-index-with-tf ftr-tag tf-path)))))
 
 
 (defn prefix? [a b]
@@ -298,7 +299,7 @@
 
 (defn validate-concept-via-ftr-index [ztx {{:as concept, :keys [code display]} :concept
                                            :keys [valueset valueset-ftr-tag]}]
-  (let [ftr-index (get-in @ztx [:zen.fhir/ftr-index valueset-ftr-tag])
+  (let [ftr-index (get-in @ztx [:zen.fhir/ftr-index :result valueset-ftr-tag])
         codesystems-used-in-this-valueset (get-in ftr-index [:valuesets valueset])
         code-to-compare-with (->> codesystems-used-in-this-valueset
                                   (map (fn [cs] {:code (and (contains? (get-in ftr-index [:codesystems cs code :valueset]) valueset)
@@ -389,7 +390,7 @@
   ([ztx & _]
    (zen.cli/load-used-namespaces ztx #{})
    {:result
-    (update-vals (get @ztx :zen.fhir/ftr-index)
+    (update-vals (get-in @ztx [:zen.fhir/ftr-index :result])
                  (fn [{:as ftr-index, :keys [valuesets codesystems]}]
                    (let [ftr-index-size-in-mbs            (int (/ (total-memory ftr-index) 1000000))
                          amount-of-vs                     (count valuesets)
