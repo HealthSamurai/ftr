@@ -115,7 +115,7 @@
     vs))
 
 
-(defn build-ftr-index [ztx]
+(defn build-complete-ftr-index [ztx]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (map (partial zen.core/get-symbol ztx) syms)
         enriched-value-sets (map enrich-vs value-sets)
@@ -141,6 +141,82 @@
                                         ftr-cfgs-grouped-by-package-name))]
 
     (swap! ztx assoc :zen.fhir/ftr-index (index-by-tags tag-index-paths))))
+
+
+(defn- enrich-ftr-index-with-tf [ftr-index ftr-tag tf-path]
+  "Enrich FTR index with terminology file"
+  (let [tf-reader
+        (ftr.utils.core/open-ndjson-gz-reader tf-path)
+
+        {codesystems "CodeSystem"
+         [{vs-url :url}] "ValueSet"}
+        (loop [line (.readLine tf-reader)
+               css&vs []]
+          (if (= (:resourceType line) "ValueSet")
+            (group-by :resourceType (conj css&vs line))
+            (recur (.readLine tf-reader) (conj css&vs line))))
+
+        codesystems-urls
+        (map :url codesystems)
+
+        ftr-index-with-updated-vss
+        (update-in ftr-index
+                   [ftr-tag :valuesets vs-url]
+                   (fnil into #{})
+                   codesystems-urls)]
+
+    (loop [{:as concept, :keys [code system display]}
+           (.readLine tf-reader)
+
+           {:as ftr-index, :keys [codesystems]}
+           ftr-index-with-updated-vss]
+      (if-not (nil? concept)
+        (recur
+         (.readLine tf-reader)
+         (if (get-in codesystems [system code])
+           (update-in ftr-index [ftr-tag :codesystems system code :valueset] conj vs-url)
+           (assoc-in ftr-index [ftr-tag :codesystems system code] {:display display
+                                                                   :valueset #{vs-url}})))
+        ftr-index))))
+
+
+(defn- find-hash-for-name-in-tag-index [tag-index name]
+  (->> tag-index
+       (filter #(= (:name %) name))
+       first
+       :hash))
+
+
+(defn enrich-ftr-index-with-vs [ztx vs-sym]
+  (let [vs-sch
+        (zen.core/get-symbol ztx vs-sym)
+
+        {:as enriched-vs-sch,
+         vs-uri :uri
+         {ftr-tag    :tag
+          ftr-module :module
+          ftr-path   :inferred-ftr-dir} :ftr}
+        (enrich-vs vs-sch)
+
+        tag-index
+        (when (every? some? [ftr-path ftr-module ftr-tag])
+          (-> (format "%s/%s/tags/%s.ndjson.gz" ftr-path ftr-module ftr-tag)
+              ftr.utils.core/parse-ndjson-gz))]
+    (if tag-index
+      (let [ftr-vs-name
+            (ftr.utils.core/escape-url vs-uri)
+
+            ftr-vs-hash
+            (find-hash-for-name-in-tag-index tag-index (format "%s.%s" ftr-module ftr-vs-name))
+
+            tf-path
+            (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
+                    ftr-path
+                    ftr-module
+                    ftr-vs-name
+                    ftr-vs-hash)]
+        (swap! ztx update :zen.fhir/ftr-index enrich-ftr-index-with-tf ftr-tag tf-path))
+      (swap! ztx update-in [:zen.fhir/ftr-index-unknown] (fnil conj #{}) vs-sym))))
 
 
 (defn prefix? [a b]

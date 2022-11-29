@@ -51,6 +51,33 @@
                                                                   :name "icd10.accidents"
                                                                   :url  "diagnosis-vs"}}}}
 
+                         'another-diagnosis-vs
+                         {:zen/tags #{'zen.fhir/value-set}
+                          :zen.fhir/version "0.5.0"
+                          :uri "another-diagnosis-vs"
+                          :ftr {:module            "ig"
+                                :source-url        (str root-path "/profile-lib/resources/icd-10.csv")
+                                :ftr-path          (str root-path "/profile-lib" "/ftr")
+                                :tag               "v1"
+                                :source-type       :flat-table
+                                :extractor-options {:format "csv"
+                                                    :csv-format {:delimiter ";"
+                                                                 :quote     "'"}
+                                                    :header      false
+                                                    :data-row    0
+                                                    :mapping     {:concept {:code    {:column 2}
+                                                                            :display {:column 3}}}
+                                                    :code-system {:id  "icd10"
+                                                                  :url "http://hl7.org/fhir/sid/icd-10"}
+                                                    :value-set   {:id   "icd10"
+                                                                  :name "icd10.accidents"
+                                                                  :url  "another-diagnosis-vs"}}}}
+
+                         'no-ftr-vs
+                         {:zen/tags #{'zen.fhir/value-set}
+                          :zen.fhir/version "0.5.0"
+                          :uri "no-ftr-vs"}
+
                          'sch
                          '{:zen/tags #{zen/schema zen.fhir/structure-schema}
                            :zen.fhir/version "0.5.0"
@@ -118,46 +145,99 @@
          {"ig"
           {"vs"
            {"diagnosis-vs"
-            {"tag.v1.ndjson.gz" {}
-             "tf.6c2e3657629516187bbf1c8ea0b7c4e3ae73427d3ef52af5a2ecc3b6e90c2d5b.ndjson.gz" {}}}
-           "tags" {"v1.ndjson.gz" {}}}}}}}))
+            {"tag.v1.ndjson.gz" {},
+             "tf.6c2e3657629516187bbf1c8ea0b7c4e3ae73427d3ef52af5a2ecc3b6e90c2d5b.ndjson.gz"
+             {}},
+            "another-diagnosis-vs"
+            {"tag.v1.ndjson.gz" {},
+             "tf.c130e9da8db96d4a1e17032091be61e079150408e19fc65585c61b3736aa3c7b.ndjson.gz"
+             {}}},
+           "tags" {"v1.ndjson.gz" {}, "v1.hash" {}}}}}}}))
 
-  (t/testing "ftr index builds successfully"
-    (ftr.zen-package/build-ftr-index ztx)
+  (t/testing "complete ftr index builds successfully"
+    (ftr.zen-package/build-complete-ftr-index ztx)
 
     (matcho/match
-      (get @ztx :zen.fhir/ftr-index)
+     (get @ztx :zen.fhir/ftr-index)
       {"v1"
-       {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}}
+       {:valuesets
+        {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"},
+         "another-diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
         :codesystems
         {"http://hl7.org/fhir/sid/icd-10"
          {"V01-X59"
-          {:display "Accidents"
-           :valueset #{"diagnosis-vs"}}
+          {:display "Accidents",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W00-X59"
-          {:display "Other external causes of accidental injury"
-           :valueset #{"diagnosis-vs"}}
+          {:display "Other external causes of accidental injury",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W50-W64"
-          {:display "Exposure to animate mechanical forces"
-           :valueset #{"diagnosis-vs"}}
+          {:display "Exposure to animate mechanical forces",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W64"
-          {:display "Exposure to other and unspecified animate mechanical forces"
-           :valueset #{"diagnosis-vs"}}
+          {:display
+           "Exposure to other and unspecified animate mechanical forces",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W64.0"
           {:display
-           "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity"
-           :valueset #{"diagnosis-vs"}}
+           "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W64.00"
           {:display
-           "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity"
-           :valueset #{"diagnosis-vs"}}
+           "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "W64.01"
           {:display
-           "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity"
-           :valueset #{"diagnosis-vs"}}
+           "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}},
           "XX"
-          {:display "External causes of morbidity and mortality"
-           :valueset #{"diagnosis-vs"}}}}}}))
+          {:display "External causes of morbidity and mortality",
+           :valueset #{"diagnosis-vs" "another-diagnosis-vs"}}}}}}))
+
+  (t/testing "incremental ftr index builds successfully"
+    (swap! ztx dissoc :zen.fhir/ftr-index)
+    (ftr.zen-package/enrich-ftr-index-with-vs ztx 'profile/diagnosis-vs)
+
+    (t/is (get @ztx :zen.fhir/ftr-index)
+          {"v1"
+           {:valuesets {"diagnosis-vs" #{"http://hl7.org/fhir/sid/icd-10"}},
+            :codesystems
+            {"http://hl7.org/fhir/sid/icd-10"
+             {"V01-X59" {:display "Accidents", :valueset #{"diagnosis-vs"}},
+              "W00-X59"
+              {:display "Other external causes of accidental injury",
+               :valueset #{"diagnosis-vs"}},
+              "W50-W64"
+              {:display "Exposure to animate mechanical forces",
+               :valueset #{"diagnosis-vs"}},
+              "W64"
+              {:display
+               "Exposure to other and unspecified animate mechanical forces",
+               :valueset #{"diagnosis-vs"}},
+              "W64.0"
+              {:display
+               "Exposure to other and unspecified animate mechanical forces home while engaged in sports activity",
+               :valueset #{"diagnosis-vs"}},
+              "W64.00"
+              {:display
+               "Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity",
+               :valueset #{"diagnosis-vs"}},
+              "W64.01"
+              {:display
+               "Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity",
+               :valueset #{"diagnosis-vs"}},
+              "XX"
+              {:display "External causes of morbidity and mortality",
+               :valueset #{"diagnosis-vs"}}}}}})
+
+    (t/testing "with unknown symbols remembered"
+      (ftr.zen-package/enrich-ftr-index-with-vs ztx 'profile/no-ftr-vs)
+
+      (t/is (= (get-in @ztx [:zen.fhir/ftr-index "v1" :valuesets "no-ftr-vs"])
+               nil))
+
+      (t/is (= (get @ztx :zen.fhir/ftr-index-unknown)
+               #{'profile/no-ftr-vs}))))
 
   (t/testing "vs validation works"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:diagnosis "incorrect-diagnosis"})
@@ -647,7 +727,7 @@
         "undesc-vs-url" {}}
        "tags" {"v1.ndjson.gz" {}}}}})
 
-  (ftr.zen-package/build-ftr-index build-ftr-ztx)
+  (ftr.zen-package/build-complete-ftr-index build-ftr-ztx)
   (t/is
     (= (get @build-ftr-ztx :zen.fhir/ftr-index)
        {"v1"
@@ -778,7 +858,7 @@
        "custom-gender-vs-url" {}}
       "tags" {"v1.ndjson.gz" {}}}}})
 
-  (ftr.zen-package/build-ftr-index build-ftr-ztx)
+  (ftr.zen-package/build-complete-ftr-index build-ftr-ztx)
   (t/is
    (= (get @build-ftr-ztx :zen.fhir/ftr-index)
       {"v1"
@@ -830,7 +910,7 @@
 
   (zen.core/read-ns ztx 'main)
 
-  (ftr.zen-package/build-ftr-index ztx)
+  (ftr.zen-package/build-complete-ftr-index ztx)
 
   (t/testing "validating patient gender via FTR index"
     (matcho/match (ftr.zen-package/validate ztx #{'main/sch} {:gender "incorrect-value"})

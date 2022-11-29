@@ -37,7 +37,7 @@
     (with-redefs
       [zen.core/read-ns (fn [ztx zen-ns]
                           (og-read-ns ztx zen-ns)
-                          (ftr.zen-package/build-ftr-index ztx))
+                          (ftr.zen-package/build-complete-ftr-index ztx))
        zen.core/validate (fn [ztx symbols data]
                            (-> (ftr.zen-package/validate ztx symbols data)
                                (select-keys [:errors :warnings :effects])))]
