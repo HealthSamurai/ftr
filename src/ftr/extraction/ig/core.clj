@@ -53,6 +53,7 @@
     :zen.fhir/loader
     :zen.fhir/package
     :zen.fhir/package-ns
+    :zen.fhir/packages
     :zen.fhir/schema-ns
     :zen.fhir/file
     :zen.fhir/header
@@ -229,7 +230,13 @@
                                           :value concept})))
                             (completing
                               (fn [acc {:keys [path value]}]
-                                (update-in acc path merge value)))
+                                (update-in acc path
+                                           (fn [prev-val]
+                                             (-> prev-val
+                                                 (merge value)
+                                                 (update :zen.fhir/packages
+                                                         (fnil conj #{})
+                                                         (:zen.fhir/package-ns value)))))))
                             {}
                             (concat value-sets code-systems))]
     (swap! ztx assoc-in [:fhir/inter "Concept"] concepts)))
