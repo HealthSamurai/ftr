@@ -3,6 +3,7 @@
             [clojure.test :as t]
             [matcho.core :as matcho]
             [clojure.string :as str]
+            [ftr.utils.unifn.core :as u]
             [test-utils]))
 
 
@@ -10,16 +11,18 @@
   (every-pred string? (complement empty?)))
 
 
-(t/deftest ^:kaocha/pending get-latest-snomed-download-url-test
+(t/deftest get-latest-snomed-download-url-test
   (matcho/match
-    (sut/get-latest-snomed-info! sut/config)
-    {:snomed-zip-url not-empty-string?
-     :version not-empty-string?
-     :complete-download-url not-empty-string?})
+    (u/*apply [::sut/get-latest-snomed-info!] sut/config-defaults)
+    {:snomed-info
+     {:snomed-zip-url not-empty-string?
+      :version not-empty-string?
+      :complete-download-url not-empty-string?}})
 
   (matcho/match
-    (:complete-download-url (sut/get-latest-snomed-info! sut/config))
-    #(str/starts-with? % "https://uts-ws.nlm.nih.gov/download?url=https://download.nlm.nih.gov/mlb/utsauth/USExt/SnomedCT_USEditionRF2_PRODUCTION_")))
+    (u/*apply [::sut/get-latest-snomed-info!] sut/config-defaults)
+    {:snomed-info
+     {:complete-download-url #(str/starts-with? % "https://uts-ws.nlm.nih.gov/download?url=https://download.nlm.nih.gov/mlb/utsauth/USExt/SnomedCT_USEditionRF2_PRODUCTION_")}}))
 
 
 (t/deftest write-snomed-snapshot-terminology-folder-test
@@ -47,8 +50,10 @@
         :somejunk2.txt :file}}}}
     zip-file)
 
-  (sut/write-snomed-snapshot-terminology-folder! {:snomed-url zip-file
-                                                  :out-dir write-path})
+  (u/*apply [::sut/write-snomed-snapshot-terminology-folder!]
+            {:extracted-snomed-out-dir write-path
+             :snomed-info
+             {:complete-download-url zip-file}})
 
   (t/is
     (= {"test.zip" {}
