@@ -2,7 +2,8 @@
   (:require [clojure.java.shell :as shell]
             [clojure.string :as str]
             [zen.package]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import java.io.File))
 
 
 (defn sh! [& args]
@@ -99,3 +100,34 @@
                    {}
                    (map (fn [f] (drop 1 (str/split (str f) #"/"))) (file-seq (io/file path))))]
     (get-in tree-map splitted-path)))
+
+
+(defn flatten-keys* [a ks m]
+  (if (map? m)
+    (reduce into (map (fn [[k v]] (flatten-keys* a (conj ks k) v)) (seq m)))
+    (assoc a ks m)))
+
+
+(defn flatten-keys [m] (flatten-keys* {} [] m))
+
+
+(defn fs-tree->paths [m]
+  (-> m
+      (flatten-keys)
+      (keys)
+      (->> (map #(str/join File/separatorChar (map name %))))))
+
+
+(defn create-zip-archive-from-fs-tree [fs-tree out-path]
+  (let [zip-parent-dir (.getParentFile (io/file out-path))]
+    (when-not (.exists zip-parent-dir) (.mkdirs zip-parent-dir))
+    (with-open [zip-stream
+                ^java.util.zip.ZipOutputStream
+                (-> out-path
+                    (io/output-stream)
+                    (java.util.zip.ZipOutputStream.))]
+      (doseq [path (fs-tree->paths fs-tree)]
+        (let [zip-entry (java.util.zip.ZipEntry. path)]
+          (.putNextEntry zip-stream zip-entry)
+          (io/copy "" zip-stream)
+          (.closeEntry zip-stream))))))

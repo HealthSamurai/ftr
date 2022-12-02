@@ -1,6 +1,7 @@
 (ns ftr.logger.core
   (:require [ftr.utils.unifn.core :as u]
-            [progrock.core :as pr]))
+            [progrock.core :as pr]
+            [clojure.string :as str]))
 
 
 (defmulti dispatch-logger (fn [{:as _ctx,
@@ -50,7 +51,9 @@
   (println (format "    FTR Repository size: \033[0;1m%s MB\033[22m" (int (/ (ftr.utils.core/psize ftr-path) 1000000)))))
 
 
-(defmethod dispatch-logger :default [ctx])
+(defmethod dispatch-logger :default [{:as _ctx,
+                                      {{:keys [f-name phase]} :trace-ev} :ftr.utils.unifn.core/tracer}]
+  (println (format "%s \033[0;1m%s\033[22m" (str/capitalize (name phase)) (str/capitalize (name f-name)))))
 
 
 (defmethod u/*fn ::dispatch-logger [ctx]

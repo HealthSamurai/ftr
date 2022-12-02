@@ -178,3 +178,8 @@
                    (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
                    (and (nil? v) (map? av)) (assoc acc k av)
                    :else (assoc acc k v))))))))
+
+
+(defn flip [f]
+  (fn [& args]
+    (apply f (reverse args))))

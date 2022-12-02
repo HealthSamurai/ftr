@@ -96,6 +96,10 @@
              ::write-tag-index-hash] ctx))
 
 
+(defmethod u/*fn ::apply-cfg [ctx]
+  (apply-cfg ctx))
+
+
 ;; `apply-cfg` split into 2 separate processes, is used in zen-lang/fhir CI pipeline
 (defmulti extract
   (fn [{:as _ctx, {:keys [source-type]} :cfg}]

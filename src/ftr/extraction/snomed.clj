@@ -9,13 +9,6 @@
   (:import [java.sql
             PreparedStatement]))
 
-
-(def db
-  "JDBC connection string for postgres database
-  NOTE: change port to port of your local postgres installation"
-  "jdbc:postgresql://localhost:55002/postgres?user=postgres&password=postgrespw")
-
-
 (defn snomed-files
   "
   `sm-path` - Path to unzipped SNOMED CT bundle
@@ -291,7 +284,9 @@ TO PROGRAM 'cat >> %s' csv delimiter e'\\x02' quote e'\\x01'"
   {})
 
 
-(defmethod u/*fn ::create-concepts-copy-out-obj [{:as _cfg, {:keys [value-set code-system]} ::result}]
+(defmethod u/*fn ::create-concepts-copy-out-obj [{:as _cfg,
+                                                  :keys [db]
+                                                  {:keys [value-set code-system]} ::result}]
   (let [connection (jdbc/get-connection db)
         pstmnt ^PreparedStatement (jdbc/prepare connection [(format "SELECT  jsonb_strip_nulls(jsonb_build_object(
                            'resourceType', 'Concept',
