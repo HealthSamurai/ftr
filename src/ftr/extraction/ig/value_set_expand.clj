@@ -1,5 +1,6 @@
 (ns ftr.extraction.ig.value-set-expand
   (:require
+   [zen.utils]
    [clojure.string :as str]))
 
 
@@ -115,16 +116,22 @@
                                                    (:system compose-el)
                                                    (:version compose-el)))
 
-        {value-set-systems :systems, value-set-pred :check-fn}
-        (vs-compose-value-set-fn ztx value-set (:valueSet compose-el))
+        #_{value-set-systems :systems, value-set-pred :check-fn}
+        #_(vs-compose-value-set-fn ztx value-set (:valueSet compose-el))
 
-        check-fn (some->> [code-system-pred value-set-pred]
-                          (remove nil?)
-                          not-empty
-                          (apply every-pred))]
-    (when check-fn
-      {:systems   (conj value-set-systems (:system compose-el))
-       :check-fn  check-fn})))
+        check-fn code-system-pred
+        #_(some->> [code-system-pred value-set-pred]
+                   (remove nil?)
+                   not-empty
+                   (apply every-pred))]
+    (if-let [vs-urls (:valueSet compose-el)]
+      {:value-set-queue-entry {:vs-url (:url value-set)
+                               :system (:system compose-el)
+                               :check-fn (or check-fn (constantly true))
+                               :depends-on vs-urls}}
+      (when check-fn
+        {:systems  [(:system compose-el)] #_(conj value-set-systems (:system compose-el))
+         :check-fn check-fn}))))
 
 
 (defn update-fhir-vs-expansion-index [ztx vs concept-identity-keys] #_"TODO: support recursive expansion :contains"
@@ -161,16 +168,20 @@
         includes   (some->> (get-in vs [:compose :include])
                             (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
                             not-empty)
+        include-depends (keep :value-set-queue-entry includes)
         include-fn (or (some->> includes
-                                (map :check-fn)
+                                (keep :check-fn)
+                                not-empty
                                 (apply some-fn))
                        (constantly false))
 
         excludes   (some->> (get-in vs [:compose :exclude])
                             (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
                             not-empty)
+        exclude-depends (keep :value-set-queue-entry excludes)
         exclude-fn (or (some->> excludes
-                                (map :check-fn)
+                                (keep :check-fn)
+                                not-empty
                                 (apply some-fn)
                                 complement)
                        (constantly true))
@@ -187,30 +198,102 @@
                       (mapcat (comp not-empty :systems))
                       includes-and-excludes)]
     {:systems          (not-empty systems)
+     :include-depends include-depends
+     :exclude-depends exclude-depends
      :check-concept-fn check-concept-fn}))
 
 
-(defn denormalize-into-concepts [ztx valuesets concepts-map]
+(defn push-entries-to-vs-queue [queue entries entry-type]
   (reduce
-    (fn reduce-valuesets [concepts-acc vs]
-      (let [{systems        :systems
-             concept-in-vs? :check-concept-fn}
-            (compose ztx vs)]
-        (reduce
-          (fn reduce-codesystems [acc [system concepts]]
-            (reduce
-              (fn reduce-concepts [acc [concept-id concept]]
-                (if (concept-in-vs? concept)
-                  (update-in acc [system concept-id :valueset]
-                             (fnil conj #{})
-                             (:url vs))
-                  acc))
+    (fn [acc {:keys [vs-url depends-on system check-fn]}]
+      (reduce #(update-in %1
+                          [vs-url system %2]
+                          conj
+                          (case entry-type
+                            :include check-fn
+                            :exclude (complement check-fn)))
               acc
-              concepts))
-          concepts-acc
-          (select-keys concepts-acc systems))))
-    concepts-map
-    valuesets))
+              depends-on))
+    queue
+    entries))
+
+
+(defn process-vs-nested-refs [acc vs-url]
+  (reduce-kv
+    (fn [acc dep-system-url depends-valuesets-idx]
+      (reduce-kv
+        (fn [acc depends-on-vs-url check-fns]
+          (let [acc (if (get-in acc [:refs-queue depends-on-vs-url dep-system-url])
+                      (process-vs-nested-refs acc depends-on-vs-url)
+                      acc)
+
+                vs-dep-sys-idx (get-in acc [:value-set-idx depends-on-vs-url dep-system-url])
+
+                acc (-> acc
+                        (update-in [:value-set-idx vs-url dep-system-url] #(into vs-dep-sys-idx %))
+                        (update-in [:refs-queue vs-url dep-system-url] dissoc depends-on-vs-url)
+                        (update-in [:refs-queue vs-url] #(zen.utils/dissoc-when empty? % dep-system-url))
+                        (update-in [:refs-queue] #(zen.utils/dissoc-when empty? % vs-url)))]
+            (reduce (fn [acc code]
+                      (let [concept (get-in acc [:concepts-map dep-system-url code])]
+                        (cond-> acc
+                          (every? #(% concept) check-fns)
+                          (update-in [:concepts-map dep-system-url code :valueset]
+                                     (fnil conj #{})
+                                     vs-url))))
+                    acc
+                    vs-dep-sys-idx)))
+        acc
+        depends-valuesets-idx))
+    acc
+    (get-in acc [:refs-queue vs-url])))
+
+
+(defn process-nested-vss-refs [concepts-map value-set-idx (nested-vs-refs-queue)]
+  (loop [acc {:refs-queue    nested-vs-refs-queue
+              :concepts-map  concepts-map
+              :value-set-idx value-set-idx}
+         vs-url (ffirst nested-vs-refs-queue)]
+    (let [{:as res-acc, :keys [refs-queue]} (process-vs-nested-refs acc vs-url)]
+      (if (seq refs-queue)
+        (recur res-acc (ffirst refs-queue))
+        (:concepts-map res-acc)))))
+
+
+(defn denormalize-into-concepts [ztx valuesets concepts-map]
+  (let [{:keys [concepts-map
+                value-set-idx
+                nested-vs-refs-queue]}
+        (reduce
+          (fn reduce-valuesets [concepts-acc vs]
+            (let [{systems        :systems
+                   concept-in-vs? :check-concept-fn
+                   :keys [include-depends exclude-depends]}
+                  (compose ztx vs)]
+              (reduce
+                (fn reduce-codesystems [acc [system concepts]]
+                  (reduce
+                    (fn reduce-concepts [acc [concept-id concept]]
+                      (if (concept-in-vs? concept)
+                        (-> acc
+                            (update-in [:concepts-map system concept-id :valueset]
+                                       (fnil conj #{})
+                                       (:url vs))
+                            (update-in [:value-set-idx (:url vs) system]
+                                       (fnil conj #{})
+                                       (:code concept)))
+                        acc))
+                    acc
+                    concepts))
+                (-> concepts-acc
+                    (update :nested-vs-refs-queue push-entries-to-vs-queue include-depends :exclude)
+                    (update :nested-vs-refs-queue push-entries-to-vs-queue exclude-depends :include))
+                (select-keys concepts-acc systems))))
+          {:concepts-map         concepts-map
+           :value-set-idx        {}
+           :nested-vs-refs-queue {}}
+          valuesets)]
+    (process-nested-vss-refs concepts-map value-set-idx nested-vs-refs-queue)))
 
 
 (defn denormalize-value-sets-into-concepts [ztx]
