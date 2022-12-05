@@ -53,7 +53,7 @@
 (defmethod filter-op "is-a" [_ztx _value-set _system _version filter]
   (fn [concept]
     (or (= (:code concept) (:value filter))
-        (contains? (set (:hierarchy concept)) (:value filter)))))
+        (contains? (:zen.fhir/parents concept) (:value filter)))))
 
 
 (defmethod filter-op "descendent-of" [_ztx _value-set _system _version filter]

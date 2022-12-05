@@ -51,6 +51,7 @@
 (def loader-keys
   #{:zen/loader
     :zen.fhir/loader
+    :zen.fhir/parents
     :zen.fhir/package
     :zen.fhir/package-ns
     :zen.fhir/packages
@@ -93,7 +94,7 @@
           {} ds))
 
 
-(defn reduce-concept [acc id-fn sys parents c]
+(defn reduce-concept [acc id-fn sys hierarchy parents c]
   (let [con (-> c
                 (select-keys [:code :display :definition])
                 (assoc :id (id-fn c)
@@ -101,19 +102,23 @@
                        :_source "zen.fhir"
                        :resourceType "Concept")
                 (cond-> (:designation c) (assoc :designation (build-designation (:designation c)))
-                        (seq parents) (assoc :hierarchy parents)
+                        (seq hierarchy) (assoc :hierarchy hierarchy)
+                        (seq parents) (assoc :zen.fhir/parents parents)
                         (:property c) (assoc :property (build-property (:property c)))))
         acc (conj acc con)]
     (if-let [cs (:concept c)]
       (reduce (fn [acc c']
-                (reduce-concept acc id-fn sys (conj parents (:code con)) c'))
+                (reduce-concept acc id-fn sys
+                                (conj hierarchy (:code con))
+                                (conj parents (:code con))
+                                c'))
               acc cs)
       acc)))
 
 
 (defn extract-concepts [inter-part id-fn sys concept-parts]
   (->> concept-parts
-       (reduce (fn [acc c] (reduce-concept acc id-fn sys [] c))
+       (reduce (fn [acc c] (reduce-concept acc id-fn sys [] #{} c))
                [])
        (map (fn [concept]
               (-> concept
