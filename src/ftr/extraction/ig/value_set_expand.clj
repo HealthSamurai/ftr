@@ -125,12 +125,21 @@
        :check-fn  check-fn})))
 
 
-(defn update-fhir-vs-expansion-index [ztx vs concept-identity-keys]
+(defn update-fhir-vs-expansion-index [ztx vs concept-identity-keys] #_"TODO: support recursive expansion :contains"
   (let [expansion-contains (get-in vs [:expansion :contains])
         full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
                                 (empty? (get-in vs [:expansion :parameter])))
-        concepts           (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)]
-    (swap! ztx assoc-in [:fhir/vs-expansion-index (:url vs)] {:concepts concepts
+        #_#_concepts (into #{} (map #(select-keys % concept-identity-keys)) expansion-contains)
+
+        concepts-index (reduce (fn [acc concept]
+                                 (assoc! acc (:system concept)
+                                         (if-let [sys-idx (get acc (:system concept))]
+                                           (conj! sys-idx (:code concept))
+                                           (transient #{(:code concept)}))))
+                               (transient {})
+                               expansion-contains)]
+    (swap! ztx assoc-in [:fhir/vs-expansion-index (:url vs)] {#_#_:concepts concepts
+                                                              :concepts-transient-index concepts-index
                                                               :full?    full-expansion?})))
 
 
@@ -139,16 +148,17 @@
         _ (when (and (get-in vs [:expansion :contains])
                      (not (get-in @ztx [:fhir/vs-expansion-index (:url vs)])))
             (update-fhir-vs-expansion-index ztx vs concept-identity-keys))
-        full-expansion? (get-in @ztx [:fhir/vs-expansion-index (:url vs) :full?])
-        expansion-fn (fn [{concept :zen.fhir/resource}]
-                       (let [expansion             (get-in @ztx [:fhir/vs-expansion-index (:url vs)])
-                             expansion-concepts    (:concepts expansion)
-                             concept-identifier    (select-keys concept concept-identity-keys)]
-                         (contains? expansion-concepts concept-identifier)))
-
+        vs-url (:url vs)
+        full-expansion? (get-in @ztx [:fhir/vs-expansion-index vs-url :full?])
+        vs-concepts-index (-> @ztx
+                              (get :fhir/vs-expansion-index)
+                              (get vs-url)
+                              (get :concepts-transient-index))
+        expansion-fn (fn expansion-fn [{concept :zen.fhir/resource}]
+                       (-> vs-concepts-index (get (:system concept)) (get (:code concept))))
         includes   (some->> (get-in vs [:compose :include])
-                                    (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
-                                    not-empty)
+                            (keep (partial check-if-concept-is-in-this-compose-el-fn ztx vs))
+                            not-empty)
         include-fn (or (some->> includes
                                 (map :check-fn)
                                 (apply some-fn))
