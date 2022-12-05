@@ -5,14 +5,14 @@
 
 (defn vs-compose-system-fn [ztx value-set system version]
   (when (some? system)
-    (fn [concept]
+    (fn vs-compose-system [concept]
       (= system (:system concept)))))
 
 
 (defn vs-compose-concept-fn [ztx value-set system version concepts]
   (when (seq concepts)
     (let [concept-codes (into #{} (map :code) concepts)]
-      (fn [concept]
+      (fn vs-compose-concept [concept]
         (and (= system (:system concept))
              (contains? concept-codes (:code concept)))))))
 
@@ -27,48 +27,48 @@
 
 
 (defmethod filter-op "=" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn eq-op [concept]
     (= (get (:property concept) (:property filter))
        (:value filter))))
 
 
 (defmethod filter-op "in" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn in-op [concept]
     (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
          (get (:property concept) (:property filter)))))
 
 
 (defmethod filter-op "not-in" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn not-in-op [concept]
     (not (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
               (get (:property concept) (:property filter))))))
 
 
 (defmethod filter-op "exists" [_ztx _value-set _system _version filter]
   (if (= "false" (some-> (:value filter) str/lower-case str/trim))
-    (fn [concept] (nil? (get (:property concept) (:property filter))))
-    (fn [concept] (some? (get (:property concept) (:property filter))))))
+    (fn not-exists-op [concept] (nil? (get (:property concept) (:property filter))))
+    (fn exists-op [concept] (some? (get (:property concept) (:property filter))))))
 
 
 (defmethod filter-op "is-a" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn is-a-op [concept]
     (or (= (:code concept) (:value filter))
         (contains? (:zen.fhir/parents concept) (:value filter)))))
 
 
 (defmethod filter-op "descendent-of" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn descendatnd-of-op [concept]
     (contains? (set (:hierarchy concept)) (:value filter))))
 
 
 (defmethod filter-op "is-not-a" [_ztx _value-set _system _version filter]
-  (fn [concept] ;; TODO: not sure this is correct impl by spec
+  (fn is-not-a-op [concept] ;; TODO: not sure this is correct impl by spec
     (and (not (contains? (set (:hierarchy concept)) (:value filter)))
          (not= (:code concept) (:value filter)))))
 
 
 (defmethod filter-op "regex" [_ztx _value-set _system _version filter]
-  (fn [concept]
+  (fn regex-op [concept]
     (when-let [prop (get (:property concept) (:property filter))]
       (re-matches (re-pattern (:value filter))
                   (str prop)))))
@@ -76,10 +76,12 @@
 
 (defn vs-compose-filter-fn [ztx value-set system version filters]
   (when (seq filters)
-    (apply every-pred
-           (comp #{system} :system)
-           (map (partial filter-op ztx value-set system version)
-                filters))))
+    (let [filter-fn (->> filters
+                         (map #(filter-op ztx value-set system version %))
+                         (apply every-pred))]
+      (fn compose-filter [concept]
+        (and (= system (:system concept))
+             (filter-fn concept))))))
 
 
 (declare compose)
@@ -190,14 +192,14 @@
 
 (defn denormalize-into-concepts [ztx valuesets concepts-map]
   (reduce
-    (fn [concepts-acc vs]
+    (fn reduce-valuesets [concepts-acc vs]
       (let [{systems        :systems
              concept-in-vs? :check-concept-fn}
             (compose ztx vs)]
         (reduce
-          (fn [acc [system concepts]]
+          (fn reduce-codesystems [acc [system concepts]]
             (reduce
-              (fn [acc [concept-id concept]]
+              (fn reduce-concepts [acc [concept-id concept]]
                 (if (concept-in-vs? concept)
                   (update-in acc [system concept-id :valueset]
                              (fnil conj #{})
