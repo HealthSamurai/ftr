@@ -29,7 +29,8 @@
                       "code3" {:code     "code3"
                                :system   "sys1"
                                :valueset #{"vs2"}}}}
-             {"vs1" {"sys1" #{"code1"}}
+             {"vs1" {"sys0" #{"code0"}
+                     "sys1" #{"code1"}}
               "vs2" {"sys1" #{"code2"}}}
              {"vs3" {"sys1" {"vs2" [(fn [concept] (= "code2" (:code concept)))]}}
               "vs2" {"sys1" {"vs1" [(constantly true)]}}

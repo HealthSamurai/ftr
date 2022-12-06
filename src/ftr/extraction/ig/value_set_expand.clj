@@ -218,31 +218,49 @@
     entries))
 
 
+(defn dissoc-in&sanitize-maps [m path] #_"TODO: refactor"
+  (assert (not= 0 (count path)) "Can't dissoc-in from empty path")
+
+  (not-empty (zen.utils/dissoc-when
+               empty?
+               (reduce (fn [m-acc path]
+                         (update-in m-acc (butlast path) #(zen.utils/dissoc-when empty? % (last path))))
+                       (cond-> m
+                         (< 1 (count path))
+                         (update-in (butlast path) dissoc (last path)))
+                       (take-while #(< 1 (count %)) (iterate butlast path)))
+               (first path))))
+
+
 (defn process-vs-nested-refs [acc vs-url]
   (reduce-kv
     (fn [acc dep-system-url depends-valuesets-idx]
       (reduce-kv
         (fn [acc depends-on-vs-url check-fns]
-          (let [acc (if (get-in acc [:refs-queue depends-on-vs-url dep-system-url])
+          (let [has-transitive-deps?
+                (seq (get-in acc [:refs-queue depends-on-vs-url]))
+
+                acc (if has-transitive-deps?
                       (process-vs-nested-refs acc depends-on-vs-url)
                       acc)
 
-                vs-dep-sys-idx (get-in acc [:value-set-idx depends-on-vs-url dep-system-url])
-
-                acc (-> acc
-                        (update-in [:value-set-idx vs-url dep-system-url] #(into vs-dep-sys-idx %))
-                        (update-in [:refs-queue vs-url dep-system-url] dissoc depends-on-vs-url)
-                        (update-in [:refs-queue vs-url] #(zen.utils/dissoc-when empty? % dep-system-url))
-                        (update-in [:refs-queue] #(zen.utils/dissoc-when empty? % vs-url)))]
-            (reduce (fn [acc code]
-                      (let [concept (get-in acc [:concepts-map dep-system-url code])]
-                        (cond-> acc
-                          (every? #(% concept) check-fns)
-                          (update-in [:concepts-map dep-system-url code :valueset]
-                                     (fnil conj #{})
-                                     vs-url))))
-                    acc
-                    vs-dep-sys-idx)))
+                acc (reduce
+                      (fn [acc sys]
+                        (let [vs-dep-sys-idx (get-in acc [:value-set-idx depends-on-vs-url sys])]
+                          (reduce (fn [acc code]
+                                    (let [concept (get-in acc [:concepts-map sys code])]
+                                      (cond-> acc
+                                        (every? #(% concept) check-fns)
+                                        (update-in [:concepts-map sys code :valueset]
+                                                   (fnil conj #{})
+                                                   vs-url))))
+                                  (update-in acc [:value-set-idx vs-url sys] #(into vs-dep-sys-idx %))
+                                  vs-dep-sys-idx)))
+                      (dissoc-in&sanitize-maps acc [:refs-queue vs-url dep-system-url depends-on-vs-url])
+                      (if (some? dep-system-url)
+                        [dep-system-url]
+                        (keys (get-in acc [:value-set-idx depends-on-vs-url]))))]
+            acc))
         acc
         depends-valuesets-idx))
     acc
