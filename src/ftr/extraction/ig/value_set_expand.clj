@@ -288,7 +288,7 @@
                 (-> acc
                     (update :nested-vs-refs-queue push-entries-to-vs-queue include-depends :exclude)
                     (update :nested-vs-refs-queue push-entries-to-vs-queue exclude-depends :include))
-                (select-keys acc systems))))
+                (select-keys (:concepts-map acc) systems))))
           {:concepts-map         concepts-map
            :value-set-idx        {}
            :nested-vs-refs-queue {}}
