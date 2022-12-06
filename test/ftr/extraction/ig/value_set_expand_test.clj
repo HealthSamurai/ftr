@@ -4,7 +4,10 @@
 
 
 (t/deftest nested-vs-refs-process-test
-  (t/is (= {"sys1" {"code1" {:code     "code1"
+  (t/is (= {"sys0" {"code0" {:code     "code0"
+                             :system   "sys0"
+                             :valueset #{"vs1" "vs4"}}}
+            "sys1" {"code1" {:code     "code1"
                              :system   "sys1"
                              :valueset #{"vs1" "vs2" "vs4"}}
                     "code2" {:code     "code2"
@@ -14,7 +17,10 @@
                              :system   "sys1"
                              :valueset #{"vs2"}}}}
            (sut/process-nested-vss-refs
-             {"sys1" {"code1" {:code     "code1"
+             {"sys0" {"code0" {:code     "code0"
+                               :system   "sys0"
+                               :valueset #{"vs1"}}}
+              "sys1" {"code1" {:code     "code1"
                                :system   "sys1"
                                :valueset #{"vs1"}}
                       "code2" {:code     "code2"
