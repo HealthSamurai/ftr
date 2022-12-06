@@ -249,7 +249,7 @@
     (get-in acc [:refs-queue vs-url])))
 
 
-(defn process-nested-vss-refs [concepts-map value-set-idx (nested-vs-refs-queue)]
+(defn process-nested-vss-refs [concepts-map value-set-idx nested-vs-refs-queue]
   (loop [acc {:refs-queue    nested-vs-refs-queue
               :concepts-map  concepts-map
               :value-set-idx value-set-idx}
