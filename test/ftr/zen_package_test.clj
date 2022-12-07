@@ -860,8 +860,7 @@
 
   (ftr.zen-package/build-complete-ftr-index build-ftr-ztx)
   (t/is
-   (= (get-in @build-ftr-ztx [:zen.fhir/ftr-index :result])
-      {"v1"
+   (= {"v1"
        {:valuesets
         {"gender-vs-url"          #{"gender-cs-url"}
          "expanded-gender-vs-url" #{"expanded-gender-cs-url" "expanded-gender-with-filter-cs-url"}
@@ -884,7 +883,8 @@
          "expanded-gender-with-filter-cs-url" {"a" {:display  "A"
                                                     :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}
                                                "b" {:display  "B"
-                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}})))
+                                                    :valueset #{"expanded-gender-vs-url" "custom-gender-vs-url"}}}}}}
+      (get-in @build-ftr-ztx [:zen.fhir/ftr-index :result]))))
 
 
 (defn test-r4-core-ftr-validation [root-path]
