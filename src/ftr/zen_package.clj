@@ -116,32 +116,31 @@
 
 
 (defn build-complete-ftr-index [ztx]
-  (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets (map (partial zen.core/get-symbol ztx) syms)
+  (let [syms                (zen.core/get-tag ztx 'zen.fhir/value-set)
+        value-sets          (map #(zen.core/get-symbol ztx %) syms)
         enriched-value-sets (map enrich-vs value-sets)
+
         ftr-cfgs-grouped-by-package-name
-        (-> (group-by :ftr enriched-value-sets)
-            keys
-            (->>
-              (filter identity)
-              (group-by :zen/package-name))
-            (update-vals (fn [cfgs]
-                           (-> (group-by (juxt :tag :module :inferred-ftr-dir) cfgs)
-                               keys
-                               (->> (filter identity))))))
-        tag-index-paths (filter (fn [{:keys [path]}]
-                                  (.exists (io/file path)))
-                                (mapcat (fn [[_package-name tag&module-pairs]]
-                                          (map (fn [[tag module inferred-ftr-dir]]
-                                                 {:tag tag
-                                                  :module module
-                                                  :ftr-dir inferred-ftr-dir
-                                                  :path (format "%s/%s/tags/%s.ndjson.gz" inferred-ftr-dir module tag)})
-                                               tag&module-pairs))
-                                        ftr-cfgs-grouped-by-package-name))]
+        (->> (keep :ftr enriched-value-sets)
+             distinct
+             (group-by :zen/package-name))
+
+        tag-index-paths
+        (for [[_package-name tag&module-pairs]      ftr-cfgs-grouped-by-package-name
+              {:keys [module tag inferred-ftr-dir]} (->> tag&module-pairs
+                                                         (keep #(not-empty (select-keys % [:tag :module :inferred-ftr-dir])))
+                                                         distinct)
+
+              :let  [path (format "%s/%s/tags/%s.ndjson.gz" inferred-ftr-dir module tag)]
+              :when (.exists (io/file path))]
+
+          {:tag     tag
+           :module  module
+           :ftr-dir inferred-ftr-dir
+           :path    path})]
 
     (swap! ztx (fn [ztx-val]
-                 (assoc ztx-val :zen.fhir/ftr-index {:result (index-by-tags tag-index-paths)
+                 (assoc ztx-val :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
                                                      :complete? true})))))
 
 
