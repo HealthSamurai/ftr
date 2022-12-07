@@ -51,7 +51,7 @@
 (defmethod u/*fn ::generate-patch [{:as _ctx,
                                     {:keys [tf-patch-path]} :ftr-layout
                                     {:keys [value-set]} :write-result
-                                    {:keys [generate-patch? tf-file old-tf-file]} :ingestion-coordinator}]
+                                    {:keys [generate-patch? tf-file old-tf-file]} :post-write-coordination}]
   (when generate-patch?
     (let [patch (generate-patch! (str old-tf-file) (str tf-file))]
       (when (seq patch)

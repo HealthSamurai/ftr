@@ -29,11 +29,12 @@
 
 (defn create-dir-if-not-exists!
   [path]
-  (let [file (io/file path)]
-    (if (.exists file)
-      file
-      (do (.mkdirs file)
-          file))))
+  (when (seq path)
+    (let [file (io/file path)]
+      (if (.exists file)
+        file
+        (do (.mkdirs file)
+            file)))))
 
 
 (defn make-sha256-gzip-writer [output]

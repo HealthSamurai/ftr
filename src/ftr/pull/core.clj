@@ -62,57 +62,53 @@
             [] all-keys)))
 
 
-(defn infer-patch-chain [{:as cfg,
-                          :keys [vs-path tf-tag-path from-hash to-hash]}]
-  (let [[header & from&to-entries
+(defn infer-patch-chain [{:as _cfg,
+                          :keys [tf-tag-path from-hash to-hash]}]
+  (let [[_header & from&to-entries
          :as _parsed-tf-tag-file]
-        (ftr.utils.core/parse-ndjson-gz tf-tag-path)
+        (ftr.utils.core/parse-ndjson-gz tf-tag-path)]
+    (loop [from from-hash
+           patch-chain []]
+      (let [{:as from&to-entry,
+             :keys [_from to]} (first (filter #(= from (:from %)) from&to-entries))]
+        (cond
+          (= to to-hash)
+          {:patch-chain (conj patch-chain from&to-entry)
+           :finalized? true}
 
-        {:as   predecessor-tag-patch-chain,
-         :keys [patch-chain finalized?]
-         :or   {patch-chain []}}
-        (when-let [from-tag-directive (get header :from-tag)]
-          (infer-patch-chain (assoc cfg :tf-tag-path (format "%s/tag.%s.ndjson.gz" vs-path from-tag-directive))))]
-    (if finalized?
-      predecessor-tag-patch-chain
-      (loop [from from-hash
-             patch-chain patch-chain]
-        (let [{:as from&to-entry,
-               :keys [_from to]} (first (filter #(= from (:from %)) from&to-entries))]
-          (cond
-            (= to to-hash)
-            {:patch-chain (conj patch-chain from&to-entry)
-             :finalized? true}
+          from&to-entry
+          (recur to (conj patch-chain from&to-entry))
 
-            from&to-entry
-            (recur to (conj patch-chain from&to-entry))
-
-            (nil? from&to-entry)
-            {:patch-chain patch-chain
-             :finalized? false}))))))
+          (nil? from&to-entry)
+          {:patch-chain patch-chain
+           :finalized? false})))))
 
 
-(defn generate-intermediate-patch-plan [{:as cfg, :keys [vs-path]}]
+(defn generate-intermediate-patch-plan [{:as cfg, :keys [vs-path old-tf new-tf]}]
   (let [{:keys [patch-chain]} (infer-patch-chain cfg)
         patches-paths (map #(format "%s/patch.%s.%s.ndjson.gz" vs-path (:from %) (:to %)) patch-chain)]
-    (reduce (fn [acc patch-path]
-              (let [[_header & patch-entries] (ftr.utils.core/parse-ndjson-gz patch-path)]
-                (reduce (fn [acc {:as patch-entry, :keys [op id]}]
-                          (case op
-                            "add"
-                            (assoc-in acc [:patch-plan id] patch-entry)
+    (if (seq patch-chain)
+      (reduce (fn [acc patch-path]
+                (let [[_header & patch-entries] (ftr.utils.core/parse-ndjson-gz patch-path)]
+                  (reduce (fn [acc {:as patch-entry, :keys [op id]}]
+                            (case op
+                              "add"
+                              (assoc-in acc [:patch-plan id] patch-entry)
 
-                            "update"
-                            (assoc-in acc [:patch-plan id] patch-entry)
+                              "update"
+                              (assoc-in acc [:patch-plan id] patch-entry)
 
-                            "remove"
-                            (-> acc
-                                (update :remove-plan conj id)
-                                (update :patch-plan dissoc id))))
-                        acc patch-entries)))
-            {:patch-plan {}
-             :remove-plan #{}}
-            patches-paths)))
+                              "remove"
+                              (-> acc
+                                  (update :remove-plan conj id)
+                                  (update :patch-plan dissoc id))))
+                          acc patch-entries)))
+              {:patch-plan {}
+               :remove-plan #{}}
+              patches-paths)
+      (let [{:strs [add remove update]} (group-by :op (ftr.patch-generator.core/generate-patch! old-tf new-tf))]
+           {:patch-plan (reduce (fn [acc c] (assoc acc (:id c) c)) {} (into add update))
+            :remove-plan (map :id remove)}))))
 
 
 (defn migrate [{:as cfg, :keys [ftr-path module tag tag-index tag-index-hash patch-plan-file-name]
@@ -158,7 +154,9 @@
                                                                     :vs-path (format "%s/%s/vs/%s/" ftr-path module vs-name)
                                                                     :tf-tag-path tag-file-path
                                                                     :from-hash from
-                                                                    :to-hash to))
+                                                                    :to-hash to
+                                                                    :old-tf ?old-tf
+                                                                    :new-tf ?new-tf))
                            concepts (->> (vals patch-plan)
                                          (map #(dissoc % :op :_source)))]
 

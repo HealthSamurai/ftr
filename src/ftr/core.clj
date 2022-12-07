@@ -1,11 +1,14 @@
 (ns ftr.core
-  (:require [clojure.java.io :as io]
-            [ftr.extraction.core]
+  (:require [ftr.extraction.core]
             [ftr.writer.core]
-            [ftr.ingestion-coordinator.core]
+            [ftr.post-write-coordination.core]
             [ftr.utils.core]
             [ftr.utils.unifn.core :as u]
-            [ftr.logger.core]))
+            [ftr.logger.core]
+            [ftr.tag-merge.core]))
+
+;; TODO:
+;; MODULE NAME SHOULDN'T CONTAIN PERIODS ADD VALIDATION IN CONFIG SCHEMA
 
 
 (defmethod u/*fn ::extract-terminology [{:as _ctx, :keys [cfg]}]
@@ -16,20 +19,22 @@
   {:write-result (ftr.writer.core/write-terminology-file ctx)})
 
 
-(defmethod u/*fn ::shape-ftr-layout [{:as _ctx, :keys [cfg write-result]}]
+(defmethod u/*fn ::shape-ftr-layout [{:as _ctx,
+                                      :keys [cfg write-result]}]
   (let [tag (:tag cfg)
-        ?new-tag (get-in cfg [:move-tag :new-tag])
-        ?old-tag (get-in cfg [:move-tag :old-tag])
+        from (get-in cfg [:merge :from])
         module-path (format "%s/%s" (:ftr-path cfg) (:module cfg))
         tags-path (format "%s/tags" module-path)
         vs-dir-path (format "%s/vs" module-path)
-        value-set-name (ftr.utils.core/escape-url (get-in write-result [:value-set :url]))
-        temp-tf-file (:terminology-file write-result)
-        tf-name (.getName temp-tf-file)
-        temp-tf-path (.getAbsolutePath temp-tf-file)
-        vs-name-path (format "%s/%s" vs-dir-path value-set-name)]
 
-    (doseq [p [tags-path vs-dir-path vs-dir-path vs-name-path]]
+        temp-tf-file (:terminology-file write-result)
+        tf-name (some-> temp-tf-file (.getName))
+        temp-tf-path (some-> temp-tf-file (.getAbsolutePath))
+
+        value-set-name (ftr.utils.core/escape-url (get-in write-result [:value-set :url]))
+        vs-name-path (some->> value-set-name (format "%s/%s" vs-dir-path))]
+
+    (doseq [p [tags-path vs-dir-path vs-name-path]]
       (ftr.utils.core/create-dir-if-not-exists! p))
 
     {:ftr-layout
@@ -40,17 +45,15 @@
       :temp-tf-path temp-tf-path
       :tf-path (format "%s/%s" vs-name-path tf-name)
       :tf-tag-path (format "%s/tag.%s.ndjson.gz" vs-name-path tag)
-      :old-tf-tag-path (when ?new-tag (format "%s/tag.%s.ndjson.gz" vs-name-path ?old-tag))
       :tag-index-path (format "%s/%s.ndjson.gz" tags-path tag)
-      :new-tag-index-path (when ?new-tag (format "%s/%s.ndjson.gz" tags-path ?new-tag))}}))
+      :from-tag-index-path (format "%s/%s.ndjson.gz" tags-path from)}}))
 
 
 (defmethod u/*fn ::write-tag-index-hash [{:as _ctx, :keys [ftr-layout cfg]}]
   (let [{:keys [tag]}                cfg
         {:keys [tags-path
-                tag-index-path
-                new-tag-index-path]} ftr-layout
-        tag-index-path               (or new-tag-index-path tag-index-path)
+                tag-index-path]} ftr-layout
+        tag-index-path               tag-index-path
         tag-index-side-file-path     (format "%s/%s.hash" tags-path tag)
         tag-index-hash               (ftr.utils.core/gzipped-file-content->sha256 tag-index-path)]
     (spit tag-index-side-file-path
@@ -60,40 +63,74 @@
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
                             {:keys [ftr-path]} :cfg}]
   (last
-   (for [[vs-url tf] extraction-result]
-     (u/*apply [::write-terminology-file
-                ::shape-ftr-layout
-                :ftr.ingestion-coordinator.core/ingest-terminology-file]
-               (assoc ctx
-                      :extraction-result tf
-                      ::feeder {:vs-url vs-url})))))
+    (for [[vs-url tf] extraction-result]
+      (u/*apply [::write-terminology-file
+                 ::shape-ftr-layout
+                 :ftr.post-write-coordination.core/coordinate]
+                (assoc ctx
+                       :extraction-result tf
+                       ::feeder {:vs-url vs-url})))))
 
 
-(defmulti apply-cfg
-  (fn [{:as _ctx, {:keys [source-type]} :cfg}]
-    source-type))
+(defmethod u/*fn ::infer-commit-type [ctx]
+  (assoc ctx ::commit-type (if (get-in ctx [:cfg :merge]) :tag-merge :append)))
 
 
-(defmethod apply-cfg :flat-table [ctx]
-  (u/*apply [::extract-terminology
-             ::write-terminology-file
-             ::shape-ftr-layout
-             :ftr.ingestion-coordinator.core/ingest-terminology-file
-             ::write-tag-index-hash] ctx))
+(def flat-table-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
 
 
-(defmethod apply-cfg :ig [ctx]
-  (u/*apply [::extract-terminology
-             ::feeder
-             ::write-tag-index-hash] ctx))
+(def ig-pipeline
+  [::extract-terminology
+   ::feeder
+   ::write-tag-index-hash])
 
 
-(defmethod apply-cfg :snomed [ctx]
-  (u/*apply [::extract-terminology
-             ::write-terminology-file
-             ::shape-ftr-layout
-             :ftr.ingestion-coordinator.core/ingest-terminology-file
-             ::write-tag-index-hash] ctx))
+(def snomed-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
+(def tag-merge-pipeline
+  [::shape-ftr-layout
+   :ftr.tag-merge.core/merge-tag
+   ::write-tag-index-hash])
+
+
+(defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
+                                         ::keys [commit-type]
+                                         {:keys [source-type]} :cfg}]
+  {::selected-pipeline
+   (case [commit-type source-type]
+     [:append :flat-table]
+     flat-table-pipeline
+
+     [:append :ig]
+     ig-pipeline
+
+     [:append :snomed]
+     snomed-pipeline
+
+     [:tag-merge nil]
+     tag-merge-pipeline)})
+
+
+(defmethod u/*fn ::apply-ftr-pipeline [{:as ctx,
+                                        ::keys [selected-pipeline]}]
+  (u/*apply selected-pipeline ctx))
+
+
+(defn apply-cfg [ctx]
+  (u/*apply [::infer-commit-type
+             ::select-ftr-pipeline
+             ::apply-ftr-pipeline] ctx))
 
 
 (defmethod u/*fn ::apply-cfg [ctx]
@@ -125,36 +162,3 @@
   (u/*apply [::select-package-valuesets
              ::feeder]
             ctx))
-
-
-(comment
-  (apply-cfg {:cfg {:module            "snomed"
-                    :source-url        "/Users/ghrp/Downloads/SnomedCT_USEditionRF2_PRODUCTION_20220301T120000Z"
-                    :ftr-path          "/tmp"
-                    :tag               "init"
-                    :source-type       :snomed
-                    :extractor-options {:db "jdbc:postgresql://localhost:55002/postgres?user=postgres&password=postgrespw"
-                                        :code-system {:resourceType "CodeSystem"
-                                                      :id "snomedct"
-                                                      :url "http://snomed.info/sct"
-                                                      :date "2022-03-01"
-                                                      :description "SNOMEDCT US edition snapshot US1000124"
-                                                      :content "complete"
-                                                      :version "03"
-                                                      :name "SNOMEDCT"
-                                                      :publisher "National Library of Medicine (NLM)"
-                                                      :status "active"
-                                                      :caseSensitive true}
-                                        :value-set   {:id "snomedct"
-                                                      :resourceType "ValueSet"
-                                                      :compose { :include [{:system "http://snomed.info/sct"}]}
-                                                      :date "2022-03-01"
-                                                      :version "03"
-                                                      :status "active"
-                                                      :name "SNOMEDCT"
-                                                      :description "Includes all concepts from SNOMEDCT US edition snapshot US1000124. Both active and inactive concepts included, but is-a relationships only stored for active concepts"
-                                                      :url "http://snomed.info/sct"}}}})
-
-
-
-  )

@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [clojure.test :as t]
             [matcho.core :as matcho]
-            [ftr.utils.core]))
+            [ftr.utils.core]
+            [test-utils]))
 
 
 (defn fs-tree->tree-map [path]
@@ -15,79 +16,80 @@
     (map (fn [f] (drop 1 (str/split (str f) #"/"))) (file-seq (io/file path)))))
 
 
-(def csv-test-env-cfg {:csv-source-initial           "/tmp/ftr-fixtures/icd10initial.csv"
-                       :csv-source-updated           "/tmp/ftr-fixtures/icd10updated.csv"
-                       :csv-source-tag               "/tmp/ftr-fixtures/icd10newtag.csv"
-                       :ftr-path                     "/tmp/ftr"
-                       :expected-tf-sha256           "9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f"
-                       :expected-tf-filename         "tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz"
-                       :expected-updated-tf-sha256   "9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9"
-                       :expected-updated-tf-filename "tf.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
-                       :expected-tag-tf-sha256       "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"
-                       :expected-tag-tf-filename     "tf.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"
-                       :expected-patch-filename      "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
-                       :expected-patch2-filename     "patch.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"})
+
+(t/deftest generate-repository-layout-from-csv-source
+  (def csv-test-env-cfg {:csv-source-initial           "/tmp/ftr-fixtures/icd10initial.csv"
+                         :csv-source-updated           "/tmp/ftr-fixtures/icd10updated.csv"
+                         :csv-source-tag               "/tmp/ftr-fixtures/icd10newtag.csv"
+                         :ftr-path                     "/tmp/ftr"
+                         :expected-tf-sha256           "9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f"
+                         :expected-tf-filename         "tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz"
+                         :expected-updated-tf-sha256   "9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9"
+                         :expected-updated-tf-filename "tf.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
+                         :expected-tag-tf-sha256       "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"
+                         :expected-tag-tf-filename     "tf.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"
+                         :expected-patch-filename      "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.ndjson.gz"
+                         :expected-patch2-filename     "patch.9371c021fe55404a053be98e0e4c3efdcf7db1564e00755fdd3a565cf21240e9.4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff.ndjson.gz"})
 
 
-(def csv-user-cfg {:module            "icd10"
-                   :source-url        (:csv-source-initial csv-test-env-cfg)
-                   :ftr-path          (:ftr-path csv-test-env-cfg)
-                   :tag               "v1"
-                   :source-type       :flat-table
-                   :extractor-options {:format "csv"
-                                       :csv-format      {:delimiter ";"
-                                                         :quote     "'"}
-                                       :header      false
-                                       :data-row    0
-                                       :mapping     {:concept {:code    {:column 2}
-                                                               :display {:column 3}}}
-                                       :code-system {:id  "icd10"
-                                                     :url "http://hl7.org/fhir/sid/icd-10"}
-                                       :value-set   {:id   "icd10"
-                                                     :name "icd10.accidents"
-                                                     :url  "http://hl7.org/fhir/ValueSet/icd-10"}}})
+  (def csv-user-cfg {:module            "icd10"
+                     :source-url        (:csv-source-initial csv-test-env-cfg)
+                     :ftr-path          (:ftr-path csv-test-env-cfg)
+                     :tag               "v1"
+                     :source-type       :flat-table
+                     :extractor-options {:format "csv"
+                                         :csv-format      {:delimiter ";"
+                                                           :quote     "'"}
+                                         :header      false
+                                         :data-row    0
+                                         :mapping     {:concept {:code    {:column 2}
+                                                                 :display {:column 3}}}
+                                         :code-system {:id  "icd10"
+                                                       :url "http://hl7.org/fhir/sid/icd-10"}
+                                         :value-set   {:id   "icd10"
+                                                       :name "icd10.accidents"
+                                                       :url  "http://hl7.org/fhir/ValueSet/icd-10"}}})
 
 
-(defn prepare-test-env! [{:as _cfg, :keys [csv-source-initial
-                                           csv-source-updated
-                                           csv-source-tag
-                                           ftr-path]}]
-  (let [fixture-file (io/file csv-source-initial)
-        fixture-file-2 (io/file csv-source-updated)
-        fixture-file-3 (io/file csv-source-tag)]
+  (defn prepare-test-env! [{:as _cfg, :keys [csv-source-initial
+                                             csv-source-updated
+                                             csv-source-tag
+                                             ftr-path]}]
+    (let [fixture-file (io/file csv-source-initial)
+          fixture-file-2 (io/file csv-source-updated)
+          fixture-file-3 (io/file csv-source-tag)]
 
-    (io/make-parents fixture-file)
-    (spit
-      fixture-file
-      "10344;20;XX;External causes of morbidity and mortality;;;1;
+      (io/make-parents fixture-file)
+      (spit
+        fixture-file
+        "10344;20;XX;External causes of morbidity and mortality;;;1;
 16003;2001;V01-X59;Accidents;10344;;1;
 15062;20012;W00-X59;Other external causes of accidental injury;16003;;1;10/07/2020")
 
-    (io/make-parents fixture-file-2)
-    (spit
-      fixture-file-2
-      "10343;766;AA;loh and mortality;;;1;
+      (io/make-parents fixture-file-2)
+      (spit
+        fixture-file-2
+        "10343;766;AA;loh and mortality;;;1;
 10343;666;X;morbidity and mortality;;;1;
 10344;20;XX;External causes of morbidity and mortality;;;1;
 16003;2001;V01-X59;Updated accidents;10344;;1;")
 
-    (io/make-parents fixture-file-3)
-    (spit
-      fixture-file-3
-      "10343;666;X;morbidity and mortality;;;1;")
+      (io/make-parents fixture-file-3)
+      (spit
+        fixture-file-3
+        "10343;666;X;morbidity and mortality;;;1;")
 
-    (ftr.utils.core/rmrf ftr-path)))
+      (ftr.utils.core/rmrf ftr-path)))
 
-(defn clean-up-test-env! [{:as _cfg, :keys [csv-source-initial
-                                            csv-source-updated
-                                            csv-source-tag
-                                            ftr-path]}]
-  (ftr.utils.core/rmrf csv-source-initial)
-  (ftr.utils.core/rmrf csv-source-updated)
-  (ftr.utils.core/rmrf csv-source-tag)
-  (ftr.utils.core/rmrf ftr-path))
+  (defn clean-up-test-env! [{:as _cfg, :keys [csv-source-initial
+                                              csv-source-updated
+                                              csv-source-tag
+                                              ftr-path]}]
+    (ftr.utils.core/rmrf csv-source-initial)
+    (ftr.utils.core/rmrf csv-source-updated)
+    (ftr.utils.core/rmrf csv-source-tag)
+    (ftr.utils.core/rmrf ftr-path))
 
-(t/deftest generate-repository-layout-from-csv-source
   (t/testing "User provides config for CSV"
     (prepare-test-env! csv-test-env-cfg)
 
@@ -189,82 +191,6 @@
            {:code "V01-X59" :op "update"}
            {:code "W00-X59" :op "remove"}
            {:code "X" :op "add"}
-           nil?]))))
-
-  (t/testing "tag move"
-    (let [{:as user-cfg, :keys [module ftr-path tag]
-           {{value-set-name :url} :value-set} :extractor-options
-           {:keys [old-tag new-tag]} :move-tag}
-          (assoc csv-user-cfg
-                 :source-url (:csv-source-tag csv-test-env-cfg)
-                 :tag "v2"
-                 :move-tag {:old-tag "v1"
-                            :new-tag "v2"})
-
-          value-set-name (ftr.utils.core/escape-url value-set-name)
-
-
-          old-tf-tag-file-name
-          (format "tag.%s.ndjson.gz" old-tag)
-
-          new-tf-tag-file-name
-          (format "tag.%s.ndjson.gz" new-tag)
-
-          _
-          (sut/apply-cfg {:cfg user-cfg})
-
-          ftr-tree
-          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
-
-
-      (t/testing "sees updated repository layout, new tf sha is correct, patch file created"
-        (matcho/match
-         ftr-tree
-         {module
-          {"tags"
-           {(format "%s.ndjson.gz" old-tag) {}
-            (format "%s.ndjson.gz" new-tag) {}}
-           "vs"
-           {value-set-name
-            {(:expected-tf-filename csv-test-env-cfg)         {}
-             (:expected-updated-tf-filename csv-test-env-cfg) {}
-             (:expected-patch-filename csv-test-env-cfg)      {}
-             old-tf-tag-file-name                             {}
-             new-tf-tag-file-name                             {}}}}}))
-
-      (t/testing "sees tag ingex content"
-        (matcho/match
-         (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/tags/%s.ndjson.gz" (:ftr-path csv-test-env-cfg) old-tag))
-         [{:name (format "%s.%s" module value-set-name) :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
-          nil?])
-
-        (matcho/match
-          (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/tags/%s.ndjson.gz" (:ftr-path csv-test-env-cfg) new-tag))
-          [{:name (format "%s.%s" module value-set-name) :hash "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"}
-           nil?]))
-
-      (t/testing "sees terminology tag file"
-        (t/testing (format "%s tag" old-tag)
-          (matcho/match
-            (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name old-tf-tag-file-name))
-            [{:tag old-tag :hash (:expected-updated-tf-sha256 csv-test-env-cfg)}
-             {:from (:expected-tf-sha256 csv-test-env-cfg) :to (:expected-updated-tf-sha256 csv-test-env-cfg)}
-             nil?]))
-
-        (t/testing (format "%s tag" new-tag)
-          (matcho/match
-            (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name new-tf-tag-file-name))
-            [{:tag new-tag :hash "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff" :from-tag old-tag}
-             {:from (:expected-updated-tf-sha256 csv-test-env-cfg) :to "4bd40bdf6d93b9dd45e2b8f678596ddf0ce2ae5c7fb2866882211e548cd781ff"}
-             nil?])))
-
-      (t/testing "sees new patch file"
-        (matcho/match
-          (sort-by :code (ftr.utils.core/parse-ndjson-gz (format "%s/icd10/vs/%s/%s" ftr-path value-set-name (:expected-patch2-filename csv-test-env-cfg))))
-          [{:name value-set-name}
-           {:code "AA" :op "remove"}
-           {:code "V01-X59" :op "remove"}
-           {:code "XX" :op "remove"}
            nil?]))))
 
   (clean-up-test-env! csv-test-env-cfg))
@@ -507,8 +433,6 @@
         _          (sut/apply-cfg {:cfg user-cfg})
         client-cfg (merge user-cfg
                           {:tag       "v2"
-                           :move-tag  {:old-tag "v1"
-                                       :new-tag "v2"}
                            :tag-index (ftr.utils.core/parse-ndjson-gz
                                         (format "%s/%s/tags/%s.ndjson.gz"
                                                 (:ftr-path env)
@@ -523,16 +447,13 @@
       (t/testing "no update plan has been created"
         (matcho/match
           (pull-sut/migrate (-> client-cfg
-                                (assoc :update-plan-name (:update-plan-name env) :tag (:tag user-cfg))
-                                (dissoc :move-tag)))
+                                (assoc :update-plan-name (:update-plan-name env) :tag (:tag user-cfg))))
           nil?)))
 
     (sut/apply-cfg {:cfg (assoc user-cfg :source-url (:ig-source-updated1 env))})
     (sut/apply-cfg {:cfg (merge user-cfg {:source-url (:ig-source-updated2 env)})})
     (sut/apply-cfg {:cfg (merge user-cfg {:source-url (:ig-source-updated3 env)
-                                          :tag        "v2"
-                                          :move-tag   {:old-tag "v1"
-                                                       :new-tag "v2"}})})
+                                          :tag        "v2"})})
 
 
     (t/testing "do pull/update"
@@ -655,10 +576,7 @@
 
         client-cfg
         (merge user-cfg
-               {:tag       "v2"
-                :move-tag  {:old-tag "v1"
-                            :new-tag "v2"}
-                :tag-index (ftr.utils.core/parse-ndjson-gz
+               {:tag-index (ftr.utils.core/parse-ndjson-gz
                              (format "%s/%s/tags/%s.ndjson.gz"
                                      ftr-path
                                      (:module user-cfg)
@@ -674,10 +592,7 @@
         _ (doseq [[path content] resources] (do (io/make-parents path)
                                                 (spit path content)))
 
-        _ (sut/apply-cfg {:cfg (merge user-cfg
-                                      {:tag "v2"
-                                       :move-tag {:old-tag "v1"
-                                                  :new-tag "v2"}})})
+        _ (sut/apply-cfg {:cfg (assoc user-cfg :tag "v2")})
 
         _ (t/testing "ftr shape correct"
             (matcho/match
@@ -687,17 +602,15 @@
                 {"gender-vs"
                  {"tf.935b647b83da220fd0d351634a98a40dd53efa2e26461159e512e15e89a19e7b.ndjson.gz" {}
                   "tf.d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530.ndjson.gz" {}
-                  "tag.v1.ndjson.gz" {}
-                  "patch.d4fe7700488a6f482fb97b12091fe1cc3b5096045aa853df07ede853c17f2530.935b647b83da220fd0d351634a98a40dd53efa2e26461159e512e15e89a19e7b.ndjson.gz" {}
-                  "tag.v2.ndjson.gz" {}}}
-                "tags" {"v2.ndjson.gz" {} "v1.ndjson.gz" {}}}}))
+                  "tag.v1.ndjson.gz" {}}}
+                "tags" {"v1.ndjson.gz" {} "v1.hash" {}}}}))
 
         update-plan-name "update-plan"
         update-plan-path (str ftr-path \/ update-plan-name ".ndjson.gz")
 
         _ (t/testing "pull/migrate create correct update plan, remove plan remains empty"
             (matcho/match
-              (update (pull-sut/migrate (assoc client-cfg :update-plan-name update-plan-name)) :remove-plan sort)
+              (update (pull-sut/migrate (assoc client-cfg :tag "v2" :update-plan-name update-plan-name)) :remove-plan sort)
               {:patch-plan update-plan-path
                :remove-plan empty?})
 
@@ -781,3 +694,280 @@
                 (try (slurp (format "%s/%s/tags/%s.hash" ftr-path (:module csv-user-cfg) (:tag csv-user-cfg)))
                      (catch Exception _ :file-not-exists))
                 "e3b60170e660d9ffd98868d0ba02456c50318aa574b2cb471bd91226f1fe02f9\n")))]))
+
+;; I just decided to stop describing the test flow as a let bindings sequence.
+;; Sorry for that inconvenience.
+
+(t/deftest migration-to-appropriate-tags-model
+  (def test-env-prefix "/tmp/tag-model-migration-test/")
+  (def ftr-path (str test-env-prefix "ftr"))
+  (def vs-url "http://hl7.org/fhir/ValueSet/icd-10")
+  (def module "icd10")
+  (def escaped-vs-url (ftr.utils.core/escape-url vs-url))
+  (def test-env-cfg {:ftr-path ftr-path
+                     :module module
+                     :vs-url vs-url
+                     :escaped-vs-url escaped-vs-url
+                     :path-to-vs (format "%s/%s/vs/%s/" ftr-path module escaped-vs-url)
+                     :csv-source-v1-write-path (str test-env-prefix "/ftr-fixtures/icd10_v1.csv")
+                     :csv-source-v2-write-path (str test-env-prefix "/ftr-fixtures/icd10_v2.csv")
+                     :csv-source-v3-write-path (str test-env-prefix "/ftr-fixtures/icd10_v3.csv")
+                     :csv-source-v4-write-path (str test-env-prefix "/ftr-fixtures/icd10_v4.csv")
+                     :csv-source-v5-write-path (str test-env-prefix "/ftr-fixtures/icd10_v5.csv")
+                     :csv-source-v6-write-path (str test-env-prefix "/ftr-fixtures/icd10_v6.csv")
+                     :csv-sources-content [[(str test-env-prefix "/ftr-fixtures/icd10_v1.csv")
+"10344;20;XX;External causes of morbidity and mortality;;;1;
+16003;2001;V01-X59;Accidents;10344;;1;
+15062;20012;W00-X59;Other external causes of accidental injury;16003;;1;10/07/2020"]
+                                           [(str test-env-prefix "/ftr-fixtures/icd10_v2.csv")
+"10343;766;AA;gen and mortality;;;1;
+10343;666;X;morbidity and mortality;;;1;
+10344;20;XX;External causes of morbidity and mortality;;;1;
+16003;2001;V01-X59;Updated accidents;10344;;1;"]
+                                           [(str test-env-prefix "/ftr-fixtures/icd10_v3.csv")
+"10343;766;AA;gen and mortality;;;1;
+10343;666;X;morbidity and mortality;;;1;
+10344;20;XX;Updated External causes of morbidity and mortality;;;1;"]
+                                           [(str test-env-prefix "/ftr-fixtures/icd10_v4.csv")
+"10343;766;AA;gen and mortality;;;1;
+10343;666;X;Updated morbidity and mortality;;;1;
+10344;20;XX;Updated External causes of morbidity and mortality;;;1;"]
+                                           [(str test-env-prefix "/ftr-fixtures/icd10_v5.csv")
+"10343;766;AA;gen and mortality;;;1;
+10343;666;X;Updated2x morbidity and mortality;;;1;
+10344;20;XX;Updated External causes of morbidity and mortality;;;1;"]
+                                           [(str test-env-prefix "/ftr-fixtures/icd10_v6.csv")
+"10343;766;AA;gen and mortality;;;1;
+10343;666;X;Updated2x morbidity and mortality;;;1;
+10344;20;XX;Updated2x External causes of morbidity and mortality;;;1;"]]})
+
+  (def ftr-user-cfg
+    {:module            module
+     :source-url        (:csv-source-v1-write-path test-env-cfg)
+     :ftr-path          ftr-path
+     :tag               "dev"
+     :source-type       :flat-table
+     :extractor-options {:format "csv"
+                         :csv-format      {:delimiter ";"
+                                           :quote     "'"}
+                         :header      false
+                         :data-row    0
+                         :mapping     {:concept {:code    {:column 2}
+                                                 :display {:column 3}}}
+                         :code-system {:id  "icd10"
+                                       :url "http://hl7.org/fhir/sid/icd-10"}
+                         :value-set   {:id   "icd10"
+                                       :name "icd10.accidents"
+                                       :url  (:vs-url test-env-cfg)}}})
+
+  ;; Should these functions really be variadics?
+
+  (defn clean-up-test-env!
+    ([] (clean-up-test-env! test-env-prefix))
+    ([test-env-prefix]
+     (ftr.utils.core/rmrf test-env-prefix)))
+
+  (defn prepare-test-env!
+    ([] (prepare-test-env! test-env-cfg))
+    ([{:as _test-env-cfg,
+       :keys [csv-sources-content]}]
+     (clean-up-test-env!)
+
+     (doseq [[write-path content] csv-sources-content]
+       (let [f (io/file write-path)
+             parent-dir (.getParentFile (io/file write-path))]
+         (when-not (.exists parent-dir) (.mkdirs parent-dir))
+         (spit f content)))))
+
+  (t/testing "Test environment preparation. . ."
+    (prepare-test-env!))
+
+  (t/testing "Initial FTR shape is correct?"
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg ftr-user-cfg}) )
+
+    (t/testing "FTR shape is correct"
+      (matcho/match
+        (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+        {"icd10"
+         {"vs"
+          {"http:--hl7.org-fhir-ValueSet-icd-10"
+           {"tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz"
+            {},
+            "tag.dev.ndjson.gz" {}}},
+          "tags" {"dev.ndjson.gz" {}, "dev.hash" {}}}})))
+
+  (t/testing "Updated FTR shape is correct?"
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg (assoc ftr-user-cfg :source-url (:csv-source-v2-write-path test-env-cfg))}) )
+
+    (t/testing "FTR shape is correct"
+      (matcho/match
+        (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+        {"icd10"
+         {"vs"
+          {"http:--hl7.org-fhir-ValueSet-icd-10"
+           {"tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz" {}
+            "tf.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+            "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+            "tag.dev.ndjson.gz" {}}}
+          "tags" {"dev.ndjson.gz" {} "dev.hash" {}}}})))
+
+  (t/testing "Merge `dev` tag -> `prod`, i.e. fix actual hash for `dev` tag into `prod` tag"
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg (-> ftr-user-cfg
+                               (assoc :tag "prod")
+                               (assoc :merge {:from "dev"})
+                               (dissoc :source-url :source-type))}))
+
+    (t/testing "FTR shape is correct"
+      (t/is
+        (= (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+           {"icd10"
+            {"vs"
+             {"http:--hl7.org-fhir-ValueSet-icd-10"
+              {"tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz" {}
+               "tf.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.dev.ndjson.gz" {}
+               "tag.prod.ndjson.gz" {}}}
+             "tags" {"dev.ndjson.gz"  {} "dev.hash"  {}
+                     "prod.ndjson.gz" {} "prod.hash" {}}}})))
+
+    (t/testing "Content of `tag.prod.ndjson.gz` is adequate and contains same hash in header as in `tag.dev.ndjson.gz`"
+      (let [[{actual-hash-for-dev-tag :hash}] (ftr.utils.core/parse-ndjson-gz (format "%s/tag.dev.ndjson.gz" (:path-to-vs test-env-cfg)))]
+        (matcho/match
+         (try (ftr.utils.core/parse-ndjson-gz (format "%s/tag.prod.ndjson.gz" (:path-to-vs test-env-cfg)))
+              (catch Exception _ :parse-error))
+         [{:tag "prod" :hash (partial = actual-hash-for-dev-tag)}
+          nil?]))))
+
+  (t/testing "Try to merge `dev` tag -> `prod` once again, but `dev` tag remains in the same state, so actually nothing should happen."
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg (-> ftr-user-cfg
+                               (assoc :tag "prod")
+                               (assoc :merge {:from "dev"})
+                               (dissoc :source-url :source-type))}))
+
+    (t/testing "FTR shape is correct"
+      (t/is
+        (= (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+           {"icd10"
+            {"vs"
+             {"http:--hl7.org-fhir-ValueSet-icd-10"
+              {"tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz" {}
+               "tf.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.dev.ndjson.gz" {}
+               "tag.prod.ndjson.gz" {}}}
+             "tags" {"dev.ndjson.gz"  {} "dev.hash"  {}
+                     "prod.ndjson.gz" {} "prod.hash" {}}}})))
+
+    (t/testing "Content of `tag.prod.ndjson.gz` is adequate and contains same hash in header as in `tag.dev.ndjson.gz`"
+      (let [[{actual-hash-for-dev-tag :hash}] (ftr.utils.core/parse-ndjson-gz (format "%s/tag.dev.ndjson.gz" (:path-to-vs test-env-cfg)))]
+        (matcho/match
+          (try (ftr.utils.core/parse-ndjson-gz (format "%s/tag.prod.ndjson.gz" (:path-to-vs test-env-cfg)))
+               (catch Exception _ :parse-error))
+          [{:tag "prod" :hash (partial = actual-hash-for-dev-tag)}
+           nil?]))))
+
+  (t/testing "Pushing 2 increments to dev tag"
+    (sut/apply-cfg {:cfg (assoc ftr-user-cfg :source-url (:csv-source-v3-write-path test-env-cfg))})
+    (sut/apply-cfg {:cfg (assoc ftr-user-cfg :source-url (:csv-source-v4-write-path test-env-cfg))}))
+
+  (t/testing "Merge `dev` tag -> `prod`, i.e. fix actual hash for `dev` tag into `prod` tag"
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg (-> ftr-user-cfg
+                               (assoc :tag "prod")
+                               (assoc :merge {:from "dev"})
+                               (dissoc :source-url :source-type))}))
+
+    (t/testing "FTR shape is correct"
+      (t/is
+        (= (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+           {"icd10"
+            {"vs"
+             {"http:--hl7.org-fhir-ValueSet-icd-10"
+              {"tf.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}
+               "patch.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.ndjson.gz" {}
+               "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.dev.ndjson.gz" {}
+               "tf.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.prod.ndjson.gz" {}
+               "tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz" {}
+               "patch.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}
+               "tf.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.ndjson.gz" {}
+               "patch.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}}}
+             "tags"
+             {"dev.ndjson.gz" {}
+              "prod.ndjson.gz" {}
+              "prod.hash" {}
+              "dev.hash" {}}}})))
+
+    (t/testing "Content of `tag.prod.ndjson.gz` is adequate and contains same hash in header as in `tag.dev.ndjson.gz`"
+      (let [[{actual-hash-for-dev-tag :hash}] (ftr.utils.core/parse-ndjson-gz (format "%s/tag.dev.ndjson.gz" (:path-to-vs test-env-cfg)))]
+        (matcho/match
+          (try (ftr.utils.core/parse-ndjson-gz (format "%s/tag.prod.ndjson.gz" (:path-to-vs test-env-cfg)))
+               (catch Exception _ :parse-error))
+          [{:tag "prod" :hash (partial = actual-hash-for-dev-tag)}
+           {:from "85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95"
+            :to   "2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596"}
+           nil?]))))
+
+  (t/testing "Commit 1 increment to `dev` tag, 1 increment to `prod` tag."
+    (sut/apply-cfg {:cfg (assoc ftr-user-cfg :source-url (:csv-source-v5-write-path test-env-cfg))})
+    (sut/apply-cfg {:cfg (assoc ftr-user-cfg :source-url (:csv-source-v6-write-path test-env-cfg) :tag "prod")}))
+
+  (t/testing "Merge `dev` tag -> `prod`, `prod` remain in manually incremented state, i.e. fix actual hash for `dev` tag into `prod` tag"
+    (t/testing "FTR Commit..."
+      (sut/apply-cfg {:cfg (-> ftr-user-cfg
+                               (assoc :tag "prod")
+                               (assoc :merge {:from "dev"})
+                               (dissoc :source-url :source-type))}))
+
+    (t/testing "FTR shape is correct"
+      (t/is
+        (= (test-utils/fs-tree->tree-map (:ftr-path test-env-cfg))
+           {"icd10"
+            {"vs"
+             {"http:--hl7.org-fhir-ValueSet-icd-10"
+              {"patch.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.8ca2012655de54427192af18cc6877fe5ee28eb5f5f9f6f640cedc864e31c2ea.ndjson.gz" {}
+               "tf.1135a9d0f57ea81fd2a69adc8512c5e02cdfca1fc2209516a9bc1bd2d8636e44.ndjson.gz" {}
+               "tf.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}
+               "tf.8ca2012655de54427192af18cc6877fe5ee28eb5f5f9f6f640cedc864e31c2ea.ndjson.gz" {}
+               "patch.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.ndjson.gz" {}
+               "patch.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.dev.ndjson.gz" {}
+               "patch.1135a9d0f57ea81fd2a69adc8512c5e02cdfca1fc2209516a9bc1bd2d8636e44.8ca2012655de54427192af18cc6877fe5ee28eb5f5f9f6f640cedc864e31c2ea.ndjson.gz" {}
+               "tf.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.ndjson.gz" {}
+               "tag.prod.ndjson.gz" {}
+               "tf.9fbc28de6731686e42faff3e3daedbe26e4b0fa885ec0a692501089f6310c4f.ndjson.gz" {}
+               "patch.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.1135a9d0f57ea81fd2a69adc8512c5e02cdfca1fc2209516a9bc1bd2d8636e44.ndjson.gz" {}
+               "patch.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}
+               "tf.36f883301654c5ae97cfe16b5f6398fc4944b4eace8dc558d4c30d2607a92f02.ndjson.gz" {}
+               "patch.85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95.2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596.ndjson.gz" {}}}
+             "tags"
+             {"dev.ndjson.gz" {}
+              "prod.ndjson.gz" {}
+              "prod.hash" {}
+              "dev.hash" {}}}})))
+
+    (t/testing "Content of `tag.prod.ndjson.gz` is adequate and contains same hash in header as in `tag.dev.ndjson.gz`"
+      (let [[{actual-hash-for-dev-tag :hash}] (ftr.utils.core/parse-ndjson-gz (format "%s/tag.dev.ndjson.gz" (:path-to-vs test-env-cfg)))]
+        (matcho/match
+          (try (ftr.utils.core/parse-ndjson-gz (format "%s/tag.prod.ndjson.gz" (:path-to-vs test-env-cfg)))
+               (catch Exception _ :parse-error))
+          [{:tag "prod" :hash (partial = actual-hash-for-dev-tag)}
+           {:from "85f36b7a0ec605ca230895cc7ae2752b3771e7b540cbccfd721d5c79bcd32e95"
+            :to   "2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596"}
+           {:from "2f0557093c2d24574ebc5ff5648f711f5b8530e4b13008003ef57a076af87596"
+            :to "1135a9d0f57ea81fd2a69adc8512c5e02cdfca1fc2209516a9bc1bd2d8636e44"}
+           {:from "1135a9d0f57ea81fd2a69adc8512c5e02cdfca1fc2209516a9bc1bd2d8636e44"
+            :to actual-hash-for-dev-tag}
+           nil?]))))
+
+
+  (t/testing "Test environment clean-up"
+    (clean-up-test-env!))
+
+  )
