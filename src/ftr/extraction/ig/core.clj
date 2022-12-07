@@ -231,7 +231,7 @@
         concepts (transduce (comp (mapcat :fhir/concepts)
                                   (map (fn [concept]
                                          {:path [(:system concept)
-                                                 (:id concept)]
+                                                 (:code concept)]
                                           :value concept})))
                             (completing
                               (fn [acc {:keys [path value]}]

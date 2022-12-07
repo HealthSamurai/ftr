@@ -1,5 +1,6 @@
 (ns ftr.extraction.ig.value-set-expand-test
   (:require [ftr.extraction.ig.value-set-expand :as sut]
+            [clojure.string :as str]
             [clojure.test :as t]))
 
 
@@ -31,9 +32,29 @@
                                :valueset #{"vs2"}}}}
              {"vs1" {"sys0" #{"code0"}
                      "sys1" #{"code1"}}
-              "vs2" {"sys1" #{"code2"}}}
-             {"vs3" {"sys1" {"vs2" [(fn [concept] (= "code2" (:code concept)))]}}
-              "vs2" {"sys1" {"vs1" [(constantly true)]}}
-              "vs4" {nil {"vs1" [(constantly true)]
-                          "vs2" [(constantly true)
-                                 (complement (fn [concept] (= "code3" (:code concept))))]}}}))))
+              "vs2" {"sys1" #{"code2" "code3"}}}
+             (-> {}
+                 (sut/push-entries-to-vs-queue
+                   [{:vs-url     "vs3"
+                     :system     "sys1"
+                     :check-fn   (fn [concept] (= "code2" (:code concept)))
+                     :depends-on ["vs2"]}
+                    {:vs-url     "vs2"
+                     :system     "sys1"
+                     :check-fn   nil
+                     :depends-on ["vs1"]}
+                    {:vs-url     "vs4"
+                     :system     nil
+                     :check-fn   nil
+                     :depends-on ["vs1"]}
+                    {:vs-url     "vs4"
+                     :system     nil
+                     :check-fn   nil
+                     :depends-on ["vs2"]}]
+                   :include)
+                 (sut/push-entries-to-vs-queue
+                   [{:vs-url     "vs4"
+                     :system     nil
+                     :check-fn   (fn [concept] (str/ends-with? (:code concept) "3"))
+                     :depends-on ["vs2"]}]
+                   :exclude))))))
