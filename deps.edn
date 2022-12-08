@@ -5,7 +5,7 @@
         org.clojure/data.csv {:mvn/version "1.0.1"}
         cheshire/cheshire    {:mvn/version "5.10.0"}
         zen-lang/zen         {:git/url "https://github.com/zen-lang/zen"
-                              :sha     "3f1edfcc7edb2c8aef514708a3c83faee0c191f6"}
+                              :sha     "5f56e837eec9d86a2e7e141f1dd92e2ac0310cd1"}
         com.github.seancorfield/next.jdbc {:mvn/version "1.3.847"}
         org.postgresql/postgresql {:mvn/version "42.5.0"}
         com.rpl/specter      {:mvn/version "1.1.3"}
