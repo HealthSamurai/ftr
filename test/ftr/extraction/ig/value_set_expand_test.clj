@@ -17,7 +17,7 @@
                     "code3" {:code     "code3"
                              :system   "sys1"
                              :valueset #{"vs2"}}}}
-           (sut/process-nested-vss-refs
+           (sut/all-vs-nested-refs->concepts-map
              {"sys0" {"code0" {:code     "code0"
                                :system   "sys0"
                                :valueset #{"vs1"}}}

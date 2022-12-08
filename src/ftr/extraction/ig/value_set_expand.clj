@@ -229,84 +229,128 @@
                (first path))))
 
 
-(defn process-per-system [acc vs-url sys depends-on-vs-urls-intersection check-fns]
-  (let [vs-dep-sys-idx (->> depends-on-vs-urls-intersection
-                            (map #(get-in acc [:value-set-idx % sys]))
-                            (apply set/intersection))]
-    (reduce (fn [acc code]
-              (let [concept (get-in acc [:concepts-map sys code])]
-                (cond-> acc
-                  (every? #(if (= % ::any-concept)
-                             true
-                             (% concept))
-                          check-fns)
-                  (-> (update-in [:concepts-map sys code :valueset]
-                                 (fnil conj #{})
-                                 vs-url)
-                      (update-in [:value-set-idx vs-url sys]
-                                 (fnil conj #{})
-                                 code)))))
-            acc
-            vs-dep-sys-idx)))
+(defn pop-entry-from-vs-queue [acc vs-url sys-url entry-type dep-vs-urls]
+  (dissoc-in&sanitize-maps acc [:refs-queue vs-url sys-url entry-type dep-vs-urls]))
 
 
-(defn process-per-selected-systems* [acc vs-url dep-system-url depends-on-vs-urls-intersection check-fns]
+(defn push-concept-into-vs-idx [vs-idx vs-url concept]
+  (update-in vs-idx
+             [vs-url (:system concept)]
+             (fnil conj #{})
+             (:code concept)))
+
+
+(defn vs-selected-system-intersection->vs-idx [acc vs-url sys depends-on-vs-urls-intersection checks vs-idx concepts-map]
+  (if-let [codes (->> depends-on-vs-urls-intersection
+                      (map (fn [dep-vs-url]
+                             (set/union (get-in acc [:vs-idx-acc dep-vs-url sys])
+                                        (get-in vs-idx [dep-vs-url sys]))))
+                      (apply set/intersection)
+                      not-empty)]
+    (if-let [check-fns (not-empty (remove #(= ::any-concept %) checks))]
+      (update acc :vs-idx-acc
+              (fn [vs-idx-acc]
+                (transduce (comp (map (fn [code] (get-in concepts-map [sys code])))
+                                 (filter (fn [concept] (every? #(% concept) check-fns))))
+                           (completing (fn [acc concept] (push-concept-into-vs-idx acc vs-url concept)))
+                           vs-idx-acc
+                           codes)))
+      (update-in acc [:vs-idx-acc vs-url sys] #(into codes %)))
+    acc))
+
+
+(defn vs-selected-systems->vs-idx [acc vs-url dep-system-url depends-on-vs-urls-intersection check-fns vs-idx concepts-map]
   (let [selected-systems (if (= ::any-system dep-system-url)
-                           (mapcat #(keys (get-in acc [:value-set-idx %]))
+                           (mapcat #(concat (keys (get-in acc [:vs-idx-acc %]))
+                                            (keys (get vs-idx %)))
                                    depends-on-vs-urls-intersection)
                            [dep-system-url])]
     (reduce (fn [acc sys]
-              (process-per-system acc vs-url sys depends-on-vs-urls-intersection check-fns))
+              (vs-selected-system-intersection->vs-idx acc vs-url sys depends-on-vs-urls-intersection check-fns vs-idx concepts-map))
             acc
             selected-systems)))
 
 
-(declare process-vs-nested-refs)
+(declare refs-in-vs->vs-idx)
 
 
-(defn process-per-selected-systems [acc vs-url dep-system-url depends-on-vs-urls-intersection check-fns]
+(defn ensure-deps-processed [acc depends-on-vs-urls-intersection vs-idx concepts-map]
   (let [have-transitive-deps?
         (->> depends-on-vs-urls-intersection
              (filter #(seq (get-in acc [:refs-queue %])))
-             seq)
+             seq)]
 
-        acc (if have-transitive-deps?
-              (reduce process-vs-nested-refs
-                      acc
-                      depends-on-vs-urls-intersection)
-              acc)]
-
-    (process-per-selected-systems* acc vs-url dep-system-url depends-on-vs-urls-intersection check-fns)))
+    (if have-transitive-deps?
+      (reduce #(refs-in-vs->vs-idx %1 %2 vs-idx concepts-map)
+              acc
+              depends-on-vs-urls-intersection)
+      acc)))
 
 
-(defn process-vs-nested-refs [acc vs-url]
-  (reduce-kv
-    (fn [acc dep-system-url {:keys [include exclude]}]
-      (reduce-kv (fn [acc depends-on-vs-urls-intersection check-fns]
-                   (-> acc
-                       (dissoc-in&sanitize-maps [:refs-queue vs-url dep-system-url :include depends-on-vs-urls-intersection])
-                       (dissoc-in&sanitize-maps [:refs-queue vs-url dep-system-url :exclude])
-                       (process-per-selected-systems vs-url dep-system-url depends-on-vs-urls-intersection check-fns)))
-                 acc
-                 include))
-    acc
-    (get-in acc [:refs-queue vs-url])))
+(defn add-includes-into-vs-idx [acc vs-url system include concepts-map vs-idx]
+  (reduce-kv (fn [acc depends-on-vs-urls-intersection check-fns]
+               (-> acc
+                   (pop-entry-from-vs-queue vs-url system :include depends-on-vs-urls-intersection)
+                   (ensure-deps-processed depends-on-vs-urls-intersection vs-idx concepts-map)
+                   (vs-selected-systems->vs-idx vs-url system depends-on-vs-urls-intersection check-fns vs-idx concepts-map)))
+             acc
+             include))
 
 
-(defn process-nested-vss-refs [concepts-map value-set-idx nested-vs-refs-queue]
-  (loop [acc {:refs-queue    nested-vs-refs-queue
-              :concepts-map  concepts-map
-              :value-set-idx value-set-idx}
-         vs-url (ffirst nested-vs-refs-queue)]
-    (let [{:as res-acc, :keys [refs-queue]} (process-vs-nested-refs acc vs-url)]
-      (if (seq refs-queue)
-        (recur res-acc (ffirst refs-queue))
-        (:concepts-map res-acc)))))
+(defn remove-excludes-from-vs-idx [acc vs-url system exclude concepts-map vs-idx] #_"TODO"
+  (reduce-kv (fn [acc exclude-url-intersection check-fn]
+               (-> acc
+                   (pop-entry-from-vs-queue vs-url system :exclude exclude-url-intersection)))
+             acc
+             exclude))
+
+
+(defn refs-in-vs->vs-idx [acc vs-url vs-idx concepts-map]
+  (reduce-kv (fn [acc dep-system-url {:keys [include exclude]}]
+               (-> acc
+                   (add-includes-into-vs-idx vs-url dep-system-url include concepts-map vs-idx)
+                   (remove-excludes-from-vs-idx vs-url dep-system-url exclude concepts-map vs-idx)))
+             acc
+             (get-in acc [:refs-queue vs-url])))
+
+
+(defn all-vs-nested-refs->vs-idx [concepts-map vs-idx nested-vs-refs-queue]
+  (loop [acc {:refs-queue nested-vs-refs-queue
+              :vs-idx-acc {}}]
+    (let [res-acc (refs-in-vs->vs-idx acc (ffirst (:refs-queue acc)) vs-idx concepts-map)]
+      (if (seq (:refs-queue res-acc))
+        (recur res-acc)
+        (:vs-idx-acc res-acc)))))
+
+
+(defn push-vs-url-into-concepts-map [concepts-map system code vs-url]
+  (update-in concepts-map
+             [system code :valueset]
+             (fnil conj #{})
+             vs-url))
+
+
+(defn reduce-vs-idx-into-concepts-map [concepts-map vs-idx]
+  (reduce-kv (fn [acc vs-url vs-cs-idx]
+               (reduce-kv (fn [acc sys codes]
+                            (reduce (fn [acc code]
+                                      (push-vs-url-into-concepts-map acc sys code vs-url))
+                                    acc
+                                    codes))
+                          acc
+                          vs-cs-idx))
+             concepts-map
+             vs-idx))
+
+
+(defn all-vs-nested-refs->concepts-map [concepts-map vs-idx nested-vs-refs-queue]
+  (let [new-vs-idx-entries (all-vs-nested-refs->vs-idx concepts-map vs-idx nested-vs-refs-queue)]
+    (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
 
 
 (defn denormalize-into-concepts [ztx valuesets concepts-map']
   (let [{:keys [concepts-map
-                value-set-idx
+                vs-idx
                 nested-vs-refs-queue]}
         (reduce
           (fn reduce-valuesets [acc vs]
@@ -323,7 +367,7 @@
                             (update-in [:concepts-map system concept-id :valueset]
                                        (fnil conj #{})
                                        (:url vs))
-                            (update-in [:value-set-idx (:url vs) system]
+                            (update-in [:vs-idx (:url vs) system]
                                        (fnil conj #{})
                                        (:code concept)))
                         acc))
@@ -334,10 +378,10 @@
                     (update :nested-vs-refs-queue push-entries-to-vs-queue exclude-depends :exclude))
                 (select-keys (:concepts-map acc) systems))))
           {:concepts-map         concepts-map'
-           :value-set-idx        {}
+           :vs-idx               {}
            :nested-vs-refs-queue {}}
           valuesets)]
-    (process-nested-vss-refs concepts-map value-set-idx nested-vs-refs-queue)))
+    (all-vs-nested-refs->concepts-map concepts-map vs-idx nested-vs-refs-queue)))
 
 
 (defn denormalize-value-sets-into-concepts [ztx]
