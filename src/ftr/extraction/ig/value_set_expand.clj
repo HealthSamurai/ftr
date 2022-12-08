@@ -229,8 +229,8 @@
                (first path))))
 
 
-(defn pop-entry-from-vs-queue [acc vs-url sys-url entry-type dep-vs-urls]
-  (dissoc-in&sanitize-maps acc [:refs-queue vs-url sys-url entry-type dep-vs-urls]))
+(defn pop-entry-from-vs-queue [acc vs-url sys-url]
+  (dissoc-in&sanitize-maps acc [:refs-queue vs-url sys-url]))
 
 
 (defn push-concept-into-vs-idx [vs-idx vs-url concept]
@@ -240,33 +240,49 @@
              (:code concept)))
 
 
-(defn vs-selected-system-intersection->vs-idx [acc vs-url sys depends-on-vs-urls-intersection checks vs-idx concepts-map]
-  (if-let [codes (->> depends-on-vs-urls-intersection
+(defn get-acc-key [any-system? mode]
+  (case [any-system? mode]
+    [true :include]  :any-sys-include-acc
+    [false :include] :include-acc
+    [true :exclude]  :any-sys-exclude-acc
+    [false :exclude] :exclude-acc))
+
+
+(defn vs-selected-system-intersection->vs-idx [acc vs-url sys vs-urls checks vs-idx concepts-map & {:keys [any-system? mode]}]
+  (if-let [codes (->> vs-urls
                       (map (fn [dep-vs-url]
                              (set/union (get-in acc [:vs-idx-acc dep-vs-url sys])
                                         (get-in vs-idx [dep-vs-url sys]))))
                       (apply set/intersection)
                       not-empty)]
-    (if-let [check-fns (not-empty (remove #(= ::any-concept %) checks))]
-      (update acc :vs-idx-acc
-              (fn [vs-idx-acc]
-                (transduce (comp (map (fn [code] (get-in concepts-map [sys code])))
-                                 (filter (fn [concept] (every? #(% concept) check-fns))))
-                           (completing (fn [acc concept] (push-concept-into-vs-idx acc vs-url concept)))
-                           vs-idx-acc
-                           codes)))
-      (update-in acc [:vs-idx-acc vs-url sys] #(into codes %)))
+    (let [acc-key (get-acc-key any-system? mode)]
+      (if-let [check-fns (not-empty (remove #(= ::any-concept %) checks))]
+        (update acc acc-key
+                (fn [vs-idx-acc]
+                  (transduce (comp (map (fn [code] (get-in concepts-map [sys code])))
+                                   (filter (fn [concept] (every? #(% concept) check-fns))))
+                             (completing (fn [acc concept] (push-concept-into-vs-idx acc vs-url concept)))
+                             vs-idx-acc
+                             codes)))
+        (update-in acc [acc-key vs-url sys] (fnil into #{}) codes)))
     acc))
 
 
-(defn vs-selected-systems->vs-idx [acc vs-url dep-system-url depends-on-vs-urls-intersection check-fns vs-idx concepts-map]
-  (let [selected-systems (if (= ::any-system dep-system-url)
-                           (mapcat #(concat (keys (get-in acc [:vs-idx-acc %]))
-                                            (keys (get vs-idx %)))
-                                   depends-on-vs-urls-intersection)
+(defn select-all-dep-systems [vs-idx-acc vs-idx deps-vs-urls]
+  (mapcat #(concat (keys (get vs-idx-acc %))
+                   (keys (get vs-idx %)))
+          deps-vs-urls))
+
+
+(defn vs-selected-systems->mode-acc [acc vs-url dep-system-url vs-urls check-fns vs-idx concepts-map mode]
+  (let [any-system? (= ::any-system dep-system-url)
+        selected-systems (if any-system?
+                           (select-all-dep-systems (:vs-idx-acc acc) vs-idx vs-urls)
                            [dep-system-url])]
     (reduce (fn [acc sys]
-              (vs-selected-system-intersection->vs-idx acc vs-url sys depends-on-vs-urls-intersection check-fns vs-idx concepts-map))
+              (vs-selected-system-intersection->vs-idx acc vs-url sys vs-urls check-fns vs-idx concepts-map
+                                                       {:any-system? any-system?
+                                                        :mode mode}))
             acc
             selected-systems)))
 
@@ -274,42 +290,69 @@
 (declare refs-in-vs->vs-idx)
 
 
-(defn ensure-deps-processed [acc depends-on-vs-urls-intersection vs-idx concepts-map]
-  (let [have-transitive-deps?
-        (->> depends-on-vs-urls-intersection
-             (filter #(seq (get-in acc [:refs-queue %])))
-             seq)]
-
-    (if have-transitive-deps?
-      (reduce #(refs-in-vs->vs-idx %1 %2 vs-idx concepts-map)
-              acc
-              depends-on-vs-urls-intersection)
-      acc)))
+(defn ensure-deps-processed [acc vs-urls vs-idx concepts-map]
+  (transduce (filter #(seq (get-in acc [:refs-queue %])))
+             (completing #(refs-in-vs->vs-idx %1 %2 vs-idx concepts-map))
+             acc
+             vs-urls))
 
 
-(defn add-includes-into-vs-idx [acc vs-url system include concepts-map vs-idx]
-  (reduce-kv (fn [acc depends-on-vs-urls-intersection check-fns]
-               (-> acc
-                   (pop-entry-from-vs-queue vs-url system :include depends-on-vs-urls-intersection)
-                   (ensure-deps-processed depends-on-vs-urls-intersection vs-idx concepts-map)
-                   (vs-selected-systems->vs-idx vs-url system depends-on-vs-urls-intersection check-fns vs-idx concepts-map)))
+(defn collect-mode-acc [acc vs-url system include concepts-map vs-idx mode]
+  (reduce-kv (fn [acc vs-urls check-fns]
+               (vs-selected-systems->mode-acc acc vs-url system vs-urls check-fns vs-idx concepts-map mode))
              acc
              include))
 
 
-(defn remove-excludes-from-vs-idx [acc vs-url system exclude concepts-map vs-idx] #_"TODO"
-  (reduce-kv (fn [acc exclude-url-intersection check-fn]
-               (-> acc
-                   (pop-entry-from-vs-queue vs-url system :exclude exclude-url-intersection)))
-             acc
-             exclude))
+(defn push-include-exclude->vs-idx [acc vs-url dep-system-url concepts-map vs-idx]
+  (let [any-system?    (= ::any-system dep-system-url)
+        incl-acc-key   (get-acc-key any-system? :include)
+        excl-acc-key   (get-acc-key any-system? :exclude)
+        vs-sys-idx-acc (get-in acc [:vs-idx-acc vs-url])
+        exclude-idx    (get-in acc [excl-acc-key vs-url])
+        exclude-filter (when (seq exclude-idx)
+                         (fn [system code]
+                           (not (get-in exclude-idx [system code]))))
+
+        new-vs-sys-idx
+        (if any-system?
+          (if exclude-filter
+            (reduce-kv (fn [acc sys concepts]
+                         (update acc sys (fn [idx-concepts]
+                                           (into (or idx-concepts #{})
+                                                 (filter #(exclude-filter sys %))
+                                                 concepts))))
+                       vs-sys-idx-acc
+                       (get-in acc [incl-acc-key vs-url]))
+            (merge-with #(if (some? %1)
+                           (into %1 %2)
+                           %2)
+                        vs-sys-idx-acc
+                        (get-in acc [incl-acc-key vs-url])))
+          (update vs-sys-idx-acc
+                  dep-system-url
+                  (if exclude-filter
+                    (fn [idx-concepts new-concepts]
+                      (into (or idx-concepts #{})
+                            (filter #(exclude-filter dep-system-url %))
+                            new-concepts))
+                    #(if (some? %1)
+                       (into %1 %2)
+                       %2))
+                  (get-in acc [incl-acc-key vs-url dep-system-url])))]
+    (assoc-in acc [:vs-idx-acc vs-url] new-vs-sys-idx)))
 
 
 (defn refs-in-vs->vs-idx [acc vs-url vs-idx concepts-map]
   (reduce-kv (fn [acc dep-system-url {:keys [include exclude]}]
-               (-> acc
-                   (add-includes-into-vs-idx vs-url dep-system-url include concepts-map vs-idx)
-                   (remove-excludes-from-vs-idx vs-url dep-system-url exclude concepts-map vs-idx)))
+               (let [deps (distinct (concat (keys include) (keys exclude)))
+                     acc  (-> acc
+                              (pop-entry-from-vs-queue vs-url dep-system-url)
+                              (ensure-deps-processed deps vs-idx concepts-map)
+                              (collect-mode-acc vs-url dep-system-url include concepts-map vs-idx :include)
+                              (collect-mode-acc vs-url dep-system-url exclude concepts-map vs-idx :exclude)
+                              (push-include-exclude->vs-idx vs-url dep-system-url concepts-map vs-idx))]
+                 acc))
              acc
              (get-in acc [:refs-queue vs-url])))
 
