@@ -11,14 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3.0.2
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
           submodules: 'recursive'
-      - uses: isbang/compose-action@v1.4.1
-        with:
-          compose-file: "./docker-compose.yml"
-          up-flags: "-d --wait"
-      - run: docker compose up -d --wait
-      - run: docker ps
       - uses: actions/setup-java@v3.5.0
         with:
           distribution: "zulu"
@@ -28,4 +22,5 @@ jobs:
           cli: 1.11.1.1155
       - run: git config --global user.email "hello@health-samurai.io" && git config --global user.name "ftr"
         name: Set up git config
+      - run: make up
       - run: make test
