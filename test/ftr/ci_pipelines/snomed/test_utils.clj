@@ -1,7 +1,6 @@
 (ns ftr.ci-pipelines.snomed.test-utils
   (:require  [clojure.test :as t]
              [org.httpkit.server]
-             [org.httpkit.server :as http-kit]
              [hiccup.page]
              [clojure.java.io :as io]))
 
@@ -114,8 +113,9 @@
 
 (def mock-server-opts {:port 7654})
 
-(defn start-mock-server [] (http-kit/run-server #'mock-handler
-                                                mock-server-opts))
+(defn start-mock-server []
+  (org.httpkit.server/run-server #'mock-handler
+                                 mock-server-opts))
 
 (def mock-server-url (format "http://localhost:%s" (:port mock-server-opts)))
 
