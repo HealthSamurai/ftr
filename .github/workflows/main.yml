@@ -16,7 +16,7 @@ jobs:
       - uses: isbang/compose-action@v1.4.1
         with:
           compose-file: "./docker-compose.yml"
-          up-flags: "-d"
+          up-flags: "-d --wait"
           services: |
             db
       - uses: actions/setup-java@v3.5.0

@@ -12,7 +12,7 @@ services:
     volumes:
       - "pgdata:/var/lib/postgresql/data"
     healthcheck:
-      test: ["bash", "pg_isready -U ftr"]
+      test: pg_isready -U ftr
       interval: 5s
       timeout: 5s
       retries: 10
