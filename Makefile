@@ -10,4 +10,4 @@ up:
 	docker compose up -d --wait db
 
 down:
-	docker-compose down
+	docker compose down --volumes
