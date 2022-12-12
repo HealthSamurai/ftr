@@ -13,6 +13,12 @@ jobs:
         with:
           fetch-depth: 0 
           submodules: 'recursive'
+      - uses: isbang/compose-action@v1.4.1
+        with:
+          compose-file: "./docker-compose.yml"
+          up-flags: "-d"
+          services: |
+            db
       - uses: actions/setup-java@v3.5.0
         with:
           distribution: "zulu"
