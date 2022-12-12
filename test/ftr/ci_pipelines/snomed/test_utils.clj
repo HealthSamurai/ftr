@@ -1,6 +1,9 @@
 (ns ftr.ci-pipelines.snomed.test-utils
   (:require  [clojure.test :as t]
              [org.httpkit.server]
+             [ring.middleware.params]
+             [ring.middleware.keyword-params]
+             [ring.util.response]
              [hiccup.page]
              [clojure.java.io :as io]))
 
@@ -81,7 +84,7 @@
 
 (def mock-endpoints
   {:version-info "/snomed-version-info.html"
-   :archive      "/snomed-archive.zip"})
+   :archive      "/download-archive"})
 
 
 (defn generate-snomed-version-info-html-with-download-url
@@ -109,15 +112,24 @@
      :body    (generate-snomed-version-info-html-with-download-url)
      :headers {"Content-Type" "text/html; charset=utf-8"}}
 
+    (:archive mock-endpoints)
+    (let [{{:keys [path]} :params} req]
+      {:status 200
+       :body (io/input-stream path)})
+
     {:status 404}))
 
 (def mock-server-opts {:port 7654})
 
-(defn start-mock-server []
-  (org.httpkit.server/run-server #'mock-handler
-                                 mock-server-opts))
+(defn start-mock-server [& [opts]]
+  (org.httpkit.server/run-server (-> #'mock-handler
+                                     ring.middleware.keyword-params/wrap-keyword-params
+                                     ring.middleware.params/wrap-params)
+                                 (merge mock-server-opts opts)))
 
-(def mock-server-url (format "http://localhost:%s" (:port mock-server-opts)))
+(defn mock-server-url [& [port]]
+  (format "http://localhost:%s"
+          (or port (:port mock-server-opts))))
 
 
 (comment

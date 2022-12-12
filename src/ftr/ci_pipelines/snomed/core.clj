@@ -6,6 +6,7 @@
             [ftr.utils.unifn.core :as u]
             [ftr.logger.core]
             [ftr.core]
+            [ftr.ci-pipelines.snomed.db]
             [clojure.pprint])
   (:import java.io.File))
 
@@ -17,7 +18,7 @@
 
 
 (defmethod u/*fn ::get-latest-snomed-info!
-  ([{:as _ctx, :keys [version-page-url api-key]}]
+  ([{:as _ctx, :keys [version-page-url complete-download-url-format api-key]}]
    (let [parsed-html-page (get-parsed-html-by-url version-page-url)
          element-with-download-url (html/select parsed-html-page
                                                 [[:p
@@ -37,7 +38,7 @@
                     (last)
                     (str/split #"T")
                     (first))
-       :complete-download-url (format "https://uts-ws.nlm.nih.gov/download?url=%s&apiKey=%s" download-url api-key)}})))
+       :complete-download-url (format complete-download-url-format download-url api-key)}})))
 
 
 (def resources-to-load
@@ -134,6 +135,9 @@
 (def config-defaults
   {:version-page-url
    "https://documentation.uts.nlm.nih.gov/automating-downloads.html"
+
+   :complete-download-url-format
+   "https://uts-ws.nlm.nih.gov/download?url=%s&apiKey=%s"
 
    :db
    ftr.ci-pipelines.snomed.db/conn-str

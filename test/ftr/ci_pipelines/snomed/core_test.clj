@@ -3,8 +3,11 @@
             [clojure.test :as t]
             [matcho.core :as matcho]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [ftr.utils.unifn.core :as u]
-            [test-utils]))
+            [ftr.utils.core]
+            [test-utils]
+            [ftr.ci-pipelines.snomed.test-utils :as snomed-test-utils]))
 
 
 (def not-empty-string?
@@ -64,6 +67,50 @@
            "sct2_Description_Snapshot.txt" {}
            "sct2_Relationship_Snapshot.txt" {}
            "sct2_Concept_Snapshot.txt" {}}}}}
-       (test-utils/fs-tree->tree-map write-path)))
+       (test-utils/fs-tree->tree-map write-path))))
 
-  )
+
+(t/deftest snomed-pipeline-test
+  (def mock-server (snomed-test-utils/start-mock-server))
+  (def test-dir-path "/tmp/ftr/snomed-pipeline-test")
+  (def archive-path (str test-dir-path java.io.File/separatorChar "archive.zip"))
+  (def extacted-snomed-dir-path (str test-dir-path java.io.File/separatorChar "extracted-snomed"))
+  (def ftr-path (str test-dir-path java.io.File/separatorChar "snomed-ftr"))
+  (def snomed-version (->> snomed-test-utils/mock-endpoints
+                           :archive
+                           rest
+                           (str/join "")))
+
+  (io/make-parents archive-path)
+  (snomed-test-utils/create-mock-snomed-bundle archive-path)
+
+  (sut/pipeline
+   {:version-page-url
+    (str (snomed-test-utils/mock-server-url)
+         (:version-info snomed-test-utils/mock-endpoints))
+
+    :complete-download-url-format
+    (str
+     (snomed-test-utils/mock-server-url)
+     (:archive snomed-test-utils/mock-endpoints)
+     "?path="
+     archive-path)
+
+    :ftr-path
+    ftr-path
+
+    :extracted-snomed-out-dir
+    extacted-snomed-dir-path})
+
+  (matcho/match
+   (test-utils/fs-tree->tree-map ftr-path)
+   {"snomed"
+    {"tags"
+     {(format "%s.ndjson.gz" snomed-version) {}
+      (format "%s.hash" snomed-version) {}}
+
+     "vs"
+     {"http:--snomed.info-sct" {}}}})
+
+  (ftr.utils.core/rmrf test-dir-path)
+  (mock-server))
