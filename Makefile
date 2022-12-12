@@ -7,7 +7,7 @@ build:
 	clojure -T:build uber
 
 up:
-	docker-compose up -d db
+	docker compose up -d --wait db
 
 down:
 	docker-compose down
