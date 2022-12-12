@@ -17,6 +17,7 @@ jobs:
         with:
           compose-file: "./docker-compose.yml"
           up-flags: "-d --wait"
+      - run: docker compose up -d --wait
       - run: docker ps
       - uses: actions/setup-java@v3.5.0
         with:
