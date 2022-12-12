@@ -1,0 +1,17 @@
+version: '3'
+
+volumes:
+  pgdata:
+
+services:
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - "5125:5432"
+    volumes:
+      - "pgdata:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_USER: ftr
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ftr

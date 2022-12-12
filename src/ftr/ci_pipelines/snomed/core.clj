@@ -136,7 +136,7 @@
    "https://documentation.uts.nlm.nih.gov/automating-downloads.html"
 
    :db
-   "jdbc:postgresql://localhost:55003/postgres?user=postgres&password=postgrespw"
+   ftr.ci-pipelines.snomed.db/conn-str
 
    :ftr-path
    "/tmp/snomed-ftr"
