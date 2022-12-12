@@ -6,42 +6,6 @@
              [clojure.java.io :as io]))
 
 
-(def mock-snomed-archive-url "/snomed-archive.zip")
-
-
-(defn generate-snomed-version-info-html-with-download-url
-  []
-  (hiccup.page/html5
-   [:body
-    [:h4
-     [:a#anch_8 {:href "#download-the-us-edition-of-snomed-ct"
-                 :name "download-the-us-edition-of-snomed-ct"}
-      "Download the US Edition of SNOMED CT"]]
-    [:p
-     "https://uts-ws.nlm.nih.gov/download"
-     [:br]
-     [:b "?url="]
-     mock-snomed-archive-url
-     [:br]
-     [:b "&apiKey="]
-     "YOUR_API_KEY "]]))
-
-
-(defn mock-handler [req]
-  (case (:uri req)
-    "/snomed-version-info.html"
-    {:status 200
-     :body (generate-snomed-version-info-html-with-download-url)
-     :headers {"Content-Type" "text/html; charset=utf-8"}}))
-
-(def mock-server-opts {:port 7654})
-
-(defn start-mock-server [] (http-kit/run-server #'mock-handler
-                                                mock-server-opts))
-
-(def mock-server-url (format "http://localhost:%s" (:port mock-server-opts)))
-
-
 (def concept-content "id	effectiveTime	active	moduleId	definitionStatusId
 100005	20020131	0	900000000000207008	900000000000074008
 101009	20020131	1	900000000000207008	900000000000074008
@@ -114,6 +78,46 @@
         (.putNextEntry zip-stream zip-entry)
         (io/copy content zip-stream)
         (.closeEntry zip-stream)))))
+
+
+(def mock-endpoints
+  {:version-info "/snomed-version-info.html"
+   :archive      "/snomed-archive.zip"})
+
+
+(defn generate-snomed-version-info-html-with-download-url
+  []
+  (hiccup.page/html5
+   [:body
+    [:h4
+     [:a#anch_8 {:href "#download-the-us-edition-of-snomed-ct"
+                 :name "download-the-us-edition-of-snomed-ct"}
+      "Download the US Edition of SNOMED CT"]]
+    [:p
+     "https://uts-ws.nlm.nih.gov/download"
+     [:br]
+     [:b "?url="]
+     (:archive mock-endpoints)
+     [:br]
+     [:b "&apiKey="]
+     "YOUR_API_KEY "]]))
+
+
+(defn mock-handler [req]
+  (condp = (:uri req)
+    (:version-info mock-endpoints)
+    {:status  200
+     :body    (generate-snomed-version-info-html-with-download-url)
+     :headers {"Content-Type" "text/html; charset=utf-8"}}
+
+    {:status 404}))
+
+(def mock-server-opts {:port 7654})
+
+(defn start-mock-server [] (http-kit/run-server #'mock-handler
+                                                mock-server-opts))
+
+(def mock-server-url (format "http://localhost:%s" (:port mock-server-opts)))
 
 
 (comment
