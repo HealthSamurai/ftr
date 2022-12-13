@@ -7,7 +7,8 @@
             [ftr.logger.core]
             [ftr.core]
             [ftr.ci-pipelines.snomed.db]
-            [clojure.pprint])
+            [clojure.pprint]
+            [clojure.java.shell :as shell])
   (:import java.io.File))
 
 
@@ -115,7 +116,7 @@
                              :code-system {:resourceType "CodeSystem"
                                            :id "snomedct"
                                            :url "http://snomed.info/sct"
-                                           :description "SNOMEDCT US edition snapshot US1000124"
+                                           :description "SNOMEDCT US edition"
                                            :content "complete"
                                            :version version
                                            :name "SNOMEDCT"
@@ -128,8 +129,81 @@
                                            :version version
                                            :status "active"
                                            :name "SNOMEDCT"
-                                           :description "Includes all concepts from SNOMEDCT US edition snapshot US1000124. Both active and inactive concepts included, but is-a relationships only stored for active concepts"
+                                           :description "Includes all concepts from SNOMEDCT US edition snapshot. Both active and inactive concepts included, but is-a relationships only stored for active concepts"
                                            :url "http://snomed.info/sct"}}}})
+
+
+(defmethod u/*fn ::download-previous-snomed-ftr-version
+  [{:as _ctx, :keys [snomed-object-url ftr-path]}]
+  (when snomed-object-url
+    (let [{:as _execution-result
+           :keys [exit err]}
+          (shell/sh "gsutil" "cp" "-r" snomed-object-url ftr-path)]
+      (when-not (= exit 0)
+        {::u/status :error
+         ::u/message err}))))
+
+
+(defmethod u/*fn ::upload-to-gcp-bucket
+  [{:as _ctx,
+    :keys [ftr-object-url],
+    {:keys [ftr-path module]}:cfg}]
+  (when ftr-object-url
+    (let [{:as _execution-result
+           :keys [exit err]}
+          (shell/sh "gsutil" "rsync" "-r"
+                    (str ftr-path \/ module)
+                    (str ftr-object-url \/ module))]
+      (when-not (= exit 0)
+        {::u/status :error
+         ::u/message err}))))
+
+
+(defn get-zen-fhir-version! []
+  (str/trim (:out (shell/sh "git" "describe" "--tags" "--abbrev=0" :dir "zen.fhir"))))
+
+
+(defmethod u/*fn ::generate-snomed-zen-package
+  [{:as _ctx,
+    :keys [snomed-object-url]
+    {:keys [version]} :snomed-info}]
+  (when snomed-object-url
+    (spit "zen-package.edn" {:deps {'zen.fhir "https://github.com/zen-fhir/zen.fhir.git"}})
+    (spit (doto (io/file "/zrc/snomed.edn") (-> (.getParentFile) (.mkdirs)))
+          (with-out-str (clojure.pprint/pprint {'ns 'snomed
+                                                'import #{'zen.fhir}
+                                                'value-set
+                                                {:zen/tags #{'zen.fhir/value-set}
+                                                 :zen/desc "Includes all concepts from SNOMEDCT US edition snapshot. Both active and inactive concepts included, but is-a relationships only stored for active concepts"
+                                                 :zen.fhir/version (get-zen-fhir-version!)
+                                                 :fhir/code-systems
+                                                 #{{:fhir/url "http://snomed.info/sct"
+                                                    :zen.fhir/content :bundled}}
+                                                 :uri "http://snomed.info/sct"
+                                                 :version version
+                                                 :ftr
+                                                 {:module "snomed"
+                                                  :source-url "https://storage.googleapis.com"
+                                                  :ftr-path "ftr"
+                                                  :source-type :cloud-storage
+                                                  :tag "prod"}}})))))
+
+
+(defmethod u/*fn ::push-zen-package
+  [{:as _ctx,
+    :keys [snomed-object-url]}]
+  (when snomed-object-url
+    (loop [commands [["git" "add" "--all" :dir (System/getProperty "user.dir")]
+                     ["git" "commit" "-m" "Update zen package" :dir (System/getProperty "user.dir")]
+                     ["git" "push" "-u" "origin" "main" :dir (System/getProperty "user.dir")]]]
+      (when-not (nil? commands)
+        (let [{:as _executed-command,
+               :keys [exit err]}
+              (apply shell/sh (first commands))]
+          (if (= exit 0)
+            (recur (next commands))
+            {::u/status :error
+             ::u/message err}))))))
 
 
 (def config-defaults
@@ -143,7 +217,7 @@
    ftr.ci-pipelines.snomed.db/conn-str
 
    :ftr-path
-   "/tmp/snomed-ftr"
+   "/tmp/ftr/"
 
    :extracted-snomed-out-dir
    "/tmp/extracted-snomed"})
@@ -152,9 +226,14 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
-    (clojure.pprint/pprint
-      (u/*apply [::get-latest-snomed-info!
-                 ::write-snomed-snapshot-terminology-folder!
-                 ::build-ftr-cfg
-                 :ftr.core/apply-cfg]
-                cfg))))
+    (doto (u/*apply [::download-previous-snomed-ftr-version
+                     ::get-latest-snomed-info!
+                     ::write-snomed-snapshot-terminology-folder!
+                     ::build-ftr-cfg
+                     :ftr.core/apply-cfg
+                     ::upload-to-gcp-bucket
+                     ::generate-snomed-zen-package
+                     ::push-zen-package]
+
+                    cfg)
+      (clojure.pprint/pprint))))
