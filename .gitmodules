@@ -1,6 +1,6 @@
 [submodule "zen.fhir"]
 	path = zen.fhir
-	url = git@github.com:zen-fhir/zen.fhir.git
+	url = https://github.com/zen-fhir/zen.fhir.git
 [submodule "hl7-fhir-r4-core"]
 	path = hl7-fhir-r4-core
-	url = git@github.com:zen-fhir/hl7-fhir-r4-core.git
+	url = https://github.com/zen-fhir/hl7-fhir-r4-core.git
