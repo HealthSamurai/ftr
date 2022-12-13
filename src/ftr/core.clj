@@ -160,5 +160,6 @@
 
 (defmethod spit-ftr :igs [ctx]
   (u/*apply [::select-package-valuesets
-             ::feeder]
+             ::feeder
+             ::write-tag-index-hash]
             ctx))
