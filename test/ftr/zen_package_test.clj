@@ -456,22 +456,22 @@
 
   (t/testing "built ftr shape is ok"
     (matcho/match
-      (test-utils/fs-tree->tree-map profile-lib-path)
-      {"ftr"
-       {"ig"
-        {"tags" {"v1.ndjson.gz" {}}
-         "vs"   {"gender2-cs-entire-code-system" nil
-                 "gender2-vs" {}
-                 "gender3-cs-entire-code-system" nil
-                 "gender3-vs" nil
-                 "gender4-cs-entire-code-system" {}
-                 "gender4-vs" nil
-                 "gender5-cs-entire-code-system" {}
-                 "gender5-vs" nil
-                 "gender6-cs-entire-code-system" nil
-                 "gender6-vs" {}
-                 #_#_"gender7-cs-entire-code-system" nil
-                 #_#_"gender7-vs" {}}}}})))
+      (get (test-utils/fs-tree->tree-map profile-lib-path)
+           "ftr")
+      {"ig"
+       {"tags" {"v1.ndjson.gz" {}}
+        "vs"   {"gender2-cs-entire-code-system" nil
+                "gender2-vs" {}
+                "gender3-cs-entire-code-system" nil
+                "gender3-vs" nil
+                "gender4-cs-entire-code-system" {}
+                "gender4-vs" nil
+                "gender5-cs-entire-code-system" {}
+                "gender5-vs" nil
+                "gender6-cs-entire-code-system" nil
+                "gender6-vs" {}
+                #_#_"gender7-cs-entire-code-system" nil
+                #_#_"gender7-vs" {}}}})))
 
 
 (defn test-concept-vs-backrefs [root-path]
