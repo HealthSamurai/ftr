@@ -165,11 +165,13 @@
 
 (defmethod u/*fn ::generate-snomed-zen-package
   [{:as _ctx,
-    :keys [snomed-object-url]
+    :keys [snomed-working-dir-path]
     {:keys [version]} :snomed-info}]
-  (when snomed-object-url
-    (spit "zen-package.edn" {:deps {'zen.fhir "https://github.com/zen-fhir/zen.fhir.git"}})
-    (spit (doto (io/file "/zrc/snomed.edn") (-> (.getParentFile) (.mkdirs)))
+  (when snomed-working-dir-path
+    (spit (str snomed-working-dir-path "/zen-package.edn")
+          {:deps {'zen.fhir "https://github.com/zen-fhir/zen.fhir.git"}})
+    (spit (doto (io/file (str snomed-working-dir-path "/zrc/snomed.edn"))
+                (-> (.getParentFile) (.mkdirs)))
           (with-out-str (clojure.pprint/pprint {'ns 'snomed
                                                 'import #{'zen.fhir}
                                                 'value-set
@@ -191,11 +193,11 @@
 
 (defmethod u/*fn ::push-zen-package
   [{:as _ctx,
-    :keys [snomed-object-url]}]
-  (when snomed-object-url
-    (loop [commands [["git" "add" "--all" :dir (System/getProperty "user.dir")]
-                     ["git" "commit" "-m" "Update zen package" :dir (System/getProperty "user.dir")]
-                     ["git" "push" "-u" "origin" "main" :dir (System/getProperty "user.dir")]]]
+    :keys [snomed-working-dir-path]}]
+  (when snomed-working-dir-path
+    (loop [commands [["git" "add" "--all" :dir snomed-working-dir-path]
+                     ["git" "commit" "-m" "Update zen package" :dir snomed-working-dir-path]
+                     ["git" "push" "-u" "origin" "main" :dir snomed-working-dir-path]]]
       (when-not (nil? commands)
         (let [{:as _executed-command,
                :keys [exit err]}
