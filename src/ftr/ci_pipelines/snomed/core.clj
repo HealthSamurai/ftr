@@ -110,7 +110,7 @@
   {:cfg {:module            "snomed"
          :source-url        (str extracted-snomed-out-dir File/separatorChar snomed-folder-name)
          :ftr-path          ftr-path
-         :tag               version
+         :tag               "prod"
          :source-type       :snomed
          :extractor-options {:db db
                              :code-system {:resourceType "CodeSystem"
