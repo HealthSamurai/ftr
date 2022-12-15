@@ -74,7 +74,7 @@
 
 (defn parse-ndjson-gz [path]
   (with-open [rdr (-> path
-                      (java.io.FileInputStream.)
+                      (io/input-stream)
                       (java.util.zip.GZIPInputStream.)
                       (io/reader))]
     (->> rdr
@@ -125,7 +125,7 @@
 
 (defn open-ndjson-gz-reader [input]
   (let [ndjson-gz-reader (-> input
-                             (java.io.FileInputStream.)
+                             (io/input-stream)
                              (java.util.zip.GZIPInputStream.)
                              (io/reader))]
     (reify NdjsonReader
