@@ -5,13 +5,7 @@
    [clojure.string :as str]))
 
 
-(defn vs-compose-system-fn [ztx value-set system version]
-  (when (some? system)
-    (fn vs-compose-system [concept]
-      (= system (:system concept)))))
-
-
-(defn vs-compose-concept-fn [ztx value-set system version concepts]
+(defn vs-compose-concept-fn [value-set system version concepts]
   (when (seq concepts)
     (let [concept-codes (into #{} (map :code) concepts)]
       (fn vs-compose-concept [concept]
@@ -20,66 +14,66 @@
 
 
 (defmulti filter-op
-  (fn [_ztx _value-set _system _version filter]
+  (fn [_value-set _system _version filter]
     (:op filter)))
 
 
-(defmethod filter-op :default [_ztx _value-set _system _version _filter]
+(defmethod filter-op :default [_value-set _system _version _filter]
   (constantly false))
 
 
-(defmethod filter-op "=" [_ztx _value-set _system _version filter]
+(defmethod filter-op "=" [_value-set _system _version filter]
   (fn eq-op [concept]
     (= (get (:property concept) (:property filter))
        (:value filter))))
 
 
-(defmethod filter-op "in" [_ztx _value-set _system _version filter]
+(defmethod filter-op "in" [_value-set _system _version filter]
   (fn in-op [concept]
     (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
          (get (:property concept) (:property filter)))))
 
 
-(defmethod filter-op "not-in" [_ztx _value-set _system _version filter]
+(defmethod filter-op "not-in" [_value-set _system _version filter]
   (fn not-in-op [concept]
     (not (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
               (get (:property concept) (:property filter))))))
 
 
-(defmethod filter-op "exists" [_ztx _value-set _system _version filter]
+(defmethod filter-op "exists" [_value-set _system _version filter]
   (if (= "false" (some-> (:value filter) str/lower-case str/trim))
     (fn not-exists-op [concept] (nil? (get (:property concept) (:property filter))))
     (fn exists-op [concept] (some? (get (:property concept) (:property filter))))))
 
 
-(defmethod filter-op "is-a" [_ztx _value-set _system _version filter]
+(defmethod filter-op "is-a" [_value-set _system _version filter]
   (fn is-a-op [concept]
     (or (= (:code concept) (:value filter))
         (contains? (:zen.fhir/parents concept) (:value filter)))))
 
 
-(defmethod filter-op "descendent-of" [_ztx _value-set _system _version filter]
+(defmethod filter-op "descendent-of" [_value-set _system _version filter]
   (fn descendatnd-of-op [concept]
     (contains? (set (:hierarchy concept)) (:value filter))))
 
 
-(defmethod filter-op "is-not-a" [_ztx _value-set _system _version filter]
+(defmethod filter-op "is-not-a" [_value-set _system _version filter]
   (fn is-not-a-op [concept] ;; TODO: not sure this is correct impl by spec
     (and (not (contains? (set (:hierarchy concept)) (:value filter)))
          (not= (:code concept) (:value filter)))))
 
 
-(defmethod filter-op "regex" [_ztx _value-set _system _version filter]
+(defmethod filter-op "regex" [_value-set _system _version filter]
   (fn regex-op [concept]
     (when-let [prop (get (:property concept) (:property filter))]
       (re-matches (re-pattern (:value filter))
                   (str prop)))))
 
 
-(defn vs-compose-filter-fn [ztx value-set system version filters]
+(defn vs-compose-filter-fn [value-set system version filters]
   (when (seq filters)
     (let [filter-fn (->> filters
-                         (map #(filter-op ztx value-set system version %))
+                         (map #(filter-op value-set system version %))
                          (apply every-pred))]
       (fn compose-filter [concept]
         (and (= system (:system concept))
@@ -89,19 +83,16 @@
 (declare compose)
 
 
-(defn check-concept-in-compose-el-fn [ztx value-set compose-el]
+(defn check-concept-in-compose-el-fn [value-set compose-el]
   (let [code-system-pred
-        (or (vs-compose-concept-fn ztx value-set
+        (or (vs-compose-concept-fn value-set
                                    (:system compose-el)
                                    (:version compose-el)
                                    (:concept compose-el))
-            (vs-compose-filter-fn ztx value-set
+            (vs-compose-filter-fn value-set
                                   (:system compose-el)
                                   (:version compose-el)
-                                  (:filter compose-el))
-            (vs-compose-system-fn ztx value-set
-                                  (:system compose-el)
-                                  (:version compose-el)))]
+                                  (:filter compose-el)))]
     (some-> {:check-fn   code-system-pred
              :system     (:system compose-el)
              :depends-on (:valueSet compose-el)}
@@ -110,9 +101,8 @@
             (assoc :vs-url (:url value-set)))))
 
 
-(defn vs-expansion-index [ztx vs] #_"TODO: support recursive expansion :contains"
-  (when (and (get-in vs [:expansion :contains])
-             (not (get-in @ztx [:fhir/vs-expansion-index (:url vs)])))
+(defn vs-expansion-index [vs] #_"TODO: support recursive expansion :contains"
+  (when (get-in vs [:expansion :contains])
     (let [expansion-contains (get-in vs [:expansion :contains])
           full-expansion?    (and (= (count expansion-contains) (get-in vs [:expansion :total]))
                                   (empty? (get-in vs [:expansion :parameter])))
@@ -124,22 +114,21 @@
                                                #{(:code concept)})))
                                    (transient {})
                                    expansion-contains))]
-      group-by
       {:concepts-index concepts-index
        :full?    full-expansion?})))
 
 
-(defn compose [ztx vs]
+(defn compose [vs]
   (let [{full-expansion? :full?
          vs-concepts-index :concepts-index}
-        (vs-expansion-index ztx vs)
+        (vs-expansion-index vs)
 
         includes (some->> (get-in vs [:compose :include])
-                          (keep (partial check-concept-in-compose-el-fn ztx vs))
+                          (keep (partial check-concept-in-compose-el-fn vs))
                           not-empty)
 
         excludes (some->> (get-in vs [:compose :exclude])
-                          (keep (partial check-concept-in-compose-el-fn ztx vs))
+                          (keep (partial check-concept-in-compose-el-fn vs))
                           not-empty)
 
         #_#_systems (into #{}
@@ -161,8 +150,9 @@
         any-system?        (nil? system)
         depends-on         (vec depends-on)
 
-        _ (assert (or has-concept-check? has-dependencies?)
-                  "check fn may be missing only when depending on another value set")
+        _ (when (not has-concept-check?)
+            (assert (or (some? system) has-dependencies?)
+                    "check fn may be missing only when depending on another value set or there's a system"))
         _ (assert (or (not any-system?) has-dependencies?)
                   "system may be missing only when depending on another value set")
 
@@ -217,6 +207,12 @@
     [false :exclude] :exclude-acc))
 
 
+(defn update-if-some-result [m k f & args]
+  (if-let [result (apply f (get m k) args)]
+    (assoc m k result)
+    m))
+
+
 (defn vs-selected-system-intersection->vs-idx [acc concepts-map vs-url sys vs-urls checks & {:keys [any-system? mode]}]
   (if-let [concepts
            (cond
@@ -238,8 +234,10 @@
       (if-let [check-fns (seq (:pred-fns checks))]
         (update acc acc-key
                 (fn [vs-idx-acc]
-                  (transduce (filter (fn [[_concept-id concept]] (every? #(% concept) check-fns)))
-                             (completing (fn [acc [_concept-id concept]] (push-concept-into-vs-idx acc vs-url concept)))
+                  (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns)
+                                                                       (or (get-in acc [:vs-idx-acc vs-url concept-code])
+                                                                           (some #(% concept) check-fns)))))
+                             (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc vs-url concept)))
                              vs-idx-acc
                              concepts)))
         (if (:allow-any-concept checks)
@@ -309,18 +307,21 @@
                            %2)
                         vs-sys-idx-acc
                         (get-in acc [incl-acc-key vs-url])))
-          (update vs-sys-idx-acc
-                  dep-system-url
-                  (if exclude-filter
-                    (fn [idx-concepts new-concepts]
-                      (into (or idx-concepts #{})
-                            (filter #(exclude-filter dep-system-url %))
-                            new-concepts))
-                    #(if (some? %1)
-                       (into %1 %2)
-                       %2))
-                  (get-in acc [incl-acc-key vs-url dep-system-url])))]
-    (assoc-in acc [:vs-idx-acc vs-url] new-vs-sys-idx)))
+          (update-if-some-result
+            vs-sys-idx-acc
+            dep-system-url
+            (if exclude-filter
+              (fn [idx-concepts new-concepts]
+                (into (or idx-concepts #{})
+                      (filter #(exclude-filter dep-system-url %))
+                      new-concepts))
+              #(if (some? %1)
+                 (into %1 %2)
+                 %2))
+            (get-in acc [incl-acc-key vs-url dep-system-url])))]
+    (cond-> acc
+      (some? new-vs-sys-idx)
+      (assoc-in [:vs-idx-acc vs-url] new-vs-sys-idx))))
 
 
 (defn refs-in-vs->vs-idx [acc concepts-map vs-url]
@@ -331,7 +332,11 @@
                 (ensure-deps-processed concepts-map deps))]
     (if full-expansion?
       (update-in acc [:vs-idx-acc vs-url] #(merge-with into % expansion-index))
-      (let [acc (reduce-kv (fn [acc dep-system-url include]
+      (let [acc (cond-> acc
+                  (seq expansion-index)
+                  (update-in [:vs-idx-acc vs-url] #(merge-with into % expansion-index)))
+
+            acc (reduce-kv (fn [acc dep-system-url include]
                              (-> acc
                                  (collect-mode-acc concepts-map vs-url dep-system-url include :include)
                                  (push-include-exclude->vs-idx vs-url dep-system-url)))
@@ -373,22 +378,22 @@
              vs-idx))
 
 
-(defn all-vs-nested-refs->concepts-map [concepts-map nested-vs-refs-queue]
-  (let [new-vs-idx-entries (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue)]
+(defn build-valuesets-compose-idx [valuesets]
+  (transduce
+    (map compose)
+    (completing (fn [queue {:as vs-comp-res :keys [vs-url]}]
+                  (update queue vs-url push-entries-to-vs-queue vs-comp-res)))
+    {}
+    valuesets))
+
+
+(defn denormalize-into-concepts [valuesets concepts-map]
+  (let [nested-vs-refs-queue (build-valuesets-compose-idx valuesets)
+        new-vs-idx-entries   (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue)]
     (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
-
-
-(defn denormalize-into-concepts [ztx valuesets concepts-map]
-  (let [nested-vs-refs-queue (transduce
-                               (map #(compose ztx %))
-                               (completing (fn [queue {:as vs-comp-res :keys [vs-url]}]
-                                             (update queue vs-url push-entries-to-vs-queue vs-comp-res)))
-                               {}
-                               valuesets)]
-    (all-vs-nested-refs->concepts-map concepts-map nested-vs-refs-queue)))
 
 
 (defn denormalize-value-sets-into-concepts [ztx]
   (swap! ztx update-in [:fhir/inter "Concept"]
          (partial denormalize-into-concepts
-                  ztx (vals (get-in @ztx [:fhir/inter "ValueSet"])))))
+                  (vals (get-in @ztx [:fhir/inter "ValueSet"])))))
