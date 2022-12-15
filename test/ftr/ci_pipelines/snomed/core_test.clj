@@ -106,8 +106,8 @@
    (test-utils/fs-tree->tree-map ftr-path)
    {"snomed"
     {"tags"
-     {(format "%s.ndjson.gz" snomed-version) {}
-      (format "%s.hash" snomed-version) {}}
+     {"prod.ndjson.gz" {}
+      "prod.hash" {}}
 
      "vs"
      {"http:--snomed.info-sct" {}}}})
