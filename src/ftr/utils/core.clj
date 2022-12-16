@@ -177,6 +177,7 @@
           (recur ks
                  (cond
                    (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
+                   (and (set? v) (set? av)) (assoc acc k (into v av))
                    (and (nil? v) (map? av)) (assoc acc k av)
                    :else (assoc acc k v))))))))
 

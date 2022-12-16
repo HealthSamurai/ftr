@@ -181,15 +181,17 @@
     (loop [{:as concept, :keys [code system display]}
            (.readLine tf-reader)
 
-           {:as ftr-index, :keys [codesystems]}
-           ftr-index-with-updated-vss]
+           ftr-index ftr-index-with-updated-vss]
       (if-not (nil? concept)
         (recur
          (.readLine tf-reader)
-         (if (get-in codesystems [system code])
-           (update-in ftr-index [ftr-tag :codesystems system code :valueset] conj vs-url)
-           (assoc-in ftr-index [ftr-tag :codesystems system code] {:display display
-                                                                   :valueset #{vs-url}})))
+         (update-in ftr-index
+                    [ftr-tag :codesystems system code]
+                    (fn [code-idx]
+                      (if (some? code-idx)
+                        (update code-idx :valueset conj vs-url)
+                        {:display  display
+                         :valueset #{vs-url}}))))
         ftr-index))))
 
 
