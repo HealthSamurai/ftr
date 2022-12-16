@@ -257,7 +257,16 @@
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "code12"}]}]}}
-     #_{:url "exclude-with-expansion"
+     {:url "exclude-with-expansion"
+      :compose {:include [{:valueSet ["simple-include"]
+                           :filter [{:op "is-a"
+                                     :property "missing"
+                                     :value  "???"}]}]
+                :exclude [{:system "sys2"
+                           :concept [{:code "code22"}]}]}
+      :expansion {:contains [{:system "sys2"
+                              :code   "code21"}]}}
+     #_{:url "exclude-withexpansion"
         :compose {:include [{:system "sys1"}
                             {:system "sys2"}]
                   :exclude [{:system "sys2" #_"FIXME: WHAT TO DO WHEN WE CAN'T EVAL EXCLUDE????"
@@ -332,8 +341,7 @@
      "exclude-valueset-not-intersection-no-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system-no-system-in-exclude" {"sys1" #{"code11"}
                                                                          "sys2" #{"code21" "code22"}}
-     #_#_"exclude-with-expansion" {"sys1" #{"code11" "code12"}
-                                   "sys2" #{"code21"}}})
+     "exclude-with-expansion" {"sys2" #{"code21"}}})
 
   (t/is (= valuesets-index-assert
            (sut/all-vs-nested-refs->vs-idx

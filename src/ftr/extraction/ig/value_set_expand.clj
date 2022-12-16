@@ -234,10 +234,12 @@
                (throw (ex-info "ValueSet or system should be present" {:vs-url vs-url, :sys sys, :deps vs-urls})))]
       (if-let [check-fns (seq (:pred-fns checks))]
         (update-in acc [acc-key vs-url]
-                (fn [vs-idx-acc ]
-                  (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns)
+                (fn [vs-idx-acc]
+                  (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns) #_"TODO: instead of building exclude idx maybe check exclude on building include idx?"
                                                                        (or (when (= :include mode)
-                                                                             #_"TODO: test on this when"
+                                                                             #_"NOTE: this when can not tested, because if expansion is included without checking exclude."
+                                                                             #_"NOTE: Without the 'when exclude gets a codes from expansion and it forbids to include these values,"
+                                                                             #_"NOTE: but these values are already included, thus this effect is not observable form outside"
                                                                              (get-in expansion-index [(:system concept) concept-code]))
                                                                            (some #(% concept) check-fns)))))
                              (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
