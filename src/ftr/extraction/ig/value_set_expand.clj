@@ -213,7 +213,8 @@
     m))
 
 
-(defn vs-selected-system-intersection->vs-idx [acc concepts-map vs-url sys vs-urls checks & {:keys [any-system? mode]}]
+(defn vs-selected-system-intersection->vs-idx [acc concepts-map expansion-index vs-url sys vs-urls checks
+                                               & {:keys [any-system? mode]}]
   (let [acc-key (get-acc-key any-system? mode)]
     (if-let [concepts
              (cond
@@ -235,7 +236,9 @@
         (update-in acc [acc-key vs-url]
                 (fn [vs-idx-acc ]
                   (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns)
-                                                                       (or (get-in acc [:vs-idx-acc vs-url concept-code])
+                                                                       (or (when (= :include mode)
+                                                                             #_"TODO: test on this when"
+                                                                             (get-in expansion-index [(:system concept) concept-code]))
                                                                            (some #(% concept) check-fns)))))
                              (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
                              (or vs-idx-acc {})
@@ -252,13 +255,13 @@
           deps-vs-urls))
 
 
-(defn vs-selected-systems->mode-acc [acc concepts-map vs-url dep-system-url vs-urls checks mode]
+(defn vs-selected-systems->mode-acc [acc concepts-map expansion-index vs-url dep-system-url vs-urls checks mode]
   (let [any-system? (= ::any-system dep-system-url)
         selected-systems (if any-system?
                            (select-all-dep-systems (:vs-idx-acc acc) vs-urls)
                            [dep-system-url])]
     (reduce (fn [acc sys]
-              (vs-selected-system-intersection->vs-idx acc concepts-map vs-url sys vs-urls checks
+              (vs-selected-system-intersection->vs-idx acc concepts-map expansion-index vs-url sys vs-urls checks
                                                        {:any-system? any-system?
                                                         :mode mode}))
             acc
@@ -275,31 +278,43 @@
              vs-urls))
 
 
-(defn collect-mode-acc [acc concepts-map vs-url system compose-els mode]
+(defn collect-mode-acc [acc concepts-map expansion-index vs-url system compose-els mode]
   (reduce-kv (fn [acc vs-urls checks]
-               (vs-selected-systems->mode-acc acc concepts-map vs-url system vs-urls checks mode))
+               (vs-selected-systems->mode-acc acc concepts-map expansion-index vs-url system vs-urls checks mode))
              acc
              compose-els))
 
 
 (defn push-include-exclude->vs-idx [acc vs-url dep-system-url]
-  (let [any-system?    (= ::any-system dep-system-url)
-        incl-acc-key   (get-acc-key any-system? :include)
-        #_#_excl-acc-key   (get-acc-key any-system? :exclude)
-        vs-sys-idx-acc (get-in acc [:vs-idx-acc vs-url] {})
-        #_#_exclude-idx    (get-in acc [excl-acc-key vs-url])
-        exclude-filter nil #_(when (seq exclude-idx)
-                               (fn [system code]
-                                 (not (get-in exclude-idx [system code]))))
+  (let [any-system?     (= ::any-system dep-system-url)
+        incl-acc-key    (get-acc-key any-system? :include)
+        vs-sys-idx-acc  (get-in acc [:vs-idx-acc vs-url] {})
+        sys-exclude-idx (get-in acc [:any-sys-exclude-acc vs-url])
+        any-exclude-idx (get-in acc [:exclude-acc vs-url])
+        exclude-contains-sys? (fn [system]
+                                (or (get-in sys-exclude-idx [system])
+                                    (get-in any-exclude-idx [system])))
+        exclude-remove  (when (or (seq sys-exclude-idx) (seq any-exclude-idx))
+                          (fn [system code]
+                            (or (get-in sys-exclude-idx [system code])
+                                (get-in any-exclude-idx [system code]))))
 
-        new-vs-sys-idx
+        new-vs-sys-idx #_"TODO: refactor"
         (if any-system?
-          (if exclude-filter
+          (if exclude-remove
             (reduce-kv (fn [acc sys concepts]
-                         (update acc sys (fn [idx-concepts]
-                                           (into (or idx-concepts #{})
-                                                 (filter #(exclude-filter sys %))
-                                                 concepts))))
+                         (if (exclude-contains-sys? sys)
+                           (update-if-some-result acc sys
+                                                  (fn [idx-concepts]
+                                                    (not-empty
+                                                      (into (or idx-concepts #{})
+                                                            (remove #(exclude-remove sys %))
+                                                            concepts))))
+                           (update acc sys
+                                   #(if (some? %1)
+                                      (into %1 %2)
+                                      %2)
+                                   concepts)))
                        vs-sys-idx-acc
                        (get-in acc [incl-acc-key vs-url]))
             (merge-with #(if (some? %1)
@@ -310,11 +325,11 @@
           (update-if-some-result
             vs-sys-idx-acc
             dep-system-url
-            (if exclude-filter
+            (if (and exclude-remove (exclude-contains-sys? dep-system-url))
               (fn [idx-concepts new-concepts]
-                (into (or idx-concepts #{})
-                      (filter #(exclude-filter dep-system-url %))
-                      new-concepts))
+                (not-empty (into (or idx-concepts #{})
+                                 (remove #(exclude-remove dep-system-url %))
+                                 new-concepts)))
               #(if (some? %1)
                  (into %1 %2)
                  %2))
@@ -334,15 +349,32 @@
                   (seq expansion-index)
                   (update-in [:vs-idx-acc vs-url] #(merge-with into % expansion-index)))
 
+            acc (collect-mode-acc acc concepts-map expansion-index vs-url ::any-system (:any-system exclude) :exclude)
+
+            need-to-process-all-excludes? (:any-system include)
+
+            acc (if need-to-process-all-excludes? #_"NOTE: can process not all, but only ones that will be used in any-system include"
+                  (reduce-kv (fn [acc dep-system-url exclude]
+                               (-> acc
+                                   (collect-mode-acc concepts-map expansion-index vs-url dep-system-url exclude :exclude)
+                                   (push-include-exclude->vs-idx vs-url dep-system-url)))
+                             acc
+                             (:systems exclude))
+                  acc)
+
             acc (reduce-kv (fn [acc dep-system-url include]
                              (-> acc
-                                 (collect-mode-acc concepts-map vs-url dep-system-url include :include)
+                                 (cond-> (not need-to-process-all-excludes?)
+                                   (collect-mode-acc concepts-map expansion-index vs-url dep-system-url
+                                                     (get-in exclude [:systems dep-system-url])
+                                                     :exclude))
+                                 (collect-mode-acc concepts-map expansion-index vs-url dep-system-url include :include)
                                  (push-include-exclude->vs-idx vs-url dep-system-url)))
                            acc
                            (:systems include))
 
             acc (-> acc
-                    (collect-mode-acc concepts-map vs-url ::any-system (:any-system include) :include)
+                    (collect-mode-acc concepts-map expansion-index vs-url ::any-system (:any-system include) :include)
                     (push-include-exclude->vs-idx vs-url ::any-system))]
         acc))))
 
