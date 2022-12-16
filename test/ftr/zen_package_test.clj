@@ -812,8 +812,7 @@
                           :status "active"
                           :compose {:include [{:valueSet ["gender-vs-url"]
                                                :system "gender-cs-url"}
-                                              {:valueSet ["gender-vs-url"
-                                                          "expanded-gender-vs-url"]}]
+                                              {:valueSet ["expanded-gender-vs-url"]}]
                                     :exclude [{:valueSet ["unknown-gender-vs-url"]}]}}]
     {'ftr-expansion-lib {:deps #{['zen-fhir (str (System/getProperty "user.dir") "/zen.fhir/")]}
                          :resources {"ig/node_modules/gender-codesystem.json" gender-cs
