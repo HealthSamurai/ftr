@@ -151,9 +151,8 @@
            :ftr-dir inferred-ftr-dir
            :path    path})]
 
-    (swap! ztx (fn [ztx-val]
-                 (assoc ztx-val :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
-                                                     :complete? true})))))
+    (swap! ztx assoc :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
+                                          :complete? true})))
 
 
 (defn- enrich-ftr-index-with-tf [ftr-index ftr-tag tf-path]
