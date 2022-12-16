@@ -192,11 +192,11 @@
   (update acc :vs-queue dissoc vs-url))
 
 
-(defn push-concept-into-vs-idx [vs-idx vs-url concept]
-  (update-in vs-idx
-             [vs-url (:system concept)]
-             (fnil conj #{})
-             (:code concept)))
+(defn push-concept-into-vs-idx [vs-idx concept]
+  (update vs-idx
+          (:system concept)
+          (fnil conj #{})
+          (:code concept)))
 
 
 (defn get-acc-key [any-system? mode]
@@ -214,37 +214,37 @@
 
 
 (defn vs-selected-system-intersection->vs-idx [acc concepts-map vs-url sys vs-urls checks & {:keys [any-system? mode]}]
-  (if-let [concepts
-           (cond
-             (seq vs-urls)
-             (some->> vs-urls
-                      (keep (fn [dep-vs-url]
-                              (get-in acc [:vs-idx-acc dep-vs-url sys])))
-                      seq
-                      (apply set/intersection)
-                      (map (fn [code] [code (get-in concepts-map [sys code])]))
-                      (into {}))
+  (let [acc-key (get-acc-key any-system? mode)]
+    (if-let [concepts
+             (cond
+               (seq vs-urls)
+               (some->> vs-urls
+                        (map (fn [dep-vs-url]
+                               (get-in acc [:vs-idx-acc dep-vs-url sys] #{})))
+                        (apply set/intersection)
+                        seq
+                        (map (fn [code] [code (get-in concepts-map [sys code])]))
+                        (into {}))
 
-             sys
-             (get concepts-map sys)
+               sys
+               (get concepts-map sys)
 
-             :else
-             (throw (ex-info "ValueSet or system should be present" {:vs-url vs-url, :sys sys, :deps vs-urls})))]
-    (let [acc-key (get-acc-key any-system? mode)]
+               :else
+               (throw (ex-info "ValueSet or system should be present" {:vs-url vs-url, :sys sys, :deps vs-urls})))]
       (if-let [check-fns (seq (:pred-fns checks))]
-        (update acc acc-key
-                (fn [vs-idx-acc]
+        (update-in acc [acc-key vs-url]
+                (fn [vs-idx-acc ]
                   (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns)
                                                                        (or (get-in acc [:vs-idx-acc vs-url concept-code])
                                                                            (some #(% concept) check-fns)))))
-                             (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc vs-url concept)))
-                             vs-idx-acc
+                             (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
+                             (or vs-idx-acc {})
                              concepts)))
         (if (:allow-any-concept checks)
           (update-in acc [acc-key vs-url sys] (fnil into #{}) (keys concepts))
           (throw (ex-info "must be either predicate fn or whole system allow"
-                          {:vs-url vs-url, :sys sys, :deps vs-urls})))))
-    acc))
+                          {:vs-url vs-url, :sys sys, :deps vs-urls}))))
+      (update-in acc [acc-key vs-url] #(or % {})))))
 
 
 (defn select-all-dep-systems [vs-idx-acc deps-vs-urls]
@@ -286,7 +286,7 @@
   (let [any-system?    (= ::any-system dep-system-url)
         incl-acc-key   (get-acc-key any-system? :include)
         #_#_excl-acc-key   (get-acc-key any-system? :exclude)
-        vs-sys-idx-acc (get-in acc [:vs-idx-acc vs-url])
+        vs-sys-idx-acc (get-in acc [:vs-idx-acc vs-url] {})
         #_#_exclude-idx    (get-in acc [excl-acc-key vs-url])
         exclude-filter nil #_(when (seq exclude-idx)
                                (fn [system code]
@@ -319,9 +319,7 @@
                  (into %1 %2)
                  %2))
             (get-in acc [incl-acc-key vs-url dep-system-url])))]
-    (cond-> acc
-      (some? new-vs-sys-idx)
-      (assoc-in [:vs-idx-acc vs-url] new-vs-sys-idx))))
+    (assoc-in acc [:vs-idx-acc vs-url] new-vs-sys-idx)))
 
 
 (defn refs-in-vs->vs-idx [acc concepts-map vs-url]
