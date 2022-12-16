@@ -104,6 +104,14 @@
    ::write-tag-index-hash])
 
 
+(def serialized-objects-array-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
 (defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
                                          ::keys [commit-type]
                                          {:keys [source-type]} :cfg}]
@@ -117,6 +125,9 @@
 
      [:append :snomed]
      snomed-pipeline
+
+     [:append :serialized-objects-array]
+     serialized-objects-array-pipeline
 
      [:tag-merge nil]
      tag-merge-pipeline)})

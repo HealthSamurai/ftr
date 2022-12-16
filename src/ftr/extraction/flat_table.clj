@@ -3,8 +3,7 @@
             [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
             [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [cheshire.core]))
+            [clojure.string :as str]))
 
 (defmethod u/*fn ::create-value-set [cfg]
   {::result {:value-set
