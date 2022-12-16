@@ -274,7 +274,10 @@
                                        :property "missing"
                                        :value    "???"}]}]}
         :expansion {:contains [{:system "sys2"
-                                :code   "code21"}]}}])
+                                :code   "code21"}]}}
+     {:url "include-vs-exclude-other-vs"
+      :compose {:include [{:valueSet ["simpler-include" "simple-include"]}]
+                :exclude [{:valueSet ["not-full-expansion"]}]}}])
 
   (def valuesets-index-assert
     {"simple-include" {"sys1" #{"code11" "code12"}
@@ -341,7 +344,8 @@
      "exclude-valueset-not-intersection-no-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system-no-system-in-exclude" {"sys1" #{"code11"}
                                                                          "sys2" #{"code21" "code22"}}
-     "exclude-with-expansion" {"sys2" #{"code21"}}})
+     "exclude-with-expansion" {"sys2" #{"code21"}}
+     "include-vs-exclude-other-vs" {"sys2" #{"code22"}}})
 
   (t/is (= valuesets-index-assert
            (sut/all-vs-nested-refs->vs-idx
