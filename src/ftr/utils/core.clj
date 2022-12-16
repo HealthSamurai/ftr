@@ -74,7 +74,7 @@
 
 (defn parse-ndjson-gz [path]
   (with-open [rdr (-> path
-                      (java.io.FileInputStream.)
+                      (io/input-stream)
                       (java.util.zip.GZIPInputStream.)
                       (io/reader))]
     (->> rdr
@@ -125,7 +125,7 @@
 
 (defn open-ndjson-gz-reader [input]
   (let [ndjson-gz-reader (-> input
-                             (java.io.FileInputStream.)
+                             (io/input-stream)
                              (java.util.zip.GZIPInputStream.)
                              (io/reader))]
     (reify NdjsonReader
@@ -177,6 +177,7 @@
           (recur ks
                  (cond
                    (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
+                   (and (set? v) (set? av)) (assoc acc k (into v av))
                    (and (nil? v) (map? av)) (assoc acc k av)
                    :else (assoc acc k v))))))))
 

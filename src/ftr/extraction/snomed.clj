@@ -4,7 +4,6 @@
             [cheshire.core :as json]
             [next.jdbc :as jdbc]
             [next.jdbc.prepare]
-            [clojure.java.shell :as sh]
             [ftr.utils.unifn.core :as u])
   (:import [java.sql
             PreparedStatement]))

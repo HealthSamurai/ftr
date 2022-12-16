@@ -43,6 +43,14 @@
                           ::fn)))
           ctx tracers))
 
+
+(defmacro evaluation-time
+  [expr]
+  `(let [start# (. System (nanoTime))
+         ret# ~expr]
+     (assoc ret# :ftr.utils.unifn.core/eval-time-in-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0))))
+
+
 (defn *apply-impl [{st ::status inter ::intercept f-name ::fn tracers ::tracers :as arg}]
   (if (and (not (= inter :all))
            (contains? #{:error :stop} st))
@@ -59,12 +67,14 @@
            (when tracers
              (doseq [t tracers] (*apply t {:event ev :arg arg})))
            (merge arg ev))
-         (let [patch (if (::safe? arg)
-                       (try (*fn arg)
-                            (catch Exception e
-                              {::status :error
-                               ::message (with-out-str (stacktrace/print-stack-trace e))}))
-                       (*fn arg))
+        (let [patch
+              (evaluation-time
+                (if (::safe? arg)
+                  (try (*fn arg)
+                       (catch Exception e
+                         {::status :error
+                          ::message (with-out-str (stacktrace/print-stack-trace e))}))
+                  (*fn arg)))
                patch (cond (map? patch) patch (nil? patch) {} :else {::value patch})
                patch (if-let [fx (:fx patch)]
                        (reduce (fn [res [k v]]

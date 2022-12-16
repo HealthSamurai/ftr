@@ -1,0 +1,22 @@
+version: '3'
+
+volumes:
+  pgdata:
+
+services:
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - "5125:5432"
+    volumes:
+      - "pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: pg_isready -U ftr
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_USER: ftr
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ftr

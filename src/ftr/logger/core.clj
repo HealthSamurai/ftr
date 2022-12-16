@@ -52,8 +52,15 @@
 
 
 (defmethod dispatch-logger :default [{:as _ctx,
+                                      eval-time-in-ms :ftr.utils.unifn.core/eval-time-in-ms
                                       {{:keys [f-name phase]} :trace-ev} :ftr.utils.unifn.core/tracer}]
-  (println (format "%s \033[0;1m%s\033[22m" (str/capitalize (name phase)) (str/capitalize (name f-name)))))
+  (let [prettified-fn-name (str/capitalize (name f-name))]
+    (case phase
+      :enter
+      (println (format "%s \033[0;1m%s\033[22m" "Enter" prettified-fn-name))
+
+      :leave
+      (println (format "\033[0;1m%s\033[22m completed in %s msecs\n" prettified-fn-name eval-time-in-ms)))))
 
 
 (defmethod u/*fn ::dispatch-logger [ctx]

@@ -395,8 +395,7 @@
 
         (t/testing "patch plan file generated correctly"
           (matcho/match
-            (ftr.utils.core/parse-ndjson-gz (format "%s/ig-plan.ndjson.gz"
-                                                    (:ftr-path user-cfg)))
+            (ftr.utils.core/parse-ndjson-gz "/tmp/ftr-bulk-patch-plans/ig-plan.ndjson.gz")
             [{:resourceType "CodeSystem" :name "AdministrativeGender"}
              {:resourceType "ValueSet"   :name "AdministrativeGender"}
              {:code "female"}
@@ -421,7 +420,7 @@
                   :ig-source-updated2    "test/fixture/dehydrated.mutated.core2/node_modules"
                   :ig-source-updated3    "test/fixture/dehydrated.mutated.core3/node_modules"
                   :update-plan-name      "update-plan"
-                  :update-plan-name-path "/tmp/igftr/update-plan.ndjson.gz"
+                  :update-plan-name-path "/tmp/ftr-bulk-patch-plans/update-plan.ndjson.gz"
                   :ftr-path              "/tmp/igftr"}
         user-cfg {:module      "dehydrated"
                   :source-url  (:ig-source-initial env)
@@ -606,7 +605,7 @@
                 "tags" {"v1.ndjson.gz" {} "v1.hash" {}}}}))
 
         update-plan-name "update-plan"
-        update-plan-path (str ftr-path \/ update-plan-name ".ndjson.gz")
+        update-plan-path (str "/tmp/ftr-bulk-patch-plans" \/ update-plan-name ".ndjson.gz")
 
         _ (t/testing "pull/migrate create correct update plan, remove plan remains empty"
             (matcho/match

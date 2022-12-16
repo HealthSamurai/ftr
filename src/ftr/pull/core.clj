@@ -10,8 +10,9 @@
                 :or {patch-plan-file-name (str "update-plan-" (ftr.utils.core/gen-uuid))}}]]
   (let [tag-index-path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)
         tag-index (ftr.utils.core/parse-ndjson-gz tag-index-path)
+        bulk-patch-plans-folder (doto "/tmp/ftr-bulk-patch-plans" (-> (io/file) (.mkdirs)))
         patch-plan-file-path (format "%s/%s.ndjson.gz"
-                                     ftr-path
+                                     bulk-patch-plans-folder
                                      patch-plan-file-name)]
     (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
       (doseq [{:as _ti-entry, :keys [hash name]} tag-index
@@ -120,9 +121,10 @@
          client-tag-index-map  (tag-index->tag-index-map tag-index)
          actual-tag-index-map  (tag-index->tag-index-map actual-tag-index)
          tag-indexes-diff      (diff-tag-indexes client-tag-index-map actual-tag-index-map)
-         patch-plan-file-path (format "%s/%s.ndjson.gz" ftr-path patch-plan-file-name)]
+         bulk-patch-plans-folder (doto "/tmp/ftr-bulk-patch-plans" (-> (io/file) (.mkdirs)))
+         patch-plan-file-path (format "%s/%s.ndjson.gz" bulk-patch-plans-folder patch-plan-file-name)]
      (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
-       (reduce (fn [acc {:keys [state from to vs-name] :as tag-entry}]
+       (reduce (fn [acc {:keys [state from to vs-name] :as _tag-entry}]
                  (let [vs-name (extract-vs-name vs-name)
                        ->vs-path (fn [suffix] (str (format "%s/%s/vs/%s/" ftr-path module vs-name) suffix))
                        ?old-tf           (when from (->vs-path (format "tf.%s.ndjson.gz" from)))

@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [zen.v2-validation]
             [clojure.java.io :as io]
-            [clojure.pprint]
             [zen.cli])
   (:import (java.util UUID)))
 
@@ -101,18 +100,30 @@
 
 (defn enrich-vs [vs]
   (if (contains? vs :ftr)
-    (let [zen-file         (:zen/file vs)
+    (let [{:as _ftr-manifest,
+           :keys [ftr-path source-type source-url]}
+          (get vs :ftr)
+          zen-file         (:zen/file vs)
           path-to-package  (->> (str/split zen-file #"/")
-                               (take-while (complement #{"zrc"})))
+                                (take-while (complement #{"zrc"})))
           zen-package-name (last path-to-package)
-          inferred-ftr-dir (-> path-to-package
-                               vec
-                               (conj "ftr")
-                               (->> (str/join "/")))]
+          inferred-ftr-dir (if (= source-type :cloud-storage) ;;TODO Re-design manifests, harmonize source-types on ftr design/runtime phase
+                             (str source-url \/ ftr-path) ;;That's uncorrect, cause source-url intended to store path to raw-terminology source,
+                                                          ;;same thing with the source-type.
+                             (-> path-to-package
+                                 vec
+                                 (conj "ftr")
+                                 (->> (str/join "/"))))]
       (-> vs
           (assoc-in [:ftr :zen/package-name] zen-package-name)
           (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir)))
     vs))
+
+
+(defn url? [path]
+  (let [url (try (java.net.URL. path)
+                 (catch Exception _ false))]
+    (instance? java.net.URL url)))
 
 
 (defn build-complete-ftr-index [ztx]
@@ -132,16 +143,16 @@
                                                          distinct)
 
               :let  [path (format "%s/%s/tags/%s.ndjson.gz" inferred-ftr-dir module tag)]
-              :when (.exists (io/file path))]
+              :when (or (.exists (io/file path))
+                        (url? path))]
 
           {:tag     tag
            :module  module
            :ftr-dir inferred-ftr-dir
            :path    path})]
 
-    (swap! ztx (fn [ztx-val]
-                 (assoc ztx-val :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
-                                                     :complete? true})))))
+    (swap! ztx assoc :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
+                                          :complete? true})))
 
 
 (defn- enrich-ftr-index-with-tf [ftr-index ftr-tag tf-path]
@@ -169,15 +180,17 @@
     (loop [{:as concept, :keys [code system display]}
            (.readLine tf-reader)
 
-           {:as ftr-index, :keys [codesystems]}
-           ftr-index-with-updated-vss]
+           ftr-index ftr-index-with-updated-vss]
       (if-not (nil? concept)
         (recur
          (.readLine tf-reader)
-         (if (get-in codesystems [system code])
-           (update-in ftr-index [ftr-tag :codesystems system code :valueset] conj vs-url)
-           (assoc-in ftr-index [ftr-tag :codesystems system code] {:display display
-                                                                   :valueset #{vs-url}})))
+         (update-in ftr-index
+                    [ftr-tag :codesystems system code]
+                    (fn [code-idx]
+                      (if (some? code-idx)
+                        (update code-idx :valueset conj vs-url)
+                        {:display  display
+                         :valueset #{vs-url}}))))
         ftr-index))))
 
 
