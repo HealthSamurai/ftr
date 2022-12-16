@@ -974,7 +974,7 @@
 
 (t/deftest serialized-objects-array-source-type-test
   (def soa-test-env-cfg {:ftr-path "/tmp/soa/ftr"
-                         :soa-source "/Users/ghrp/dev/ftr/test/fixture/yaml/external-care-team-relationship.yaml"})
+                         :soa-source "test/fixture/yaml/external-care-team-relationship.yaml"})
 
 
   (def soa-user-cfg {:module "soa"
@@ -993,8 +993,6 @@
     (ftr.utils.core/rmrf (:ftr-path soa-test-env-cfg)))
 
   (t/testing "User provides config for SOA"
-
-
     (let [{:as user-cfg, :keys [module ftr-path tag]
            {{value-set-name :url} :value-set} :extractor-options}
           soa-user-cfg
