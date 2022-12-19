@@ -970,3 +970,113 @@
     (clean-up-test-env!))
 
   )
+
+
+(t/deftest serialized-objects-array-source-type-test
+  (def soa-test-env-cfg {:ftr-path "/tmp/soa/ftr"
+                         :soa-source "test/fixture/yaml/external-care-team-relationship.yaml"})
+
+
+  (def soa-user-cfg {:module "soa"
+                     :source-url (:soa-source soa-test-env-cfg)
+                     :ftr-path (:ftr-path soa-test-env-cfg)
+                     :tag "prod"
+                     :source-type :serialized-objects-array
+                     :extractor-options {:format "yaml"
+                                         :mapping {:concept {:code {:path [:code]}
+                                                             :display {:path [:display]}}}
+                                         :code-system {:id "soa"
+                                                       :url "http://soa/cs"}
+                                         :value-set {:id "soa"
+                                                     :url "http://soa/vs"}}})
+  (t/testing "Clean up test-env"
+    (ftr.utils.core/rmrf (:ftr-path soa-test-env-cfg)))
+
+  (t/testing "User provides config for SOA"
+    (let [{:as user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          soa-user-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+          ftr-tree
+          {"soa"
+           {"vs"
+            {"http:--soa-vs"
+             {"tf.92be9f413299bc56f798f6855a3f018b73f676e353e5faae6b51ebe8d946777b.ndjson.gz"
+              {},
+              "tag.prod.ndjson.gz" {}}},
+            "tags" {"prod.ndjson.gz" {}, "prod.hash" {}}}}))
+
+      (t/testing "sees terminology tag file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz
+            "/tmp/soa/ftr/soa/tags/prod.ndjson.gz")
+          [{:hash
+            "92be9f413299bc56f798f6855a3f018b73f676e353e5faae6b51ebe8d946777b"
+            :name "soa.http:--soa-vs"}
+           nil?]))
+
+      (t/testing "sees terminology file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz
+            "/tmp/soa/ftr/soa/vs/http:--soa-vs/tf.92be9f413299bc56f798f6855a3f018b73f676e353e5faae6b51ebe8d946777b.ndjson.gz")
+          [{:resourceType "CodeSystem"
+            :url "http://soa/cs"
+            :valueSet "http://soa/vs"}
+           {:resourceType "ValueSet"
+            :url "http://soa/vs"}
+           {:code "CAREGIVER"
+            :display "Caregiver"
+            :id "http:--soa-cs-http:--soa-vs-CAREGIVER"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "CHILD"
+            :display "Children"
+            :id "http:--soa-cs-http:--soa-vs-CHILD"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "HOMPART"
+            :display "Partner(s)"
+            :id "http:--soa-cs-http:--soa-vs-HOMPART"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "NMTH"
+            :display "Parents"
+            :id "http:--soa-cs-http:--soa-vs-NMTH"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "SIGOTHR"
+            :display "Significant Other"
+            :id "http:--soa-cs-http:--soa-vs-SIGOTHR"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "SPS"
+            :display "Spouse"
+            :id "http:--soa-cs-http:--soa-vs-SPS"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           {:code "STPPRN"
+            :display "Step-Parent(s)"
+            :id "http:--soa-cs-http:--soa-vs-STPPRN"
+            :resourceType "Concept"
+            :system "http://soa/cs"
+            :valueset ["http://soa/vs"]}
+           nil?]))))
+
+  (t/testing "Clean up test-env"
+    (ftr.utils.core/rmrf (:ftr-path soa-test-env-cfg))))
