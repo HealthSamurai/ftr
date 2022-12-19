@@ -7,10 +7,15 @@
 
 (defn vs-compose-concept-fn [value-set system version concepts]
   (when (seq concepts)
-    (let [concept-codes (into #{} (map :code) concepts)]
+    (let [concept-codes (into #{}
+                              (comp (map :code)
+                                    (map keyword))
+                              concepts)
+          #_#_system-kw (keyword system)]
       (fn vs-compose-concept [concept]
-        (and (= system (:system concept))
-             (contains? concept-codes (:code concept)))))))
+        (contains? concept-codes (:zen.fhir/code-kw concept))
+        #_(and (= system-kw (:zen.fhir/system-kw concept))
+             (contains? concept-codes (:zen.fhir/code-kw concept)))))))
 
 
 (defmulti filter-op
@@ -29,15 +34,21 @@
 
 
 (defmethod filter-op "in" [_value-set _system _version filter]
-  (fn in-op [concept]
-    (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
-         (get (:property concept) (:property filter)))))
+  (let [in-values (into #{}
+                        (map str/trim)
+                        (str/split (or (:value filter) "") #","))]
+    (fn in-op [concept]
+      (contains? in-values
+                 (get (:property concept) (:property filter))))))
 
 
 (defmethod filter-op "not-in" [_value-set _system _version filter]
-  (fn not-in-op [concept]
-    (not (get (into #{} (map str/trim) (str/split (or (:value filter) "") #","))
-              (get (:property concept) (:property filter))))))
+  (let [in-values (into #{}
+                        (map str/trim)
+                        (str/split (or (:value filter) "") #","))]
+    (fn not-in-op [concept]
+      (not (contains? in-values
+                      (get (:property concept) (:property filter)))))))
 
 
 (defmethod filter-op "exists" [_value-set _system _version filter]
@@ -47,37 +58,47 @@
 
 
 (defmethod filter-op "is-a" [_value-set _system _version filter]
-  (fn is-a-op [concept]
-    (or (= (:code concept) (:value filter))
-        (contains? (:zen.fhir/parents concept) (:value filter)))))
+  (let [is-a-keyword (keyword (:value filter))]
+    (fn is-a-op [concept]
+      (or (= (:zen.fhir/code-kw concept) is-a-keyword)
+          (contains? (:zen.fhir/parents concept) is-a-keyword)))))
 
 
 (defmethod filter-op "descendent-of" [_value-set _system _version filter]
-  (fn descendatnd-of-op [concept]
-    (contains? (set (:hierarchy concept)) (:value filter))))
+  (let [is-a-keyword (keyword (:value filter))]
+    (fn descendatnd-of-op [concept]
+      (contains? (:zen.fhir/parents concept) is-a-keyword))))
 
 
 (defmethod filter-op "is-not-a" [_value-set _system _version filter]
-  (fn is-not-a-op [concept] ;; TODO: not sure this is correct impl by spec
-    (and (not (contains? (set (:hierarchy concept)) (:value filter)))
-         (not= (:code concept) (:value filter)))))
+  (let [is-a-keyword (keyword (:value filter))]
+    (fn is-not-a-op [concept]
+      (not (or (= (:zen.fhir/code-kw concept) is-a-keyword)
+               (contains? (:zen.fhir/parents concept) is-a-keyword))))))
 
 
 (defmethod filter-op "regex" [_value-set _system _version filter]
-  (fn regex-op [concept]
-    (when-let [prop (get (:property concept) (:property filter))]
-      (re-matches (re-pattern (:value filter))
-                  (str prop)))))
+  (let [re-pat (re-pattern (:value filter))]
+    (fn regex-op [concept]
+      (when-let [prop (get (:property concept) (:property filter))]
+        (re-matches re-pat (str prop))))))
 
 
 (defn vs-compose-filter-fn [value-set system version filters]
   (when (seq filters)
-    (let [filter-fn (->> filters
-                         (map #(filter-op value-set system version %))
-                         (apply every-pred))]
+    (let [filter-fns (->> filters
+                          (map #(filter-op value-set system version %)))
+
+          filter-fn (if (= 1 (count filter-fns))
+                      (first filter-fns) #_"NOTE: eliminate every-pred to simplify stacktraces"
+                      (apply every-pred filter-fns))
+
+          system-kw (keyword system)]
       (fn compose-filter [concept]
-        (and (= system (:system concept))
-             (filter-fn concept))))))
+        #_(and (= system-kw (:zen.fhir/system-kw concept))
+               (filter-fn concept))
+        #_"NOTE: we're not checking sys since concepts from other sys should not be sent into this fn"
+        (filter-fn concept)))))
 
 
 (declare compose)
@@ -233,18 +254,23 @@
                :else
                (throw (ex-info "ValueSet or system should be present" {:vs-url vs-url, :sys sys, :deps vs-urls})))]
       (if-let [check-fns (seq (:pred-fns checks))]
-        (update-in acc [acc-key vs-url]
-                (fn [vs-idx-acc]
-                  (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns) #_"TODO: instead of building exclude idx maybe check exclude on building include idx?"
-                                                                       (or (when (= :include mode)
-                                                                             #_"NOTE: this when can not tested, because if expansion is included without checking exclude."
-                                                                             #_"NOTE: Without the 'when exclude gets a codes from expansion and it forbids to include these values,"
-                                                                             #_"NOTE: but these values are already included, thus this effect is not observable form outside"
-                                                                             (get-in expansion-index [(:system concept) concept-code]))
-                                                                           (some #(% concept) check-fns)))))
-                             (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
-                             (or vs-idx-acc {})
-                             concepts)))
+        (let [check-fn (if (= 1 (count check-fns))
+                         (first check-fns)
+                         (fn [concept] (some #(% concept) check-fns)))]
+          (update-in acc [acc-key vs-url]
+                     (fn [vs-idx-acc]
+                       (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns) #_"TODO: instead of building exclude idx maybe check exclude on building include idx?"
+                                                                            (or (when (= :include mode)
+                                                                                  #_"NOTE: this when can not tested, because if expansion is included without checking exclude."
+                                                                                  #_"NOTE: Without the 'when exclude gets a codes from expansion and it forbids to include these values,"
+                                                                                  #_"NOTE: but these values are already included, thus this effect is not observable form outside"
+                                                                                  (-> expansion-index
+                                                                                      (get (:system concept))
+                                                                                      (get concept-code)))
+                                                                                (check-fn concept)))))
+                                  (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
+                                  (or vs-idx-acc {})
+                                  concepts))))
         (if (:allow-any-concept checks)
           (update-in acc [acc-key vs-url sys] (fnil into #{}) (keys concepts))
           (throw (ex-info "must be either predicate fn or whole system allow"

@@ -52,6 +52,8 @@
   #{:zen/loader
     :zen.fhir/loader
     :zen.fhir/parents
+    :zen.fhir/code-kw
+    :zen.fhir/system-kw
     :zen.fhir/package
     :zen.fhir/package-ns
     :zen.fhir/packages
@@ -100,7 +102,9 @@
                 (assoc :id (id-fn c)
                        :system sys
                        :_source "zen.fhir"
-                       :resourceType "Concept")
+                       :resourceType "Concept"
+                       :zen.fhir/code-kw (keyword (:code c))
+                       :zen.fhir/system-kw (keyword sys))
                 (cond-> (:designation c) (assoc :designation (build-designation (:designation c)))
                         (seq hierarchy) (assoc :hierarchy hierarchy)
                         (seq parents) (assoc :zen.fhir/parents parents)
@@ -110,7 +114,7 @@
       (reduce (fn [acc c']
                 (reduce-concept acc id-fn sys
                                 (conj hierarchy (:code con))
-                                (conj parents (:code con))
+                                (conj parents (keyword (:code con)))
                                 c'))
               acc cs)
       acc)))
@@ -256,7 +260,7 @@
 (defn flatten-nested-map [m levels key-concat-fn & [ks]]
   (if (< 1 levels)
     (into {}
-          (map (fn [[k v]] (flatten-nested-map v (dec levels) key-concat-fn (conj ks k))))
+          (map (fn [[k v]] (flatten-nested-map v (dec levels) key-concat-fn (conj (or ks []) k))))
           m)
     (into {}
           (map (fn [[k v]] [(key-concat-fn (conj ks k))
