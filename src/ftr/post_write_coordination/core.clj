@@ -42,6 +42,7 @@
     (->> (if (seq tag-index-entry)
            (update tag-index idx assoc :hash new-sha256)
            (conj tag-index {:name (format "%s.%s" module vs-name) :hash new-sha256}))
+         (sort-by :name)
          (ftr.utils.core/spit-ndjson-gz! tag-index-path))))
 
 
