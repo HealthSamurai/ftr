@@ -253,13 +253,27 @@
                 (vec (:valueset concept)))))
 
 
+(defn flatten-nested-map [m levels key-concat-fn & [ks]]
+  (if (< 1 levels)
+    (into {}
+          (map (fn [[k v]] (flatten-nested-map v (dec levels) key-concat-fn (conj ks k))))
+          m)
+    (into {}
+          (map (fn [[k v]] [(key-concat-fn (conj ks k))
+                            v]))
+          m)))
+
+
 (defn process-concepts [ztx]
   (collect-concepts ztx)
   (ftr.extraction.ig.value-set-expand/denormalize-value-sets-into-concepts ztx)
   (swap! ztx update-in [:fhir/inter "Concept"]
-         #(sp/transform [sp/MAP-VALS]
-                        (partial process-concept ztx)
-                        (reduce merge (vals %)))))
+         (fn [codesystems-concepts]
+           (update-vals (flatten-nested-map
+                          codesystems-concepts
+                          2
+                          (fn [[system code]] (str system \- code)))
+                        #(process-concept ztx %)))))
 
 
 (defmethod u/*fn ::load-terminology [{:as _ctx, :keys [cfg ztx]}]
