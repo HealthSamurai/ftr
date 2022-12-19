@@ -74,6 +74,14 @@
              "code22" {:system "sys2"
                        :code "code22"}}})
 
+  (def concepts-index-fixture
+    (-> concepts-index-fixture
+        (update-vals (fn [vls]
+                       (update-vals vls
+                                    #(-> %
+                                         (assoc :zen.fhir/system-kw (keyword (:system %)))
+                                         (assoc :zen.fhir/code-kw (keyword (:code %)))))))))
+
   (def valuesets-fixtures
     [{:url "simple-include"
       :compose {:include [{:system "sys1"}

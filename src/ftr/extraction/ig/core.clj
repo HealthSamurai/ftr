@@ -254,7 +254,8 @@
 (defn process-concept [_ztx concept]
   (-> concept
       (assoc-in [:zen.fhir/resource :valueset]
-                (vec (:valueset concept)))))
+                (vec (:valueset concept)))
+      (update-in [:zen.fhir/resource] #(apply dissoc % loader-keys))))
 
 
 (defn flatten-nested-map [m levels key-concat-fn & [ks]]

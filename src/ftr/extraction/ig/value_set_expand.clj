@@ -11,11 +11,12 @@
                               (comp (map :code)
                                     (map keyword))
                               concepts)
-          #_#_system-kw (keyword system)]
+          system-kw (keyword system)]
       (fn vs-compose-concept [concept]
-        (contains? concept-codes (:zen.fhir/code-kw concept))
         #_(and (= system-kw (:zen.fhir/system-kw concept))
-             (contains? concept-codes (:zen.fhir/code-kw concept)))))))
+               (contains? concept-codes (:zen.fhir/code-kw concept)))
+        #_"NOTE: we're not checking sys since concepts from other sys should not be sent into this fn"
+        (contains? concept-codes (:zen.fhir/code-kw concept))))))
 
 
 (defmulti filter-op
