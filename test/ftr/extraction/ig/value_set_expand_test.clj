@@ -1,5 +1,6 @@
 (ns ftr.extraction.ig.value-set-expand-test
   (:require [ftr.extraction.ig.value-set-expand :as sut]
+            [ftr.extraction.ig.core]
             [clojure.string :as str]
             [matcho.core :as match]
             [clojure.test :as t]))
@@ -37,6 +38,8 @@
 {"<ValueSet.url>"
  {:deps #{"<ValueSet.url>"}
 
+  #_"TODO: multiaxial hierarchy for is-a"
+  #_"TODO: same system different predicates"
   :include {:systems
             {"<Concept.system>" {["<ValueSet.url>"] #_"NOTE: value set intersection, can be empty"
                                  {#_"NOTE: can't have both"
@@ -63,49 +66,36 @@
 
 
 (t/deftest nested-vs-refs-process-test
-
-  (def concepts-index-fixture
-    {"sys1" {"code11" {:system "sys1"
-                       :code "code11"}
-             "code12" {:system "sys1"
-                       :code "code12"}}
-     "sys2" {"code21" {:system "sys2"
-                       :code "code21"}
-             "code22" {:system "sys2"
-                       :code "code22"}}})
-
-  (def concepts-index-fixture
-    (-> concepts-index-fixture
-        (update-vals (fn [vls]
-                       (update-vals vls
-                                    #(-> %
-                                         (assoc :zen.fhir/system-kw (keyword (:system %)))
-                                         (assoc :zen.fhir/code-kw (keyword (:code %)))))))))
-
   (def valuesets-fixtures
-    [{:url "simple-include"
+    [{:resourceType "ValueSet"
+      :url "simple-include"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]}}
-     {:url "simpler-include"
+     {:resourceType "ValueSet"
+      :url "simpler-include"
       :compose {:include [{:system "sys2"}]}}
-     {:url "include-with-concept-enumeration"
+     {:resourceType "ValueSet"
+      :url "include-with-concept-enumeration"
       :compose {:include [{:system "sys1"
                            :concept [{:code "code11"}]}
                           {:system "sys2"}]}}
-     {:url "include-with-filter"
+     {:resourceType "ValueSet"
+      :url "include-with-filter"
       :compose {:include [{:system "sys1"
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "code11"}]}
                           {:system "sys2"}]}}
 
-     {:url "empty-vs"
+     {:resourceType "ValueSet"
+      :url "empty-vs"
       :compose {:include [{:system "sys1"
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "???"}]}]}}
 
-     {:url "full-expansion"
+     {:resourceType "ValueSet"
+      :url "full-expansion"
       :compose {:include [{:system "sys1"
                            :filter [{:op       "is-a"
                                      :property "missing"
@@ -116,7 +106,8 @@
                   :contains [{:system "sys1" #_"TODO: add recursive :contains"
                               :code   "code12"}]}}
 
-     {:url "not-full-expansion"
+     {:resourceType "ValueSet"
+      :url "not-full-expansion"
       :compose {:include [{:system "sys1"
                            :filter [{:op       "is-a"
                                      :property "code"
@@ -128,85 +119,101 @@
       :expansion {:contains [{:system "sys2"
                               :code   "code21"}]}}
 
-     {:url "depends-on-valueset"
+     {:resourceType "ValueSet"
+      :url "depends-on-valueset"
       :compose {:include [{:valueSet ["simple-include"]}]}}
 
-     {:url "depends-on-valueset-intersection"
+     {:resourceType "ValueSet"
+      :url "depends-on-valueset-intersection"
       :compose {:include [{:valueSet ["simple-include"
                                       "full-expansion"]}]}}
 
-     {:url "intersection-with-empty-valueset"
+     {:resourceType "ValueSet"
+      :url "intersection-with-empty-valueset"
       :compose {:include [{:valueSet ["simple-include"
                                       "empty-vs"]}]}}
 
-     {:url "empty-intersection"
+     {:resourceType "ValueSet"
+      :url "empty-intersection"
       :compose {:include [{:valueSet ["full-expansion"
                                       "depends-on-valueset-and-filters-by-sys-and-pred"]}]}}
 
-     {:url "depends-on-valueset-intersection-and-filters-by-sys"
+     {:resourceType "ValueSet"
+      :url "depends-on-valueset-intersection-and-filters-by-sys"
       :compose {:include [{:system "sys1"
                            :valueSet ["simple-include"
                                       "not-full-expansion"]}]}}
 
-     {:url "depends-on-valueset-and-filters-by-sys"
+     {:resourceType "ValueSet"
+      :url "depends-on-valueset-and-filters-by-sys"
       :compose {:include [{:system "sys1"
                            :valueSet ["simple-include"]}]}}
 
-     {:url "depends-on-valueset-and-filters-by-sys-and-pred"
+     {:resourceType "ValueSet"
+      :url "depends-on-valueset-and-filters-by-sys-and-pred"
       :compose {:include [{:system "sys1"
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "code11"}]
                            :valueSet ["simple-include"]}]}}
 
-     {:url "exclude-system"
+     {:resourceType "ValueSet"
+      :url "exclude-system"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys2"}]}}
-     {:url "exclude-code"
+     {:resourceType "ValueSet"
+      :url "exclude-code"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys2"
                            :concept [{:code "code22"}]}]}}
-     {:url "multiple-exclude"
+     {:resourceType "ValueSet"
+      :url "multiple-exclude"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"
                            :concept [{:code "code12"}]}
                           {:system "sys2"
                            :concept [{:code "code22"}]}]}}
-     {:url "multiple-exclude-with-vs"
+     {:resourceType "ValueSet"
+      :url "multiple-exclude-with-vs"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"
                            :valueSet ["full-expansion"]}
                           {:system "sys2"
                            :concept [{:code "code22"}]}]}}
-     {:url "multiple-exclude-with-vs-no-system"
+     {:resourceType "ValueSet"
+      :url "multiple-exclude-with-vs-no-system"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:valueSet ["full-expansion"]}
                           {:system "sys2"
                            :concept [{:code "code22"}]}]}}
-     {:url "exclude-filter"
+     {:resourceType "ValueSet"
+      :url "exclude-filter"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys2"
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "code22"}]}]}}
-     {:url "exclude-valueset-with-system"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-with-system"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"
                            :valueSet ["simple-include"]}]}}
-     {:url "exclude-valueset-with-pred"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-with-pred"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"
                            :concept [{:code "code12"}]
                            :valueSet ["simple-include"]}]}}
-     {:url "exclude-valueset-with-pred-not-in-vs"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-with-pred-not-in-vs"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"
@@ -214,50 +221,61 @@
                                      :property "code"
                                      :value    "???"}]
                            :valueSet ["simple-include"]}]}}
-     {:url "exclude-valueset-no-system"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-no-system"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:valueSet ["depends-on-valueset-intersection"]}]}}
-     {:url "exclude-all"
+     {:resourceType "ValueSet"
+      :url "exclude-all"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys1"}
                           {:system "sys2"}]}}
-     {:url "exclude-all-vs"
+     {:resourceType "ValueSet"
+      :url "exclude-all-vs"
       :compose {:include [{:valueSet ["simple-include"]}]
                 :exclude [{:valueSet ["simple-include"]}]}}
-     {:url "exclude-valueset-system-not-present-in-vs"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-system-not-present-in-vs"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:system "sys2"
                            :valueSet ["depends-on-valueset-intersection"]}]}}
-     {:url "exclude-empty-valueset"
+     {:resourceType "ValueSet"
+      :url "exclude-empty-valueset"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:valueSet ["empty-vs"]}]}}
-     {:url "exclude-valueset-intersection"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-intersection"
       :compose {:include [{:system "sys1"}
                           {:system "sys2"}]
                 :exclude [{:valueSet ["simple-include"
                                       "full-expansion"]}]}}
-     {:url "exclude-empty-valueset-intersection"
+     {:resourceType "ValueSet"
+      :url "exclude-empty-valueset-intersection"
       :compose {:include [{:system "sys1"}]
                 :exclude [{:system "sys1"
                            :valueSet ["depends-on-valueset-intersection"
                                       "depends-on-valueset-intersection-and-filters-by-sys"]}]}}
-     {:url "exclude-empty-valueset-intersection"
+     #_{:resourceType "ValueSet"
+      :url "exclude-empty-valueset-intersection"
       :compose {:include [{:valueSet ["depends-on-valueset-intersection"]}]
                 :exclude [{:system "sys1"
                            :valueSet ["depends-on-valueset-intersection-and-filters-by-sys"]}]}}
-     {:url "exclude-empty-valueset-intersection-system"
+     {:resourceType "ValueSet"
+      :url "exclude-empty-valueset-intersection-system"
       :compose {:include [{:system "sys1"
                            :valueSet ["depends-on-valueset-intersection"]}]
                 :exclude [{:system "sys1"
                            :valueSet ["depends-on-valueset-intersection-and-filters-by-sys"]}]}}
-     {:url "exclude-valueset-not-intersection-no-system"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-not-intersection-no-system"
       :compose {:include [{:valueSet ["depends-on-valueset-intersection"]}]
                 :exclude [{:valueSet ["depends-on-valueset-intersection-and-filters-by-sys"]}]}}
-     {:url "exclude-valueset-not-intersection-no-system-no-system-in-exclude"
+     {:resourceType "ValueSet"
+      :url "exclude-valueset-not-intersection-no-system-no-system-in-exclude"
       :compose {:include [{:valueSet ["simple-include"]}]
                 :exclude [{:system "sys1"
                            :valueSet ["simpler-include"]}
@@ -265,7 +283,8 @@
                            :filter [{:op       "is-a"
                                      :property "code"
                                      :value    "code12"}]}]}}
-     {:url "exclude-with-expansion"
+     {:resourceType "ValueSet"
+      :url "exclude-with-expansion"
       :compose {:include [{:valueSet ["simple-include"]
                            :filter [{:op "is-a"
                                      :property "missing"
@@ -274,18 +293,28 @@
                            :concept [{:code "code22"}]}]}
       :expansion {:contains [{:system "sys2"
                               :code   "code21"}]}}
-     #_{:url "exclude-withexpansion"
+     #_{:resourceType "ValueSet"
+        :url "exclude-withexpansion"
         :compose {:include [{:system "sys1"}
                             {:system "sys2"}]
-                  :exclude [{:system "sys2" #_"FIXME: WHAT TO DO WHEN WE CAN'T EVAL EXCLUDE????"
+                  :exclude [{:system "sys2"
+                             #_"FIXME: WHAT TO DO WHEN WE CAN'T EVAL EXCLUDE????"
                              :filter [{:op       "is-a"
                                        :property "missing"
                                        :value    "???"}]}]}
         :expansion {:contains [{:system "sys2"
                                 :code   "code21"}]}}
-     {:url "include-vs-exclude-other-vs"
+     {:resourceType "ValueSet"
+      :url "include-vs-exclude-other-vs"
       :compose {:include [{:valueSet ["simpler-include" "simple-include"]}]
                 :exclude [{:valueSet ["not-full-expansion"]}]}}])
+
+  (def ztx (atom {}))
+
+  (doseq [vs valuesets-fixtures]
+    (ftr.extraction.ig.core/load-definiton ztx {} vs))
+
+  (ftr.extraction.ig.core/collect-concepts ztx)
 
   (def valuesets-index-assert
     {"simple-include" {"sys1" #{"code11" "code12"}
@@ -347,7 +376,7 @@
                                "sys2" #{"code21" "code22"}}
      "exclude-valueset-intersection" {"sys1" #{"code11"}
                                       "sys2" #{"code21" "code22"}}
-     "exclude-empty-valueset-intersection" {"sys1" #{"code12"}}
+     "exclude-empty-valueset-intersection" {"sys1" #{"code11" "code12"}} #_"TODO: CHECK WETHER THIS ASSERT IS CORRECT"
      "exclude-empty-valueset-intersection-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system-no-system-in-exclude" {"sys1" #{"code11"}
@@ -357,5 +386,6 @@
 
   (t/is (= valuesets-index-assert
            (sut/all-vs-nested-refs->vs-idx
-             concepts-index-fixture
-             (sut/build-valuesets-compose-idx valuesets-fixtures)))))
+             (get-in @ztx [:fhir/inter "Concept"])
+             (sut/build-valuesets-compose-idx
+               (vals (get-in @ztx [:fhir/inter "ValueSet"])))))))

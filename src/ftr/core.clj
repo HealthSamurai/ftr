@@ -62,14 +62,16 @@
 
 (defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
                             {:keys [ftr-path]} :cfg}]
-  (last
-    (for [[vs-url tf] extraction-result]
-      (u/*apply [::write-terminology-file
-                 ::shape-ftr-layout
-                 :ftr.post-write-coordination.core/coordinate]
-                (assoc ctx
-                       :extraction-result tf
-                       ::feeder {:vs-url vs-url})))))
+  (or (not-empty
+        (last
+          (for [[vs-url tf] extraction-result]
+            (u/*apply [::write-terminology-file
+                       ::shape-ftr-layout
+                       :ftr.post-write-coordination.core/coordinate]
+                      (assoc ctx
+                             :extraction-result tf
+                             ::feeder {:vs-url vs-url})))))
+      {}))
 
 
 (defmethod u/*fn ::infer-commit-type [ctx]

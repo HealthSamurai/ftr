@@ -260,15 +260,21 @@
                          (fn [concept] (some #(% concept) check-fns)))]
           (update-in acc [acc-key vs-url]
                      (fn [vs-idx-acc]
-                       (transduce (filter (fn [[concept-code concept]] (and #_(not-any? #(% concept) exclude-check-fns) #_"TODO: instead of building exclude idx maybe check exclude on building include idx?"
-                                                                            (or (when (= :include mode)
-                                                                                  #_"NOTE: this when can not tested, because if expansion is included without checking exclude."
-                                                                                  #_"NOTE: Without the 'when exclude gets a codes from expansion and it forbids to include these values,"
-                                                                                  #_"NOTE: but these values are already included, thus this effect is not observable form outside"
-                                                                                  (-> expansion-index
-                                                                                      (get (:system concept))
-                                                                                      (get concept-code)))
-                                                                                (check-fn concept)))))
+                       (transduce (filter (fn [[concept-code concept]]
+                                            #_(and #_(not-any? #(% concept) exclude-check-fns) #_"TODO: instead of building exclude idx maybe check exclude on building include idx?"
+                                                 (or (when (= :include mode)
+                                                       #_"NOTE: this when can not tested, because if expansion is included without checking exclude."
+                                                       #_"NOTE: Without the 'when exclude gets codes from expansion and it forbids to include these values,"
+                                                       #_"NOTE: but these values are already included, thus this effect is not observable form outside"
+                                                       (-> expansion-index
+                                                           (get (:system concept))
+                                                           (get concept-code)))
+                                                     (check-fn concept)))
+                                            (or (when (= :include mode)
+                                                  (-> expansion-index
+                                                      (get (:system concept))
+                                                      (get concept-code)))
+                                                (check-fn concept))))
                                   (completing (fn [acc [_concept-code concept]] (push-concept-into-vs-idx acc concept)))
                                   (or vs-idx-acc {})
                                   concepts))))
@@ -447,10 +453,25 @@
 
 
 (defn denormalize-into-concepts [valuesets concepts-map]
+  #_(def vs valuesets)
+  #_(def cs concepts-map)
   (let [nested-vs-refs-queue (build-valuesets-compose-idx valuesets)
         new-vs-idx-entries   (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue)]
     (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
 
+
+(comment
+
+  (require '[clj-async-profiler.core :as prof])
+
+  (def srv (prof/serve-ui 8081))
+
+  (with-out-str (time (prof/profile (denormalize-into-concepts vs cs))))
+  ;; => "nil\n\"Elapsed time: 274580.148125 msecs\"\n"
+
+  (+ 1 1)
+
+  nil)
 
 (defn denormalize-value-sets-into-concepts [ztx]
   (swap! ztx update-in [:fhir/inter "Concept"]
