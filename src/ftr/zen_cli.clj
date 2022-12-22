@@ -27,7 +27,7 @@
              (assoc "build-ftr" (fn [opts]
                                   (let [ztx (zen.cli/load-ztx opts)]
                                     (zen.cli/load-used-namespaces ztx #{})
-                                    (ftr.zen-package/build-ftr ztx))))
+                                    (ftr.zen-package/build-ftr ztx {:enable-logging? true}))))
              (assoc "get-ftr-index-info" ftr.zen-package/get-ftr-index-info)))
 
 
