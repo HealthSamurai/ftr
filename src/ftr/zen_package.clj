@@ -10,7 +10,7 @@
   (:import (java.util UUID)))
 
 
-(defn build-ftr [ztx]
+(defn build-ftr [ztx & [{:as opts, :keys [enable-logging?]}]]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (map (partial zen.core/get-symbol ztx) syms)
         ftr-configs (->> value-sets
@@ -18,7 +18,9 @@
                          keys
                          (filter identity))]
     (doseq [ftr ftr-configs]
-      (ftr.core/apply-cfg {:cfg ftr}))))
+      (ftr.core/apply-cfg (cond-> {:cfg ftr}
+                            enable-logging?
+                            (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))))))
 
 
 (defn expand-zen-packages [path]
