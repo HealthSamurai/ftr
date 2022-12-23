@@ -381,6 +381,7 @@
 
   (t/is (= valuesets-index-assert
            (sut/all-vs-nested-refs->vs-idx
+             (get-in @ztx [:fhir/inter :vs-idx])
              (get-in @ztx [:fhir/inter "Concept"])
              (sut/build-valuesets-compose-idx
                (vals (get-in @ztx [:fhir/inter "ValueSet"])))))))

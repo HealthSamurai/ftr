@@ -1,6 +1,7 @@
 (ns ftr.extraction.ig.core
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.set]
             [cheshire.core]
             [edamame.core :as edamame]
             [com.rpl.specter :as sp]
@@ -9,6 +10,17 @@
             [ftr.utils.core]
             [ftr.extraction.ig.value-set-expand]))
 
+
+(defn set-conj [s v]
+  (if (seq s)
+    (conj s v)
+    #{v}))
+
+
+(defn set-into [s1 s2]
+  (if (and (seq s1) (seq s2))
+    (clojure.set/union s1 s2)
+    (or s2 s1)))
 
 
 (defn dir? [^java.io.File file]
@@ -354,26 +366,51 @@
                       f)))))
 
 
+(defn merge-concepts [c1 c2]
+  (-> c1
+      (merge c2)
+      (update :zen.fhir/packages
+              (fnil conj #{})
+              (:zen.fhir/package-ns c2))))
+
+
+(defn push-into-concept-idx [idx concept]
+  (update-in idx
+             [(:system concept) (:code concept)]
+             merge-concepts
+             concept))
+
+
+(defn push-into-vs-idx [idx concept]
+  (if-let [vs-urls (seq (:zen.fhir/valueset concept))]
+    (reduce (fn [acc vs-url]
+              (update-in acc
+                         [vs-url (:system concept)]
+                         set-conj
+                         (:code concept)))
+            idx
+            vs-urls)
+    idx))
+
+
 (defn collect-concepts [ztx]
   (let [code-systems (vals (get-in @ztx [:fhir/inter "CodeSystem"]))
-        value-sets (vals (get-in @ztx [:fhir/inter "ValueSet"]))
-        concepts (transduce (comp (mapcat :fhir/concepts)
-                                  (map (fn [concept]
-                                         {:path [(:system concept)
-                                                 (:code concept)]
-                                          :value concept})))
-                            (completing
-                              (fn [acc {:keys [path value]}]
-                                (update-in acc path
-                                           (fn [prev-val]
-                                             (-> prev-val
-                                                 (merge value)
-                                                 (update :zen.fhir/packages
-                                                         (fnil conj #{})
-                                                         (:zen.fhir/package-ns value)))))))
-                            {}
-                            (concat value-sets code-systems))]
-    (swap! ztx assoc-in [:fhir/inter "Concept"] concepts)))
+        value-sets   (vals (get-in @ztx [:fhir/inter "ValueSet"]))
+
+        {:keys [concept-idx vs-idx]}
+        (transduce (mapcat :fhir/concepts)
+                   (completing
+                     (fn [acc concept]
+                       (-> acc
+                           (update :concept-idx push-into-concept-idx concept)
+                           (update :vs-idx push-into-vs-idx concept))))
+                   {:concept-idx {}
+                    :vs-idx {}}
+                   (concat value-sets code-systems))]
+
+    (swap! ztx (fn [state] (-> state
+                               (assoc-in [:fhir/inter "Concept"] concept-idx)
+                               (assoc-in [:fhir/inter :vs-idx] vs-idx))))))
 
 
 (defn process-concept [_ztx concept]

@@ -105,22 +105,24 @@
 (declare compose)
 
 
-(defn check-concept-in-compose-el-fn [value-set compose-el]
-  (let [code-system-pred
-        (or (vs-compose-concept-fn value-set
-                                   (:system compose-el)
-                                   (:version compose-el)
-                                   (:concept compose-el))
-            (vs-compose-filter-fn value-set
-                                  (:system compose-el)
-                                  (:version compose-el)
-                                  (:filter compose-el)))]
-    (some-> {:check-fn   code-system-pred
-             :system     (:system compose-el)
-             :depends-on (:valueSet compose-el)}
-            zen.utils/strip-nils
-            not-empty
-            (assoc :vs-url (:url value-set)))))
+(defn check-concept-in-compose-el-fn [mode value-set compose-el]
+  (if (and (= :include mode) (seq (:concept compose-el)))
+    nil
+    (let [code-system-pred
+          (or (vs-compose-concept-fn value-set
+                                     (:system compose-el)
+                                     (:version compose-el)
+                                     (:concept compose-el))
+              (vs-compose-filter-fn value-set
+                                    (:system compose-el)
+                                    (:version compose-el)
+                                    (:filter compose-el)))]
+      (some-> {:check-fn   code-system-pred
+               :system     (:system compose-el)
+               :depends-on (:valueSet compose-el)}
+              zen.utils/strip-nils
+              not-empty
+              (assoc :vs-url (:url value-set))))))
 
 
 (defn vs-expansion-index [vs] #_"TODO: support recursive expansion :contains"
@@ -146,11 +148,11 @@
         (vs-expansion-index vs)
 
         includes (some->> (get-in vs [:compose :include])
-                          (keep (partial check-concept-in-compose-el-fn vs))
+                          (keep #(check-concept-in-compose-el-fn :include vs %))
                           not-empty)
 
         excludes (some->> (get-in vs [:compose :exclude])
-                          (keep (partial check-concept-in-compose-el-fn vs))
+                          (keep #(check-concept-in-compose-el-fn :exclude vs %))
                           not-empty)
 
         #_#_systems (into #{}
@@ -414,9 +416,9 @@
         acc))))
 
 
-(defn all-vs-nested-refs->vs-idx [concepts-map nested-vs-refs-queue]
+(defn all-vs-nested-refs->vs-idx [vs-idx concepts-map nested-vs-refs-queue]
   (loop [acc {:vs-queue nested-vs-refs-queue
-              :vs-idx-acc {}}]
+              :vs-idx-acc (or vs-idx {})}]
     (let [res-acc (refs-in-vs->vs-idx acc concepts-map (ffirst (:vs-queue acc)))]
       (if (seq (:vs-queue res-acc))
         (recur res-acc)
@@ -452,11 +454,13 @@
     valuesets))
 
 
-(defn denormalize-into-concepts [valuesets concepts-map]
+(defn denormalize-into-concepts [valuesets vs-idx concepts-map]
   #_(def vs valuesets)
   #_(def cs concepts-map)
+  #_(def vi vs-idx)
+  #_(/ 1 0)
   (let [nested-vs-refs-queue (build-valuesets-compose-idx valuesets)
-        new-vs-idx-entries   (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue)]
+        new-vs-idx-entries   (all-vs-nested-refs->vs-idx vs-idx concepts-map nested-vs-refs-queue)]
     (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
 
 
@@ -466,8 +470,7 @@
 
   (def srv (prof/serve-ui 8081))
 
-  (with-out-str (time (prof/profile (denormalize-into-concepts vs cs))))
-  ;; => "nil\n\"Elapsed time: 274580.148125 msecs\"\n"
+  (time (prof/profile (denormalize-into-concepts vs vi cs)))
 
   (+ 1 1)
 
@@ -475,5 +478,7 @@
 
 (defn denormalize-value-sets-into-concepts [ztx]
   (swap! ztx update-in [:fhir/inter "Concept"]
-         (partial denormalize-into-concepts
-                  (vals (get-in @ztx [:fhir/inter "ValueSet"])))))
+         #(denormalize-into-concepts
+           (vals (get-in @ztx [:fhir/inter "ValueSet"]))
+           (get-in @ztx [:fhir/inter :vs-idx])
+           %)))
