@@ -259,11 +259,6 @@
                 :exclude [{:system "sys1"
                            :valueSet ["depends-on-valueset-intersection"
                                       "depends-on-valueset-intersection-and-filters-by-sys"]}]}}
-     #_{:resourceType "ValueSet"
-      :url "exclude-empty-valueset-intersection"
-      :compose {:include [{:valueSet ["depends-on-valueset-intersection"]}]
-                :exclude [{:system "sys1"
-                           :valueSet ["depends-on-valueset-intersection-and-filters-by-sys"]}]}}
      {:resourceType "ValueSet"
       :url "exclude-empty-valueset-intersection-system"
       :compose {:include [{:system "sys1"
@@ -376,7 +371,7 @@
                                "sys2" #{"code21" "code22"}}
      "exclude-valueset-intersection" {"sys1" #{"code11"}
                                       "sys2" #{"code21" "code22"}}
-     "exclude-empty-valueset-intersection" {"sys1" #{"code11" "code12"}} #_"TODO: CHECK WETHER THIS ASSERT IS CORRECT"
+     "exclude-empty-valueset-intersection" {"sys1" #{"code11" "code12"}}
      "exclude-empty-valueset-intersection-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system" {"sys1" #{"code12"}}
      "exclude-valueset-not-intersection-no-system-no-system-in-exclude" {"sys1" #{"code11"}
