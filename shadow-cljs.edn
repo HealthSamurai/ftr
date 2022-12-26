@@ -1,0 +1,13 @@
+{:deps   {:aliases [:ftr-ui :nrepl]}
+ :builds {:frontend {:asset-path "/static/js"
+                     :target     :browser
+                     :build-hooks [(stylo.shadow/reload "shadow-target/stylo/dev/public/css/stylo.css")]
+                     :devtools   {:preloads          [re-frisk.preload]
+                                  :watch-dir         "shadow-target/stylo/dev/public/css/"
+                                  :watch-path        "/static/css"}
+                     :dev        {:modules    {:frontend {:entries [ui.fronend.dev]}}
+                                  :output-dir "shadow-target/shadow/dev/public/js"
+                                  :compiler-options {:source-maps true}}
+                     :release    {:modules          {:frontend {:entries [ui.fronend.prod]}}
+                                  :output-dir       "shadow-target/shadow/release/public/js"
+                                  :compiler-options {:optimizations :advanced :source-maps true}}}}}
