@@ -107,16 +107,16 @@
 
 (defn check-concept-in-compose-el-fn [mode value-set compose-el]
   (if (and (= :include mode) (seq (:concept compose-el)))
-    nil
+    nil #_"NOTE: already expanded on concepts collect"
     (let [code-system-pred
-          (or (vs-compose-concept-fn value-set
-                                     (:system compose-el)
-                                     (:version compose-el)
-                                     (:concept compose-el))
-              (vs-compose-filter-fn value-set
+          (or (vs-compose-filter-fn value-set
                                     (:system compose-el)
                                     (:version compose-el)
-                                    (:filter compose-el)))]
+                                    (:filter compose-el))
+              (vs-compose-concept-fn value-set
+                                     (:system compose-el)
+                                     (:version compose-el)
+                                     (:concept compose-el)))]
       (some-> {:check-fn   code-system-pred
                :system     (:system compose-el)
                :depends-on (:valueSet compose-el)}
@@ -381,12 +381,8 @@
                 (pop-entry-from-vs-queue vs-url)
                 (ensure-deps-processed concepts-map deps))]
     (if full-expansion?
-      (update-in acc [:vs-idx-acc vs-url] #(merge-with into % expansion-index))
-      (let [acc (cond-> acc
-                  (seq expansion-index)
-                  (update-in [:vs-idx-acc vs-url] #(merge-with into % expansion-index)))
-
-            acc (collect-mode-acc acc concepts-map expansion-index vs-url ::any-system (:any-system exclude) :exclude)
+      acc #_"NOTE: already expanded on concepts collect"
+      (let [acc (collect-mode-acc acc concepts-map expansion-index vs-url ::any-system (:any-system exclude) :exclude)
 
             need-to-process-all-excludes? (:any-system include)
 
