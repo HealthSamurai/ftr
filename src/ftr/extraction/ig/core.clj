@@ -360,7 +360,9 @@
                        :blacklist (merge-with merge
                                               {"StructureDefinition" #{"http://hl7.org/fhir/StructureDefinition/familymemberhistory-genetic"
                                                                        "http://hl7.org/fhir/uv/sdc/StructureDefinition/parameters-questionnaireresponse-extract-in"}
-                                               "SearchParameter" #{"http://hl7.org/fhir/SearchParameter/example"}}
+                                               "SearchParameter" #{"http://hl7.org/fhir/SearchParameter/example"}
+                                               "ValueSet" #{"http://hl7.org/fhir/ValueSet/example-expansion"
+                                                            "http://hl7.org/fhir/ValueSet/example-hierarchical"}}
                                               blacklist)}
                       package
                       f)))))
