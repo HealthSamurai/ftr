@@ -412,7 +412,7 @@
 
     (swap! ztx (fn [state] (-> state
                                (assoc-in [:fhir/inter "Concept"] concept-idx)
-                               (assoc-in [:fhir/inter :vs-idx] vs-idx))))))
+                               (assoc-in [::vs-idx] vs-idx))))))
 
 
 (defn process-concept [_ztx concept]

@@ -476,5 +476,5 @@
   (swap! ztx update-in [:fhir/inter "Concept"]
          #(denormalize-into-concepts
            (vals (get-in @ztx [:fhir/inter "ValueSet"]))
-           (get-in @ztx [:fhir/inter :vs-idx])
+           (get-in @ztx [:ftr.extraction.ig.core/vs-idx])
            %)))
