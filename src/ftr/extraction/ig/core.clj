@@ -102,46 +102,40 @@
           {} ds))
 
 
-(defn build-concept [res id-fn sys hierarchy & [valueset]]
-  (-> res
-      (select-keys [:code :display :definition])
-      (assoc :id (id-fn res)
-             :system sys
-             :_source "zen.fhir"
-             :resourceType "Concept")
-      (cond-> (:designation res) (assoc :designation (build-designation (:designation res)))
-              (seq hierarchy)    (assoc :hierarchy hierarchy)
-              (:property res)    (assoc :property (build-property (:property res)))
-              valueset           (assoc :valueset [valueset]))))
+(defn reduce-concept [acc id-fn sys vs hierarchy parents c]
+  (let [con (-> c
+                (select-keys [:code :display :definition])
+                (assoc :id (id-fn c)
+                       :system sys
+                       :_source "zen.fhir"
+                       :resourceType "Concept"
+                       :zen.fhir/code-kw (keyword (:code c))
+                       :zen.fhir/system-kw (keyword sys))
+                (cond-> (:designation c) (assoc :designation (build-designation (:designation c)))
+                        vs               (assoc :valueset #{vs})
+                        (seq hierarchy) (assoc :hierarchy hierarchy)
+                        (seq parents) (assoc :zen.fhir/parents parents)
+                        (:property c) (assoc :property (build-property (:property c)))))
+        acc (conj acc con)]
+    (if-let [cs (:concept c)]
+      (reduce (fn [acc c']
+                (reduce-concept acc id-fn sys
+                                vs
+                                (conj hierarchy (:code con))
+                                (conj parents (keyword (:code con)))
+                                c'))
+              acc cs)
+      acc)))
 
 
-(defn reduce-concept [id-fn sys hierarchy c & [valueset]]
-  (let [con (build-concept c id-fn sys hierarchy valueset)]
-    (if-let [cs (or (:concept c)
-                    #_(:contains c) #_"NOTE: for valueset expansion. Needs tests first")]
-      (let [next-hierarchy (conj hierarchy (:code con))]
-        (->> cs
-             (mapcat #(reduce-concept id-fn sys next-hierarchy %))
-             (cons con)))
-      [con])))
-
-
-(defn concept-add-inter-data [concept inter-part]
-  (merge inter-part
-         concept
-         {:zen.fhir/code-kw   (keyword (:code concept))
-          :zen.fhir/system-kw (keyword (:system concept))
-          :zen.fhir/resource  concept}
-         (when-let [hierarchy (seq (:hierarchy concept))]
-           {:zen.fhir/parents (set hierarchy)})
-         (when-let [vs (seq (:valueset concept))]
-           {:zen.fhir/valueset (set vs)})))
-
-
-(defn extract-concepts [inter-part id-fn sys concept-parts & [valueset]]
+(defn extract-concepts [inter-part id-fn sys concept-parts & [vs]]
   (->> concept-parts
-       (mapcat (fn [c] (reduce-concept id-fn sys [] c valueset)))
-       (map #(concept-add-inter-data % inter-part))))
+       (reduce (fn [acc c] (reduce-concept acc id-fn sys vs [] #{} c))
+               [])
+       (map (fn [concept]
+              (-> concept
+                  (merge inter-part)
+                  (assoc :zen.fhir/resource concept))))))
 
 
 (defmethod process-on-load :ValueSet
@@ -152,22 +146,25 @@
      :fhir/concepts (let [inter-part (select-keys res loader-keys)
                           incl-concepts (->> (get-in res [:compose :include])
                                              (filter :concept)
-                                             (map #(assoc % ::valueset (:url res))))
+                                             (map #(assoc % :vs (:url res))))
                           excl-concepts (->> (get-in res [:compose :exclude])
                                              (filter :concept))
-                          exp-concepts (some->> (seq (get-in res [:expansion :contains]))
+                          exp-concepts (some->> [:expansion :contains]
+                                                (get-in res)
+                                                not-empty
                                                 (group-by :system)
-                                                (map (fn [[system concepts]]
-                                                       {:system system
-                                                        :concept concepts
-                                                        ::valueset (:url res)})))]
+                                                (reduce-kv (fn [acc system concepts]
+                                                             (conj acc {:system system
+                                                                        :vs (:url res)
+                                                                        :concept concepts}))
+                                                           []))]
                       (->> (concat incl-concepts excl-concepts exp-concepts)
-                           (mapcat (fn [{:keys [system concept] ::keys [valueset]}]
+                           (mapcat (fn [{:keys [vs system concept]}]
                                      (extract-concepts inter-part
                                                        (fn [{:keys [code]}] (str/replace (str system \/ code) \/ \-))
                                                        system
                                                        concept
-                                                       valueset)))
+                                                       vs)))
                            not-empty))}
     (when-let [package-ns (:zen.fhir/package-ns res)]
       {:zen.fhir/package-ns package-ns
