@@ -12,7 +12,11 @@
 
 (defn build-ftr [ztx & [{:as opts, :keys [enable-logging?]}]]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets (map (partial zen.core/get-symbol ztx) syms)
+        value-sets (->> syms
+                        (map (partial zen.core/get-symbol ztx))
+                        (remove (fn [{:as _vs-definition,
+                                      :zen/keys [file]}]
+                                  (str/includes? file "/zen-packages/"))))
         ftr-configs (->> value-sets
                          (group-by :ftr)
                          keys
