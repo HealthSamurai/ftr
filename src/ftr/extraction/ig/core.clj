@@ -499,6 +499,7 @@
 
 (defn index-concepts-by-value-set-backref [vs-idx-acc vs-url concept system value-sets code-systems]
   (let [code-system (get-or-create-codesystem code-systems system)
+        _ (assert (not (nil? (:url code-system))))
         concept (preprocess-concept
                   (get concept :zen.fhir/resource)
                   vs-url)]
@@ -515,6 +516,7 @@
 (defn index-concepts-by-vs-for-entire-cs [vs-idx-acc concept system code-systems]
   (let [code-system                  (get-or-create-codesystem code-systems system)
         {:as value-set, vs-url :url} (create-vs-for-entire-cs code-system)
+        _ (assert (not (nil? (:url code-system))))
         concept (preprocess-concept
                   (get concept :zen.fhir/resource)
                   vs-url)]
