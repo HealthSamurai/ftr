@@ -17,7 +17,7 @@
 
  :aliases
  {:ftr-ui
-  {:extra-paths ["ui" "dev" "resources" "shadow-target/shadow/dev" "shadow-target/stylo/dev"]
+  {:extra-paths ["ui" "dev" "resources" "shadow-target/shadow/dev" "shadow-target/stylo/dev" "target/classes"]
    :extra-deps  {route-map/route-map       {:git/url "https://github.com/niquola/route-map"
                                             :sha     "9523f51cd1508aab5eb49737b3d8cc7315e9699e"}
                  stylo/stylo               {:git/url "https://github.com/HealthSamurai/macrocss"
@@ -30,7 +30,12 @@
                  garden/garden             {:mvn/version "1.3.10"}
                  thheller/shadow-cljs      {:mvn/version "2.20.2"}
                  re-frisk/re-frisk         {:mvn/version "1.6.0"}
-                 binaryage/devtools        {:mvn/version "1.0.6"}}}
+                 binaryage/devtools        {:mvn/version "1.0.6"}
+
+		 io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
+			 :sha     "48c79d8fed399cc17c7709a7c1897e6cd1aed6c1"}
+		 abahgat/suffixtree {:git/url "https://github.com/abahgat/suffixtree"
+			 :sha     "b95b632e7a88ab8175714e0c4a55488048fb2d04"}}}
 
   :nrepl
   {:extra-paths []
