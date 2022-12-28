@@ -10,7 +10,9 @@
         tags (rf/subscribe [:ui.fronend.init-wizard.model/tags-list])
         wizard-breadcrumb (rf/subscribe [:ui.fronend.init-wizard.model/wizard-breadcrumb])
         selected-module (rf/subscribe [:ui.fronend.init-wizard.model/selected-module])
-        selected-tag (rf/subscribe [:ui.fronend.init-wizard.model/selected-tag])]
+        selected-tag (rf/subscribe [:ui.fronend.init-wizard.model/selected-tag])
+        selected-vs (rf/subscribe [:ui.fronend.core/vs-list-selected-vs])
+        selected-vs-expand (rf/subscribe [:ui.fronend.init-wizard.model/selected-vs-expand])]
     (fn []
       [:div {:class (c  [:px 10] [:py 5] {:background-color "rgb(235, 236, 241)"} [:rounded 45])}
        [:h1 {:class (c :font-bold :text-3xl)}
@@ -31,7 +33,8 @@
                                               {:transition "0.05s"}
                                               [:hover :cursor-pointer
                                                :font-bold])
-                                    :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/select-module module]))} module]
+                                    :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/select-module module]))}
+                             module]
                             [:br]])
 
           (not @selected-tag)
@@ -43,7 +46,13 @@
                                            [:hover :cursor-pointer
                                             :font-bold])
                                  :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/select-tag tag]))} tag]
-                         [:br]]))]])))
+                         [:br]])
+
+
+          (some? @selected-vs)
+          (for [concept @selected-vs-expand]
+            ^{:key (or (:id concept) (str (:system concept) (:code concept)))}
+            [:div [:pre (pr-str (select-keys concept [:code :display]))]]))]])))
 
 
 (ui.fronend.pages/reg-page model/page init-wizard)

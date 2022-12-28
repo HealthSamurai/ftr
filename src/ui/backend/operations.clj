@@ -71,12 +71,7 @@
   (let [tag-file-path    (str "ftr/" (name module) "/tags/" (name tag) ".ndjson.gz")
         tag-file-content (parse-ndjson-gz tag-file-path)
         module-vs-names  (map :name tag-file-content)
-        vs-names         (map (fn [module-vs-name]
-                                (let [vs-url (second (clojure.string/split module-vs-name #"\." 2))]
-                                  (if (str/includes? vs-url "-ValueSet-")
-                                    (second (str/split vs-url #"-ValueSet-" 2))
-                                    vs-url)))
-
+        vs-names         (map #(second (clojure.string/split % #"\." 2))
                               module-vs-names)]
     {:status :ok
      :result vs-names}))

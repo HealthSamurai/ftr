@@ -31,6 +31,19 @@
               (get-in db [page :value-sets :data])))
 
 
+(rf/reg-sub ::value-sets-with-display
+            (fn [_]
+              [(rf/subscribe [::value-sets])])
+            (fn [[value-sets] _]
+              (map (fn [vs-url]
+                     {:value vs-url
+                      :display
+                      (if (str/includes? vs-url "-ValueSet-")
+                        (second (str/split vs-url #"-ValueSet-" 2))
+                        vs-url)})
+                   value-sets)))
+
+
 (rf/reg-sub ::wizard-breadcrumb
             (fn [_]
               [(rf/subscribe [::selected-module])
@@ -40,6 +53,12 @@
               (str/join " / " (filter identity [(when-not selected-module "Init Wizard")
                                                 (or selected-module "Select Module:")
                                                 (when selected-module (or selected-tag "Select Tag:"))]))))
+
+
+(rf/reg-sub
+  ::selected-vs-expand
+  (fn [db _]
+    (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data :concepts])))
 
 
 (rf/reg-event-fx ::get-modules-list

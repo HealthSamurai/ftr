@@ -12,16 +12,41 @@
             [ui.zframes.rpc]))
 
 
+(def page :ui.fronend.init-wizard.model/index)
+
+
+(rf/reg-event-fx
+  ::vs-list-vs-click
+  (fn [{:keys [db]} [_ vs]]
+    {:db (assoc-in db [page :vs-list :selected-vs] vs)
+     :zen/rpc [{:method "vs-expand"
+                :params {:module  (get-in db [page :selected-module])
+                         :tag     (get-in db [page :selected-tag])
+                         :vs-name (:value vs)}
+                :path [page :vs-expand]}]}))
+
+
+(rf/reg-sub ::vs-list-selected-vs
+            (fn [db _]
+              (get-in db [page :vs-list :selected-vs])))
+
+
 (defn value-sets-list []
-  (let [value-sets (rf/subscribe [:ui.fronend.init-wizard.model/value-sets])]
+  (let [value-sets (rf/subscribe [:ui.fronend.init-wizard.model/value-sets-with-display])
+        selected-vs (rf/subscribe [::vs-list-selected-vs])]
     (fn []
       [:<>
-       (for [vs @value-sets]
-         ^{:key vs} [:div {:class (c [:px 8] [:py 2] :font-light
-                                     {:transition "0.05s"}
-                                     [:hover :cursor-pointer
-                                      {:background-color "rgb(235, 236, 241)"} ])}
-                     vs])])))
+       (doall
+         (for [vs @value-sets]
+           ^{:key (:value vs)}
+           [:div {:class [(c [:px 8] [:py 2] :font-light
+                             #_{:transition "0.05s"}
+                             [:hover :cursor-pointer
+                              {:background-color "rgb(235, 236, 241, 0.4)"} ])
+                          (when (= (:value @selected-vs) (:value vs))
+                            (c {:background-color "rgb(235, 236, 241) !important"}))]
+                  :on-click (fn [_e] (rf/dispatch [::vs-list-vs-click vs]))}
+            (:display vs)]))])))
 
 
 (defn layout [content]
