@@ -40,6 +40,3 @@ box/inferno-test/report.json
 /box/resources/license/public-keys/testRS256.key.pub
 
 target/
-shadow-target/
-.shadow-cljs/
-node_modules/
