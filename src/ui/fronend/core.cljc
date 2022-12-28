@@ -63,7 +63,8 @@
              :src   "/static/images/search.svg"
              :alt   "search icon"}]]
      [value-sets-list]]
-    [:div {:class (c {:background-color "rgb(235, 236, 241)"} [:w "75%"])}
+    [:div {:class (c :overflow-y-scroll
+                     {:background-color "rgb(235, 236, 241)"} [:w "75%"])}
      content]]])
 
 

@@ -47,18 +47,20 @@
 (rf/reg-sub ::wizard-breadcrumb
             (fn [_]
               [(rf/subscribe [::selected-module])
-               (rf/subscribe [::selected-tag])])
+               (rf/subscribe [::selected-tag])
+               (rf/subscribe [:ui.fronend.core/vs-list-selected-vs])])
 
-            (fn [[selected-module selected-tag] _]
+            (fn [[selected-module selected-tag selected-vs] _]
               (str/join " / " (filter identity [(when-not selected-module "Init Wizard")
                                                 (or selected-module "Select Module:")
-                                                (when selected-module (or selected-tag "Select Tag:"))]))))
+                                                (when selected-module (or selected-tag "Select Tag:"))
+                                                (when selected-tag (or (:display selected-vs) "Select ValueSet:"))]))))
 
 
 (rf/reg-sub
   ::selected-vs-expand
   (fn [db _]
-    (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data :concepts])))
+    (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data])))
 
 
 (rf/reg-event-fx ::get-modules-list
@@ -85,13 +87,18 @@
 (rf/reg-event-fx ::back-via-breadcrumb
                  (fn [{db :db} & _]
                    (let [selected-module (get-in db [page :selected-module])
-                         selected-tag (get-in db [page :selected-tag])]
+                         selected-tag (get-in db [page :selected-tag])
+                         selected-vs (get-in db [page :vs-list])]
                      {:db (cond
+                            selected-vs
+                            (-> db
+                                (update page dissoc :vs-expand)
+                                (update :ui.fronend.init-wizard.model/index dissoc :vs-list))
+
+
                             selected-tag
                             (-> db
                                 (update page dissoc :value-sets)
-                                (update page dissoc :vs-expand)
-                                (update :ui.fronend.init-wizard.model/index dissoc :vs-list)
                                 (update page dissoc :selected-tag))
 
                             selected-module
