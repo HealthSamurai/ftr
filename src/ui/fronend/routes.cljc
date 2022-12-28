@@ -5,7 +5,7 @@
             [ui.zframes.window-location :as location]))
 
 
-(def routes {:. :ui.fronend.init-wizard.model/index})
+(def routes {"init" {:. :ui.fronend.init-wizard.model/index}})
 
 
 (defn get-url-alias

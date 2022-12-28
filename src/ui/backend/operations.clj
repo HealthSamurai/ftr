@@ -20,7 +20,7 @@
                  (cheshire.core/parse-string json-row keyword))))))
 
 
-(defmethod u/*fn ::root [ctx]
+(defmethod u/*fn ::ui [ctx]
   {:response {:status 200
               :body (hiccup.page/html5
                      [:head

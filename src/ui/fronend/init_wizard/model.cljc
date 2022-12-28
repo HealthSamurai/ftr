@@ -6,11 +6,9 @@
 
 
 (rf/reg-event-fx ::index
-                 (fn [{db :db} & args]
-                   (println "WIZ ARGS: " args))
-                 ;; (case phase
-                 ;;   :init {:dispatch [::course-tree-init]}
-                 ;;   :params nil
-                 ;;   :deinit nil
-                 ;;   nil)
-                 )
+                 (fn [{db :db} [_ phase _params]]
+                   (case phase
+                     :init nil
+                     :params nil
+                     :deinit nil
+                     nil)))

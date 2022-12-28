@@ -3,5 +3,5 @@
 
 
 (def routes
-  {:GET :ui.backend.operations/root
+  {"ui" {:GET :ui.backend.operations/ui}
    "rpc" {:POST :ui.backend.operations/rpc}})

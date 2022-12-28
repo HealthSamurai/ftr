@@ -23,6 +23,12 @@
     response))
 
 
+(defn set-content-type [response uri]
+  (cond-> response
+    (str/ends-with? uri ".svg")
+    (assoc-in [:headers "Content-Type"] "image/svg+xml")))
+
+
 (defn handle-static [h {meth :request-method uri :uri :as req}]
   (if (and (contains? #{:get :head} meth)
            (str/starts-with? (or uri "") "/static/"))
@@ -32,7 +38,8 @@
                 :allow-symlinks? true}
           path (subs (codec/url-decode (:uri req)) 8)]
       (-> (ring.util.response/resource-response path opts)
-          (ring.middleware.head/head-response req)))
+          (ring.middleware.head/head-response req)
+          (set-content-type uri)))
     (h req)))
 
 

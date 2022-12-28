@@ -16,7 +16,14 @@
   [:<>
    [:style "body {margin: 0}"]
    [:div {:class (c :flex :h-screen)}
-    [:div {:class (c [:bg :white] :shadow-lg [:w "25%"])}]
+    [:div {:class (c [:bg :white] :shadow-lg [:w "25%"]
+                     :flex :flex-col)}
+     [:div {:class (c [:p 10] :border-b [:h 20] :flex :items-center)}
+      [:input {:class (c  [:h 10] [:px 5] [:w 80])
+               :placeholder "Search"}]
+      [:img {:class (c [:ml 2])
+             :src "/static/images/search.svg"
+             :alt "search icon"}]]]
     [:div {:class (c {:background-color "rgb(235, 236, 241)"} [:w "75%"])}
      content]]])
 
@@ -27,7 +34,6 @@
         params (assoc params
                       :route page
                       :route-ns (when page (namespace page)))
-        _ (println "PAGE?" params)
         content (if page
                   (if-let [cmp (get @ui.fronend.pages/pages page)]
                     [cmp params]
@@ -42,8 +48,11 @@
 
 (rf/reg-event-fx ::initialize
                  (fn [{db :db} _]
-                   {:db              (assoc db ::page "some data")
-                    :route-map/start {}}))
+                   {:db              (assoc db
+                                            ::page "some data"
+                                            :route-map/routes ui.fronend.routes/routes)
+                    :fx [[:route-map/redirect #?(:cljs (ui.fronend.routes/href "init"))]
+                         [:route-map/start {}]]}))
 
 
 (defn mount-root []
