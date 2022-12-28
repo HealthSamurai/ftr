@@ -26,6 +26,7 @@
 (defn handle-static [h {meth :request-method uri :uri :as req}]
   (if (and (contains? #{:get :head} meth)
            (str/starts-with? (or uri "") "/static/"))
+
     (let [opts {:root "public"
                 :index-files? true
                 :allow-symlinks? true}

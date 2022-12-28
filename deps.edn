@@ -32,10 +32,10 @@
                  re-frisk/re-frisk         {:mvn/version "1.6.0"}
                  binaryage/devtools        {:mvn/version "1.0.6"}
 
-		 io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
-			 :sha     "48c79d8fed399cc17c7709a7c1897e6cd1aed6c1"}
-		 abahgat/suffixtree {:git/url "https://github.com/abahgat/suffixtree"
-			 :sha     "b95b632e7a88ab8175714e0c4a55488048fb2d04"}}}
+                 io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
+                                                :sha     "48c79d8fed399cc17c7709a7c1897e6cd1aed6c1"}
+                 abahgat/suffixtree {:git/url "https://github.com/abahgat/suffixtree"
+                                     :sha     "b95b632e7a88ab8175714e0c4a55488048fb2d04"}}}
 
   :nrepl
   {:extra-paths []
