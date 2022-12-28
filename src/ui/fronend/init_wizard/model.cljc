@@ -69,7 +69,9 @@
                          selected-tag (get-in db [page :selected-tag])]
                      {:db (cond
                             selected-tag
-                            (update db page dissoc :selected-tag)
+                            (-> db
+                                (update page dissoc :value-sets)
+                                (update page dissoc :selected-tag))
 
                             selected-module
                             (update db page dissoc :selected-module)
