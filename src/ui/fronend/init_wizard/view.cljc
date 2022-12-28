@@ -28,7 +28,7 @@
             ^{:key module} [:<>
                             [:span {:class (c :text-xl [:mb 1]
                                               :font-light
-                                              {:transition "0.07s"}
+                                              {:transition "0.05s"}
                                               [:hover :cursor-pointer
                                                :font-bold])
                                     :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/select-module module]))} module]
@@ -39,7 +39,7 @@
             ^{:key tag} [:<>
                          [:span {:class (c :text-xl [:mb 1]
                                            :font-light
-                                           {:transition "0.07s"}
+                                           {:transition "0.05s"}
                                            [:hover :cursor-pointer
                                             :font-bold])
                                  :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/select-tag tag]))} tag]

@@ -18,7 +18,7 @@
       [:<>
        (for [vs @value-sets]
          ^{:key vs} [:div {:class (c [:px 8] [:py 2] :font-light
-                                     {:transition "0.07s"}
+                                     {:transition "0.05s"}
                                      [:hover :cursor-pointer
                                       {:background-color "rgb(235, 236, 241)"} ])}
                      vs])])))
