@@ -90,6 +90,8 @@
                             selected-tag
                             (-> db
                                 (update page dissoc :value-sets)
+                                (update page dissoc :vs-expand)
+                                (update :ui.fronend.init-wizard.model/index dissoc :vs-list)
                                 (update page dissoc :selected-tag))
 
                             selected-module
