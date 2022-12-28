@@ -90,6 +90,82 @@
      :result {:concepts concepts}}))
 
 
+(defmethod rpc :current-hash [ctx request method {:keys [module tag vs-name]}]
+  (let [tag-file-path    (str "ftr/" (name module) "/vs/" (name vs-name) "/tag." (name tag) ".ndjson.gz")
+        tag-file-content (parse-ndjson-gz tag-file-path)
+        current-hash     (:hash (first tag-file-content))]
+    {:status :ok
+     :result {:hash current-hash}}))
+
+
+(defmethod rpc :vs-tag-hashes [ctx request method {:keys [module tag vs-name]}]
+  (let [tag-file-path    (str "ftr/" (name module)
+                              "/vs/" (name vs-name)
+                              "/tag." (name tag)
+                              ".ndjson.gz")
+        tag-file-content (parse-ndjson-gz tag-file-path)
+        hashes           (->> (rest tag-file-content)
+                              (mapcat (juxt :from :to))
+                              distinct)]
+    {:status :ok
+     :result {:hashes hashes}}))
+
+
+(defmethod rpc :vs-expand-hash [ctx request method {:keys [module hash vs-name]}]
+  (let [tf-path          (str "ftr/" (name module)
+                              "/vs/" (name vs-name)
+                              "/tf." hash ".ndjson.gz")
+        tf-file-content  (parse-ndjson-gz tf-path)
+        concepts         (drop-while
+                           #(not= "Concept" (:resourceType %))
+                           tf-file-content)]
+    {:status :ok
+     :result {:concepts concepts}}))
+
+
+(defmethod rpc :vs-hashes [ctx request method {:keys [module vs-name]}]
+  (let [vs-dir-path (str "ftr/" (name module)
+                         "/vs/" (name vs-name))
+
+        vs-dir-file  (clojure.java.io/file vs-dir-path)
+        vs-dir-files (.listFiles vs-dir-file)
+        tfs          (filter #(clojure.string/starts-with? (.getName %) "tf.")
+                             vs-dir-files)
+        hashes       (map #(second (re-find #"tf\.(.*)\.ndjson\.gz"
+                                            (.getName %)))
+                          tfs)]
+    {:status :ok
+     :result {:hashes hashes}}))
+
+
+(defmethod rpc :prev-hash [ctx request method {:keys [module tag vs-name hash]}]
+  (let [tag-file-path    (str "ftr/" (name module)
+                              "/vs/" (name vs-name)
+                              "/tag." (name tag)
+                              ".ndjson.gz")
+        tag-file-content (parse-ndjson-gz tag-file-path)
+        prev-hash        (->> (rest tag-file-content)
+                              (filter #(= hash (:to %)))
+                              first
+                              :from)]
+    {:status :ok
+     :result {:hash prev-hash}}))
+
+
+(defmethod rpc :next-hash [ctx request method {:keys [module tag vs-name hash]}]
+  (let [tag-file-path    (str "ftr/" (name module)
+                              "/vs/" (name vs-name)
+                              "/tag." (name tag)
+                              ".ndjson.gz")
+        tag-file-content (parse-ndjson-gz tag-file-path)
+        prev-hash        (->> (rest tag-file-content)
+                              (filter #(= hash (:from %)))
+                              first
+                              :to)]
+    {:status :ok
+     :result {:hash prev-hash}}))
+
+
 (comment
   (rpc nil
        nil
@@ -114,6 +190,48 @@
         :tag     :init
         :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"})
 
+  (rpc nil
+       nil
+       :vs-tag-hashes
+       {:module  :hl7-fhir-us-core
+        :tag     :init
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"})
+
+  (rpc nil
+       nil
+       :vs-expand-hash
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"
+        :hash    "1848162543321e2f9da9ca030bb71432e493de867d29828d0a527c84a95e7eeb"})
+
+  (rpc nil
+       nil
+       :vs-hashes
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"})
+
+  (rpc nil
+       nil
+       :current-hash
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"
+        :tag     :init})
+
+  (rpc nil
+       nil
+       :prev-hash
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"
+        :tag     :init
+        :hash    "95fa842ce62c521672d4ef406932fb0b1ccd33f551e47e1ee5237985e5a20591"})
+
+  (rpc nil
+       nil
+       :next-hash
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"
+        :tag     :init
+        :hash    "1848162543321e2f9da9ca030bb71432e493de867d29828d0a527c84a95e7eeb"})
 
 
   nil)
