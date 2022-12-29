@@ -37,11 +37,12 @@
                    :on-change (fn [e] (rf/dispatch [::model/search-in-hash-expand
                                                     (.. e -target -value)]))}]]]
                [:div {:class (c :flex :items-center [:space-x 1])}
-                [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
-                                 [:hover :cursor-pointer {:filter "contrast(100%)"}])
-                       :src "/static/images/code-brackets-square.svg"
-                       :alt "json view"
-                       :on-click (fn [_] (swap! local-state update :json-view? not))}]
+                (when (= card-name :concepts-grid)
+                  [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
+                                   [:hover :cursor-pointer {:filter "contrast(100%)"}])
+                         :src "/static/images/code-brackets-square.svg"
+                         :alt "json view"
+                         :on-click (fn [_] (swap! local-state update :json-view? not))}])
 
                 (if (= card-name :concepts-grid)
                        [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
@@ -83,11 +84,38 @@
                    [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page next-page-number]))}
                     "[next-page]" next-page-number])])
 
-              (if (:json-view? @local-state)
-
-                (for [concept concepts]
-                  ^{:key (or (:id concept) (str (:system concept) (:code concept)))}
-                  [:div (pr-str (select-keys concept [:code :display :system]))])
+              (if (and (:json-view? @local-state)
+                       (= card-name :concepts-grid))
+                (let [concept-keys (->> (disj (set (mapcat keys concepts))
+                                              :definition :_source :valueset :property :resourceType :id)
+                                        sort
+                                        (concat [:code :display :system])
+                                        distinct)
+                      count-concept-keys (count concept-keys)
+                      last-index (dec count-concept-keys)
+                      col-count (+ 2 (* 2 count-concept-keys))]
+                  [:div {:class (c :grid)
+                         :style {:grid-template-columns (str "repeat(" col-count ", minmax(min-content, max-content))")}}
+                   (doall
+                     (for [concept concepts]
+                       ^{:key (or (:id concept) (str (:system concept) (:code concept)))}
+                       [:<>
+                        (doall
+                          (for [[i k] (map-indexed vector concept-keys)]
+                            (let [first-col? (zero? i)
+                                  last-col? (= last-index i)]
+                              [:<>
+                               (when first-col? [:div  "{"])
+                               (if-let [v (get concept k)]
+                                 [:<>
+                                  [:div {:class (c [:pr 2])} (str (pr-str (name k)) ":")]
+                                  (if last-col?
+                                    [:div (pr-str v)]
+                                    [:div {:class (c [:pr 5])} (str (pr-str v) ",")])]
+                                 [:<>
+                                  [:div]
+                                  [:div]])
+                               (when last-col? [:div "}"])])))]))])
 
                 [:div {:class (c :flex :flex-col)}
                  [:div {:class (c :flex {:position "sticky" :top 0})}
