@@ -22,13 +22,12 @@
                  (cheshire.core/parse-string json-row keyword))))))
 
 
-(defn ndjson-gz-lines [path]
+(defn ndjson-gz-content [path]
   (with-open [rdr (-> path
                       (io/input-stream)
                       (java.util.zip.GZIPInputStream.)
                       (io/reader))]
-    (->> (line-seq rdr)
-         doall)))
+    (slurp rdr)))
 
 
 
@@ -322,7 +321,7 @@
 (defmethod rpc :tf-content [ctx request method {:as params
                                                          :keys [module hash vs-name]}]
   (let [tf-path (str "ftr/" (name module) "/vs/" (name vs-name) "/tf." hash ".ndjson.gz")
-        tf-file-content (ndjson-gz-lines tf-path)]
+        tf-file-content (ndjson-gz-content tf-path)]
     {:status :ok
      :result (merge params {:tf-content tf-file-content})}))
 
