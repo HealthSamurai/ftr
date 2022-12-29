@@ -11,7 +11,10 @@
                  (fn [{:keys [db]} [_ search-str]]
                    {:zen/rpc
                     {:method :comp
-                     :params {:methods [:search-in-hash-expand :vs-tag-hashes]
+                     :params {:methods [(if (str/blank? search-str)
+                                          :vs-expand-hash
+                                          :search-in-hash-expand)
+                                        :vs-tag-hashes]
                               :params {:module       (get-in db [wiz-page :vs-expand :data :module])
                                        :tag          (get-in db [wiz-page :vs-expand :data :tag])
                                        :hash         (get-in db [wiz-page :vs-expand :data :hash])
