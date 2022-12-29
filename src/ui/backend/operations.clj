@@ -50,6 +50,18 @@
      :tree (:tree tree)}))
 
 
+(defn put-multiple-keys! [tree ks v]
+  (let [i         (count (:index tree))
+        new-index (conj (:index tree) v)]
+    (doseq [k ks]
+      (when-not (str/blank? k)
+        (.put (:tree tree)
+              (sanitize-tree-key k)
+              i)))
+    {:index new-index
+     :tree (:tree tree)}))
+
+
 (defn search [tree s]
   (map (:index tree)
        (.search (:tree tree) s)))
@@ -261,6 +273,35 @@
      :result (merge params {:vs-names matches})}))
 
 
+(defn build-module-hash-concepts-tree [ctx module vs-name hash]
+  (let [vs-expand-res (rpc ctx nil :vs-expand-hash {:module  module
+                                                    :vs-name vs-name
+                                                    :hash    hash})
+        vs-concepts   (get-in vs-expand-res [:result :concepts])]
+    (reduce (fn [acc {:as concept :keys [code display system]}]
+              (put-multiple-keys! acc [code display system] concept))
+            (suffix-tree)
+            vs-concepts)))
+
+
+(defn get-module-hash-concepts-tree [ctx module vs-name hash]
+  (get-cache (:suffix-trees-cache ctx)
+             [:vs-expands (keyword module) (keyword vs-name) (keyword hash)]
+             #(build-module-hash-concepts-tree ctx module vs-name hash)))
+
+
+(defmethod rpc :search-in-hash-expand [ctx request method {:as params
+                                                           :keys [module
+                                                                  vs-name
+                                                                  hash
+                                                                  search-str]}]
+  (let [tree    (get-module-hash-concepts-tree ctx module vs-name hash)
+        matches (search tree (sanitize-tree-key search-str))]
+    {:status :ok
+     :result (merge params {:concepts matches
+                            :concepts-count (count matches)})}))
+
+
 (comment
 
   (rpc nil
@@ -353,8 +394,23 @@
        :search-in-vs-list
        {:module  :hl7-fhir-us-core
         :tag     :init
-        :search-str "http://hl7.org/fhir/us/core/ValueSet/birthsex"})
+        :search-str "ethnicity"})
 
+  (rpc ctx
+       nil
+       :current-hash
+       {:module  :hl7-fhir-us-core
+        :tag     :init
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-detailed-ethnicity"})
+
+  (rpc ctx
+       nil
+       :search-in-hash-expand
+       {:module  :hl7-fhir-us-core
+        :tag     :init
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-detailed-ethnicity"
+        :hash "8e9733d0edbe56ca3f3efefbaedb6882cf9437b4973df8cb945c5a75b825cce2"
+        :search-str "un"})
 
   nil)
 
