@@ -114,6 +114,7 @@
                                     selected-vs
                                     (-> db
                                         (update page dissoc :vs-expand)
+                                        (update :ui.fronend.concepts-grid.model/index dissoc :paging)
                                         (update :ui.fronend.init-wizard.model/index dissoc :vs-list))
 
 

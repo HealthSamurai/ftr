@@ -45,29 +45,26 @@
                                                         :concepts-grid
                                                         {}]))}])]
 
-              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 10]))}
-               (if (= 10 (get-in paginated-concepts [:paging :page-size]))
-                 "[10]"
-                 "10")]
-              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 20]))}
-               (if (= 20 (get-in paginated-concepts [:paging :page-size]))
-                 "[20]"
-                 "20")]
-              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 50]))}
-               (if (= 50 (get-in paginated-concepts [:paging :page-size]))
-                 "[50]"
-                 "50")]
-              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size concepts-count]))}
-               (if (= concepts-count (get-in paginated-concepts [:paging :page-size]))
-                 (str "[" concepts-count "]")
-                 (str concepts-count))]
-              [:br]
-              (when-let [prev-page-number (get-in paginated-concepts [:paging :prev-page-number])]
-                [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page prev-page-number]))}
-                 "[prev-page]" prev-page-number])
-              (when-let [next-page-number (get-in paginated-concepts [:paging :next-page-number])]
-                [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page next-page-number]))}
-                 "[next-page]" next-page-number])
+              (if (get-in paginated-concepts [:paging :disabled])
+                [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
+                 "[enable]"]
+                [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
+                 "[disable]"])
+
+              (when (get-in paginated-concepts [:paginated])
+                [:<>
+                 (for [size [10 20 50]]
+                   [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size size]))}
+                    (if (= size (get-in paginated-concepts [:paging :page-size]))
+                      (str "[" size "]")
+                      (str size))])
+                 [:br]
+                 (when-let [prev-page-number (get-in paginated-concepts [:paging :prev-page-number])]
+                   [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page prev-page-number]))}
+                    "[prev-page]" prev-page-number])
+                 (when-let [next-page-number (get-in paginated-concepts [:paging :next-page-number])]
+                   [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page next-page-number]))}
+                    "[next-page]" next-page-number])])
 
               [:div {:class (c :flex :flex-col)}
                [:div {:class (c :flex {:position "sticky" :top 0})}

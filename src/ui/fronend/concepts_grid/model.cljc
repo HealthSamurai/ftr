@@ -34,6 +34,13 @@
 (def page-size 20)
 
 
+(rf/reg-event-fx ::toggle-paging
+                 (fn [{:keys [db]} [_ size]]
+                   {:db (-> db
+                            (assoc-in [page :paging :page-number] 0)
+                            (update-in [page :paging :disabled] (fnil not false)))}))
+
+
 (rf/reg-event-fx ::set-page-size
                  (fn [{:keys [db]} [_ size]]
                    {:db (-> db
@@ -49,6 +56,7 @@
 (rf/reg-sub ::paging-settings
             (fn [db _]
               {:page-size   (get-in db [page :paging :page-size] page-size)
+               :disabled    (get-in db [page :paging :disabled] false)
                :page-number (get-in db [page :paging :page-number] 0)}))
 
 
@@ -60,12 +68,13 @@
             (fn [_]
               [(rf/subscribe [::paging-settings])
                (rf/subscribe [:ui.fronend.init-wizard.model/selected-vs-expand])])
-            (fn [[{:keys [page-size page-number]} {:keys [concepts-count]}] _]
+            (fn [[{:keys [disabled page-size page-number]} {:keys [concepts-count]}] _]
               (let [max-page-number (max-page-n concepts-count page-size)
                     next-page-number (min max-page-number (inc page-number))
                     prev-page-number (max 0 (dec page-number))]
                 {:page-size        page-size
                  :page-number      page-number
+                 :disabled         disabled
                  :max-page-number  max-page-number
                  :prev-page-number (when (not= prev-page-number page-number)
                                      prev-page-number)
@@ -80,9 +89,11 @@
             (fn [[vs-expand-resp paging] _]
               (let [concepts       (get-in vs-expand-resp [:concepts])
                     concepts-count (get-in vs-expand-resp [:concepts-count])]
-                (if (<= concepts-count (+ page-size 5))
+                (if (or (:disabled paging)
+                        (<= concepts-count (+ page-size 5)))
                   {:concepts-count concepts-count
-                   :concepts concepts}
+                   :concepts concepts
+                   :paging {:disabled (:disabled paging)}}
                   {:paginated      true
                    :paging         paging
                    :concepts-count concepts-count

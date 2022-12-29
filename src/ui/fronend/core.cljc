@@ -19,7 +19,9 @@
 (rf/reg-event-fx
   ::vs-list-vs-click
   (fn [{:keys [db]} [_ vs]]
-    {:db (assoc-in db [page :vs-list :selected-vs] vs)
+    {:db (-> db
+             (update :ui.fronend.concepts-grid.model/index dissoc :paging)
+             (assoc-in [page :vs-list :selected-vs] vs))
      :zen/rpc {:method :comp
                :params {:methods [:vs-expand :vs-tag-hashes]
                         :params {:module  (get-in db [page :selected-module])
