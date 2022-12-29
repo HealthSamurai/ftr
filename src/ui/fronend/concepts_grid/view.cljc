@@ -2,7 +2,8 @@
   (:require [stylo.core :refer [c]]
             [re-frame.core :as rf]
             [ui.fronend.concepts-grid.model :as model]
-            [reagent.ratom]))
+            [reagent.ratom]
+            [clojure.pprint]))
 
 
 
@@ -13,7 +14,8 @@
   (let [paginated-concepts-sub (rf/subscribe [::model/paginated-concepts])
         maximized-card (rf/subscribe [:ui.fronend.init-wizard.model/maximized-card])
         local-state #?(:cljs (reagent.ratom/atom {:json-view? false})
-                       :clj (atom {}))]
+                       :clj (atom {}))
+        selected-concept-row-id (rf/subscribe [:ui.fronend.concepts-grid.model/selected-concept-row-id])]
     (fn []
       (let [{:keys [card-name]} @maximized-card]
         (cond
@@ -93,12 +95,25 @@
                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :font-bold [:border-b :black])]} "Code"]
                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :font-bold :border-l [:border-b :black])]} "Display"]
                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :font-bold :border-l [:border-b :black])]} "System"]]]
-                 (for [concept concepts]
-                   ^{:key (or (:id concept) (str (:system concept) (:code concept)))}
-                   [:div {:class (c :flex :font-light)}
-                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c [:border-b :black])]} (:code concept)]
-                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :border-l [:border-b :black])]} (:display concept)]
-                    [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :border-l [:border-b :black])]} (:system concept)]])])]])
+
+                 (let [scri @selected-concept-row-id]
+                   (for [concept concepts]
+
+                    [:<>
+                     ^{:key (or (:id concept) (str (:system concept) (:code concept)))}
+                     [:div {:class [(c :flex :font-light [:hover :cursor-pointer {:background-color "rgb(235, 236, 241, 0.4)"}])
+                                    (when (= (:id concept) scri)
+                                      (c :shadow-2xl))]
+                            :on-click (when (= card-name :concepts-grid)
+                                        (fn [_] (rf/dispatch [:ui.fronend.concepts-grid.model/select-concept-row-id (:id concept)])))}
+                      [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c [:border-b :black])]} (:code concept)]
+                      [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :border-l [:border-b :black])]} (:display concept)]
+                      [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :border-l [:border-b :black])]} (:system concept)]]
+
+                     (when (= (:id concept) scri)
+                       [:div {:class (c [:p 5] {:white-space "pre"})}
+                        (with-out-str (clojure.pprint/pprint concept))])
+                     ]))])]])
 
           card-name
           nil)))))

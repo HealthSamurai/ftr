@@ -105,3 +105,17 @@
                    :concepts-count concepts-count
                    :concepts       (take (:page-size paging)
                                          (drop (:drop-count paging) concepts))}))))
+
+(rf/reg-event-fx
+  ::select-concept-row-id
+  (fn [{db :db} [_ id]]
+    (let [current-selection
+          (get-in db [page :selected-row-id])]
+      {:db (assoc-in db [page :selected-row-id] (if (= current-selection id)
+                                                  nil
+                                                  id))})))
+
+
+(rf/reg-sub ::selected-concept-row-id
+            (fn [db _]
+              (get-in db [page :selected-row-id])))
