@@ -46,7 +46,7 @@
 
                                  (rf/dispatch [:ui.fronend.resource-card.model/maximize-card])))}])]
          (if @maximized?
-           [:div {:class (c [:p 5] {:white-space "pre"}
+           [:pre {:class (c [:p 5] {:white-space "pre"}
                             :overflow-x-scroll :overflow-y-scroll)}
             (with-out-str (clojure.pprint/pprint resource))]
            (simplified-resource-view

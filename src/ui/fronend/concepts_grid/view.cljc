@@ -111,7 +111,7 @@
                       [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c :border-l [:border-b :black])]} (:system concept)]]
 
                      (when (= (:id concept) scri)
-                       [:div {:class (c [:p 5] {:white-space "pre"})}
+                       [:pre {:class (c  :w-screen :overflow-x-scroll [:p 5] {:white-space "pre"})}
                         (with-out-str (clojure.pprint/pprint concept))])
                      ]))])]])
 
