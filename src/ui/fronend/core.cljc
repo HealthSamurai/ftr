@@ -66,24 +66,36 @@
             (:display vs)]))])))
 
 
+(defn vs-list-sidebar []
+  (let [selected-tag-sub (rf/subscribe [:ui.fronend.init-wizard.model/selected-tag])]
+    (fn []
+      [:div {:class (c :overflow-y-scroll
+                       [:bg :white] :shadow-lg [:w "400px"]
+                       :flex :flex-col)
+             :style {:animation "example 0.06s linear"
+                     :display (if @selected-tag-sub
+                                "block"
+                                "none")}}
+
+       [:div {:class (c [:p 10] :border-b [:h 20] :flex :items-center)}
+        [:input#vs-search
+         {:class       (c  [:h 10] [:px 5] [:w 80])
+          :placeholder "Search"
+          :on-change (fn [e] (rf/dispatch [::search-in-vs-list (.. e -target -value)]))}]
+        [:img {:class (c [:ml 2])
+               :src   "/static/images/search.svg"
+               :alt   "search icon"}]]
+       [value-sets-list]])))
+
+
 (defn layout [content]
   [:<>
    [:style "body {margin: 0}"]
    [:div {:class (c :flex :h-screen)}
+    [vs-list-sidebar]
     [:div {:class (c :overflow-y-scroll
-                     [:bg :white] :shadow-lg [:w "25%"]
-                     :flex :flex-col)}
-     [:div {:class (c [:p 10] :border-b [:h 20] :flex :items-center)}
-      [:input#vs-search
-       {:class       (c  [:h 10] [:px 5] [:w 80])
-        :placeholder "Search"
-        :on-change (fn [e] (rf/dispatch [::search-in-vs-list (.. e -target -value)]))}]
-      [:img {:class (c [:ml 2])
-             :src   "/static/images/search.svg"
-             :alt   "search icon"}]]
-     [value-sets-list]]
-    [:div {:class (c :overflow-y-scroll
-                     {:background-color "rgb(235, 236, 241)"} [:w "75%"])}
+                     {:background-color "rgb(235, 236, 241)"
+                      :flex "1"})}
      content]]])
 
 

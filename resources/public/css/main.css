@@ -1,0 +1,4 @@
+@keyframes example {
+    0%   {width: 0px; display: none}
+    100% {width: 400px; display: block}
+}
