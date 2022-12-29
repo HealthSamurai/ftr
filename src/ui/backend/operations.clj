@@ -107,7 +107,7 @@
         tag-file-content (parse-ndjson-gz tag-file-path)
         hashes           (->> (rest tag-file-content)
                               (mapcat (juxt :from :to))
-                              distinct)]
+                              dedupe)]
     {:status :ok
      :result {:hashes hashes}}))
 
