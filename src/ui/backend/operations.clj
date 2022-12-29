@@ -22,6 +22,16 @@
                  (cheshire.core/parse-string json-row keyword))))))
 
 
+(defn ndjson-gz-lines [path]
+  (with-open [rdr (-> path
+                      (io/input-stream)
+                      (java.util.zip.GZIPInputStream.)
+                      (io/reader))]
+    (->> (line-seq rdr)
+         doall)))
+
+
+
 (defn deaccent [str]
   "Remove accent from string"
   ;; http://www.matt-reid.co.uk/blog_post.php?id=69
@@ -309,6 +319,14 @@
                             :concepts-count (count matches)})}))
 
 
+(defmethod rpc :tf-content [ctx request method {:as params
+                                                         :keys [module hash vs-name]}]
+  (let [tf-path (str "ftr/" (name module) "/vs/" (name vs-name) "/tf." hash ".ndjson.gz")
+        tf-file-content (ndjson-gz-lines tf-path)]
+    {:status :ok
+     :result (merge params {:tf-content tf-file-content})}))
+
+
 (comment
 
   (rpc nil
@@ -418,6 +436,13 @@
         :vs-name "http:--hl7.org-fhir-us-core-ValueSet-detailed-ethnicity"
         :hash "8e9733d0edbe56ca3f3efefbaedb6882cf9437b4973df8cb945c5a75b825cce2"
         :search-str "un"})
+
+  (rpc nil
+       nil
+       :tf-content
+       {:module  :hl7-fhir-us-core
+        :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"
+        :hash    "1848162543321e2f9da9ca030bb71432e493de867d29828d0a527c84a95e7eeb"})
 
   nil)
 
