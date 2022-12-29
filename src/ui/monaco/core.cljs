@@ -29,8 +29,8 @@
                                                   :scrollbar #js{:horizontal "hidden"
                                                                  :vertical "hidden"}})]
 
-          (.setModel e #js{:original (.createModel monacoe (:from props) "clojure")
-                           :modified (.createModel monacoe (:to props) "clojure")})
+          (.setModel e #js{:original (.createModel monacoe (:from props) "json")
+                           :modified (.createModel monacoe (:to props) "json")})
 
           (reset! editor e)))
 

@@ -61,6 +61,6 @@
              (when (and
                      (get-in selected-hashes [:from])
                      (get-in selected-hashes [:to]))
-               #?(:cljs [ui.monaco.core/monaco {:class (c [:h "1000px"] [:w "1000px"])
+               #?(:cljs [ui.monaco.core/monaco {:class (c [:h "700px"] [:w "1200px"])
                                                 :from (get-in selected-hashes [:from])
                                                 :to (get-in selected-hashes [:to])}]))])])))))
