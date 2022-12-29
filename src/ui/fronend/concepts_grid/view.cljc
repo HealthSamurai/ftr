@@ -1,6 +1,7 @@
 (ns ui.fronend.concepts-grid.view
   (:require [stylo.core :refer [c]]
-            [re-frame.core :as rf]))
+            [re-frame.core :as rf]
+            [ui.fronend.concepts-grid.model :as model]))
 
 
 
@@ -14,6 +15,11 @@
          [:div {:class (c [:bg :white] [:rounded 10] [:p 5] :overflow-hidden)}
           [:div {:class (c :flex :justify-between :items-center [:mb 5])}
            [:h2 {:class (c :text-xl :font-bold)} "Concepts: " concepts-count]
+           [:div {:class (c :flex :items-center)}
+            [:input {:class       (c  [:h 10] [:px 5] :border [:rounded 10])
+                     :placeholder "Search"
+                     :on-change (fn [e] (rf/dispatch [::model/search-in-hash-expand
+                                                      (.. e -target -value)]))}]]
            [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
                             [:hover :cursor-pointer {:filter "contrast(100%)"}])
                   :src "/static/images/maximize.svg"

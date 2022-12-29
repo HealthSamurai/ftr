@@ -50,7 +50,7 @@
 
     (restart-ui)
 
-    (def server {})
+    (defonce server {})
 
     (do
       (when-let [stop-fn (:server-stop-fn server)]
