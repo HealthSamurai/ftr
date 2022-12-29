@@ -28,7 +28,7 @@
 
 (rf/reg-sub ::value-sets
             (fn [db _]
-              (get-in db [page :value-sets :data])))
+              (get-in db [page :value-sets :data :vs-names])))
 
 
 (rf/reg-sub ::value-sets-with-display
