@@ -83,11 +83,18 @@
         current-hash     (:hash (first tag-file-content))
         tf-path          (str "ftr/" (name module) "/vs/" (name vs-name) "/tf." current-hash ".ndjson.gz")
         tf-file-content  (parse-ndjson-gz tf-path)
-        concepts         (drop-while
+        [vs&cs concepts] (split-with
                            #(not= "Concept" (:resourceType %))
-                           tf-file-content)]
+                           tf-file-content)
+
+        {vss "ValueSet", css "CodeSystem"} (group-by :resourceType vs&cs)]
     {:status :ok
-     :result {:concepts concepts
+     :result {:module         module
+              :vs-name        vs-name
+              :hash           current-hash
+              :value-sets     vss
+              :code-systems   css
+              :concepts       concepts
               :concepts-count (count concepts)}}))
 
 
@@ -119,9 +126,19 @@
         tf-file-content  (parse-ndjson-gz tf-path)
         concepts         (drop-while
                            #(not= "Concept" (:resourceType %))
-                           tf-file-content)]
+                           tf-file-content)
+        [vs&cs concepts] (split-with
+                           #(not= "Concept" (:resourceType %))
+                           tf-file-content)
+
+        {vss "ValueSet", css "CodeSystem"} (group-by :resourceType vs&cs)]
     {:status :ok
-     :result {:concepts concepts
+     :result {:module         module
+              :vs-name        vs-name
+              :hash           hash
+              :value-sets     vss
+              :code-systems   css
+              :concepts concepts
               :concepts-count (count concepts)}}))
 
 
