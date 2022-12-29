@@ -44,14 +44,13 @@
 
 (defmethod rpc :module-list [ctx request method params]
   {:status :ok
-   :result {:modules (->> (.listFiles (clojure.java.io/file "ftr"))
-                          (mapv #(keyword (.getName %))))}})
+   :result (merge params
+                  {:modules (->> (.listFiles (clojure.java.io/file "ftr"))
+                                 (mapv #(keyword (.getName %))))})})
 
 
-(defmethod rpc :module-tags [ctx request method params]
-  (let [tags-dir-path  (str "ftr/"
-                            (name (:module params))
-                            "/tags")
+(defmethod rpc :module-tags [ctx request method {:as params :keys [module]}]
+  (let [tags-dir-path  (str "ftr/" (name module) "/tags")
         tags-dir-file  (clojure.java.io/file tags-dir-path)
         tags-dir-files (.listFiles tags-dir-file)
 
@@ -64,20 +63,22 @@
                        keyword)
                   tags-ndjson-files)]
     {:status :ok
-     :result {:tags tags}}))
+     :result (merge params {:tags tags})}))
 
 
-(defmethod rpc :vs-list [ctx request method {:keys [module tag]}]
+(defmethod rpc :vs-list [ctx request method {:as params
+                                             :keys [module tag]}]
   (let [tag-file-path    (str "ftr/" (name module) "/tags/" (name tag) ".ndjson.gz")
         tag-file-content (parse-ndjson-gz tag-file-path)
         module-vs-names  (map :name tag-file-content)
         vs-names         (map #(second (clojure.string/split % #"\." 2))
                               module-vs-names)]
     {:status :ok
-     :result vs-names}))
+     :result (merge params {:vs-names vs-names})}))
 
 
-(defmethod rpc :vs-expand [ctx request method {:keys [module tag vs-name]}]
+(defmethod rpc :vs-expand [ctx request method {:as params
+                                               :keys [module tag vs-name]}]
   (let [tag-file-path    (str "ftr/" (name module) "/vs/" (name vs-name) "/tag." (name tag) ".ndjson.gz")
         tag-file-content (parse-ndjson-gz tag-file-path)
         current-hash     (:hash (first tag-file-content))
@@ -89,24 +90,24 @@
 
         {vss "ValueSet", css "CodeSystem"} (group-by :resourceType vs&cs)]
     {:status :ok
-     :result {:module         module
-              :vs-name        vs-name
-              :hash           current-hash
-              :value-sets     vss
-              :code-systems   css
-              :concepts       concepts
-              :concepts-count (count concepts)}}))
+     :result (merge params
+                    {:hash           current-hash
+                     :value-sets     vss
+                     :code-systems   css
+                     :concepts       concepts
+                     :concepts-count (count concepts)})}))
 
 
-(defmethod rpc :current-hash [ctx request method {:keys [module tag vs-name]}]
+(defmethod rpc :current-hash [ctx request method {:as params :keys [module tag vs-name]}]
   (let [tag-file-path    (str "ftr/" (name module) "/vs/" (name vs-name) "/tag." (name tag) ".ndjson.gz")
         tag-file-content (parse-ndjson-gz tag-file-path)
         current-hash     (:hash (first tag-file-content))]
     {:status :ok
-     :result {:hash current-hash}}))
+     :result (merge params {:hash current-hash})}))
 
 
-(defmethod rpc :vs-tag-hashes [ctx request method {:keys [module tag vs-name]}]
+(defmethod rpc :vs-tag-hashes [ctx request method {:as params
+                                                   :keys [module tag vs-name]}]
   (let [tag-file-path    (str "ftr/" (name module)
                               "/vs/" (name vs-name)
                               "/tag." (name tag)
@@ -116,10 +117,11 @@
                               (mapcat (juxt :from :to))
                               dedupe)]
     {:status :ok
-     :result {:hashes hashes}}))
+     :result (merge params {:hashes hashes})}))
 
 
-(defmethod rpc :vs-expand-hash [ctx request method {:keys [module hash vs-name]}]
+(defmethod rpc :vs-expand-hash [ctx request method {:as params
+                                                    :keys [module hash vs-name]}]
   (let [tf-path          (str "ftr/" (name module)
                               "/vs/" (name vs-name)
                               "/tf." hash ".ndjson.gz")
@@ -133,16 +135,14 @@
 
         {vss "ValueSet", css "CodeSystem"} (group-by :resourceType vs&cs)]
     {:status :ok
-     :result {:module         module
-              :vs-name        vs-name
-              :hash           hash
-              :value-sets     vss
-              :code-systems   css
-              :concepts concepts
-              :concepts-count (count concepts)}}))
+     :result (merge params
+                    {:value-sets     vss
+                     :code-systems   css
+                     :concepts concepts
+                     :concepts-count (count concepts)})}))
 
 
-(defmethod rpc :vs-hashes [ctx request method {:keys [module vs-name]}]
+(defmethod rpc :vs-hashes [ctx request method {:as params :keys [module vs-name]}]
   (let [vs-dir-path (str "ftr/" (name module)
                          "/vs/" (name vs-name))
 
@@ -154,10 +154,11 @@
                                             (.getName %)))
                           tfs)]
     {:status :ok
-     :result {:hashes hashes}}))
+     :result (merge params {:hashes hashes})}))
 
 
-(defmethod rpc :prev-hash [ctx request method {:keys [module tag vs-name hash]}]
+(defmethod rpc :prev-hash [ctx request method {:as params
+                                               :keys [module tag vs-name hash]}]
   (let [tag-file-path    (str "ftr/" (name module)
                               "/vs/" (name vs-name)
                               "/tag." (name tag)
@@ -168,21 +169,32 @@
                               first
                               :from)]
     {:status :ok
-     :result {:hash prev-hash}}))
+     :result (merge params {:hash prev-hash})}))
 
 
-(defmethod rpc :next-hash [ctx request method {:keys [module tag vs-name hash]}]
+(defmethod rpc :next-hash [ctx request method {:as params
+                                               :keys [module tag vs-name hash]}]
   (let [tag-file-path    (str "ftr/" (name module)
                               "/vs/" (name vs-name)
                               "/tag." (name tag)
                               ".ndjson.gz")
         tag-file-content (parse-ndjson-gz tag-file-path)
-        prev-hash        (->> (rest tag-file-content)
+        next-hash        (->> (rest tag-file-content)
                               (filter #(= hash (:from %)))
                               first
                               :to)]
     {:status :ok
-     :result {:hash prev-hash}}))
+     :result (merge params {:hash next-hash})}))
+
+
+(defmethod rpc :comp [ctx request method {:keys [methods params]}]
+  (reduce (fn [acc method]
+            (let [res (rpc ctx request method (:result acc))]
+              (if (= :ok (:status res))
+                res
+                (reduced res))))
+          {:result params}
+          (reverse methods)))
 
 
 (comment
@@ -252,6 +264,13 @@
         :tag     :init
         :hash    "1848162543321e2f9da9ca030bb71432e493de867d29828d0a527c84a95e7eeb"})
 
+  (rpc nil
+       nil
+       :comp
+       {:methods [:vs-expand-hash :prev-hash :current-hash]
+        :params {:module  :hl7-fhir-us-core
+                 :tag     :init
+                 :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"}})
 
   nil)
 
