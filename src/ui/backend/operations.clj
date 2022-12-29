@@ -258,7 +258,7 @@
   (let [tree    (get-module-tag-vs-names-tree ctx module tag)
         matches (search tree (sanitize-tree-key search-str))]
     {:status :ok
-     :result (merge params {:matches matches})}))
+     :result (merge params {:vs-names matches})}))
 
 
 (comment

@@ -4,6 +4,7 @@
             [stylo.core :refer [c]]
             [ui.fronend.pages]
             [ui.fronend.routes]
+            [clojure.string :as str]
 
             [ui.fronend.init-wizard.view]
 
@@ -29,6 +30,18 @@
 (rf/reg-sub ::vs-list-selected-vs
             (fn [db _]
               (get-in db [page :vs-list :selected-vs])))
+
+
+(rf/reg-event-fx
+  ::search-in-vs-list
+  (fn [{:keys [db]} [_ search-str]]
+    {:zen/rpc {:method (if (str/blank? search-str)
+                         :vs-list
+                         :search-in-vs-list)
+               :params {:module     (get-in db [page :selected-module])
+                        :tag        (get-in db [page :selected-tag])
+                        :search-str search-str}
+               :path [:ui.fronend.init-wizard.model/index :value-sets]}}))
 
 
 (defn value-sets-list []
@@ -58,7 +71,8 @@
                      :flex :flex-col)}
      [:div {:class (c [:p 10] :border-b [:h 20] :flex :items-center)}
       [:input {:class       (c  [:h 10] [:px 5] [:w 80])
-               :placeholder "Search"}]
+               :placeholder "Search"
+               :on-change (fn [e] (rf/dispatch [::search-in-vs-list (.. e -target -value)]))}]
       [:img {:class (c [:ml 2])
              :src   "/static/images/search.svg"
              :alt   "search icon"}]]

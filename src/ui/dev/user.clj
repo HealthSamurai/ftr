@@ -50,10 +50,18 @@
 
     (restart-ui)
 
-    (def server (ui.backend.core/start
-                  {:web {:port 7777}
-                   :routes ui.backend.routes/routes})))
+    (def server {})
 
-  ((:server-stop-fn server ))
+    (do
+      (when-let [stop-fn (:server-stop-fn server)]
+        (stop-fn))
 
-  )
+      (def server (ui.backend.core/start
+                    {:web {:port 7777}
+                     :routes ui.backend.routes/routes}))
+
+      nil)
+
+    nil)
+
+  nil)
