@@ -36,7 +36,9 @@
 
 (rf/reg-event-fx ::set-page-size
                  (fn [{:keys [db]} [_ size]]
-                   {:db (assoc-in db [page :paging :page-size] size)}))
+                   {:db (-> db
+                            (assoc-in [page :paging :page-number] 0)
+                            (assoc-in [page :paging :page-size] size))}))
 
 
 (rf/reg-event-fx ::nth-page

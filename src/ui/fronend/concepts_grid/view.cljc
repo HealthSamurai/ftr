@@ -45,6 +45,23 @@
                                                         :concepts-grid
                                                         {}]))}])]
 
+              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 10]))}
+               (if (= 10 (get-in paginated-concepts [:paging :page-size]))
+                 "[10]"
+                 "10")]
+              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 20]))}
+               (if (= 20 (get-in paginated-concepts [:paging :page-size]))
+                 "[20]"
+                 "20")]
+              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size 50]))}
+               (if (= 50 (get-in paginated-concepts [:paging :page-size]))
+                 "[50]"
+                 "50")]
+              [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size concepts-count]))}
+               (if (= concepts-count (get-in paginated-concepts [:paging :page-size]))
+                 (str "[" concepts-count "]")
+                 (str concepts-count))]
+              [:br]
               (when-let [prev-page-number (get-in paginated-concepts [:paging :prev-page-number])]
                 [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page prev-page-number]))}
                  "[prev-page]" prev-page-number])
