@@ -70,16 +70,23 @@
 (defmethod u/*fn ::ui [ctx]
   {:response {:status 200
               :body (hiccup.page/html5
-                     [:head
-                      [:link {:href "/static/css/stylo.css"
-                              :type "text/css"
-                              :rel  "stylesheet"}]
-                      [:link {:href "/static/css/main.css"
-                              :type "text/css"
-                              :rel  "stylesheet"}]]
-                     [:body
-                      [:div#root]
-                      [:script {:src (str "/static/js/frontend.js")}]])}})
+                      [:head
+                       [:link {:rel "stylesheet"
+                               :date-name "vs/editor/editor.main"
+                               :href "/static/monaco-editor/min/vs/editor/editor.main.css"}]
+                       [:link {:href "/static/css/stylo.css"
+                               :type "text/css"
+                               :rel  "stylesheet"}]
+                       [:link {:href "/static/css/main.css"
+                               :type "text/css"
+                               :rel  "stylesheet"}]]
+                      [:body
+                       [:div#root]
+                       [:script "var require = { paths: { vs: '/static/monaco-editor/min/vs' } };"]
+                       [:script {:src "/static/monaco-editor/min/vs/loader.js"}]
+                       [:script {:src "/static/monaco-editor/min/vs/editor/editor.main.nls.js"}]
+                       [:script {:src "/static/monaco-editor/min/vs/editor/editor.main.js"}]
+                       [:script {:src (str "/static/js/frontend.js")}]])}})
 
 
 (defn rpc-dispatch [ctx request method params]

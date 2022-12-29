@@ -6,7 +6,10 @@
 
             [ui.fronend.concepts-grid.view]
             [ui.fronend.resource-card.view]
-            [ui.fronend.version-stepper.view]))
+            [ui.fronend.version-stepper.view]
+            [ui.fronend.diff-card.view]
+
+            #?(:cljs [ui.monaco.core])))
 
 
 (defn init-wizard []
@@ -28,7 +31,8 @@
          @wizard-breadcrumb]]
        (when @selected-vs
          [ui.fronend.version-stepper.view/tag-stepper])
-       [:div {:class (c :flex)}
+
+       [:div {:class (c :flex :items-start)}
         (cond
           (not @selected-module)
           [:div {:class (c [:pt 5] [:pl "28px"])}
@@ -59,7 +63,8 @@
           (some? @selected-vs)
           [:<>
            [ui.fronend.concepts-grid.view/concept-grid]
-           [ui.fronend.resource-card.view/resource-column]])]])))
+           [ui.fronend.resource-card.view/resource-column]
+           [ui.fronend.diff-card.view/diff-card]])]])))
 
 
 (ui.fronend.pages/reg-page model/page init-wizard)
