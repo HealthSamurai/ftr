@@ -25,7 +25,8 @@
                         :params {:module  (get-in db [page :selected-module])
                                  :tag     (get-in db [page :selected-tag])
                                  :vs-name (:value vs)}}
-               :path [page :vs-expand]}}))
+               :path [page :vs-expand]}
+     :ui.fronend.init-wizard.model/reset-input "conc-search"}))
 
 
 (rf/reg-sub ::vs-list-selected-vs
@@ -71,9 +72,10 @@
                      [:bg :white] :shadow-lg [:w "25%"]
                      :flex :flex-col)}
      [:div {:class (c [:p 10] :border-b [:h 20] :flex :items-center)}
-      [:input {:class       (c  [:h 10] [:px 5] [:w 80])
-               :placeholder "Search"
-               :on-change (fn [e] (rf/dispatch [::search-in-vs-list (.. e -target -value)]))}]
+      [:input#vs-search
+       {:class       (c  [:h 10] [:px 5] [:w 80])
+        :placeholder "Search"
+        :on-change (fn [e] (rf/dispatch [::search-in-vs-list (.. e -target -value)]))}]
       [:img {:class (c [:ml 2])
              :src   "/static/images/search.svg"
              :alt   "search icon"}]]

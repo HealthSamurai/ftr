@@ -99,28 +99,38 @@
                     :dispatch [::load-value-sets]}))
 
 
+#?(:cljs
+   (rf/reg-fx ::reset-input
+              (fn [id]
+                (set! (.-value (. js/document (getElementById id))) nil))))
+
+
 (rf/reg-event-fx ::back-via-breadcrumb
                  (fn [{db :db} & _]
                    (let [selected-module (get-in db [page :selected-module])
                          selected-tag (get-in db [page :selected-tag])
                          selected-vs (get-in db [page :vs-list])]
-                     {:db (cond
-                            selected-vs
-                            (-> db
-                                (update page dissoc :vs-expand)
-                                (update :ui.fronend.init-wizard.model/index dissoc :vs-list))
+                     (cond-> {:db (cond
+                                    selected-vs
+                                    (-> db
+                                        (update page dissoc :vs-expand)
+                                        (update :ui.fronend.init-wizard.model/index dissoc :vs-list))
 
 
-                            selected-tag
-                            (-> db
-                                (update page dissoc :value-sets)
-                                (update page dissoc :selected-tag))
+                                    selected-tag
+                                    (-> db
+                                        (update page dissoc :value-sets)
+                                        (update page dissoc :selected-tag))
 
-                            selected-module
-                            (update db page dissoc :selected-module)
+                                    selected-module
+                                    (update db page dissoc :selected-module)
 
-                            :else
-                            db)})))
+                                    :else
+                                    db)}
+                       selected-vs
+                       (assoc :fx [[:ui.fronend.init-wizard.model/reset-input "vs-search"]
+                                   [:ui.fronend.init-wizard.model/reset-input "conc-search"]]
+                              :dispatch [::load-value-sets])))))
 
 
 (rf/reg-event-fx ::load-value-sets
