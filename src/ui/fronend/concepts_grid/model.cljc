@@ -89,11 +89,17 @@
             (fn [[vs-expand-resp paging] _]
               (let [concepts       (get-in vs-expand-resp [:concepts])
                     concepts-count (get-in vs-expand-resp [:concepts-count])]
-                (if (or (:disabled paging)
-                        (<= concepts-count (+ page-size 5)))
+                (cond
+                  (:disabled paging)
                   {:concepts-count concepts-count
                    :concepts concepts
                    :paging {:disabled (:disabled paging)}}
+
+                  (<= concepts-count (+ page-size 5))
+                  {:concepts-count concepts-count
+                   :concepts concepts}
+
+                  :else
                   {:paginated      true
                    :paging         paging
                    :concepts-count concepts-count

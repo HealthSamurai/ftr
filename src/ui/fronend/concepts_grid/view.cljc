@@ -45,9 +45,12 @@
                                                         :concepts-grid
                                                         {}]))}])]
 
-              (if (get-in paginated-concepts [:paging :disabled])
+              (cond
+                (true? (get-in paginated-concepts [:paging :disabled]))
                 [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
                  "[enable]"]
+
+                (false? (get-in paginated-concepts [:paging :disabled]))
                 [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
                  "[disable]"])
 
