@@ -9,14 +9,15 @@
 (def extended-table-cell (c {:border-collapse "collapse"} :truncate :text-sm [:py 2] [:px 5] [:w-min 100] [:w-max 100]))
 
 (defn concept-grid  []
-  (let [selected-vs-expand (rf/subscribe [:ui.fronend.init-wizard.model/selected-vs-expand])
+  (let [paginated-concepts-sub (rf/subscribe [::model/paginated-concepts])
         maximized-card (rf/subscribe [:ui.fronend.init-wizard.model/maximized-card])]
     (fn []
       (let [{:keys [card-name]} @maximized-card]
         (cond
           (or (= card-name :concepts-grid)
               (nil? card-name))
-          (let [{:keys [concepts concepts-count]} @selected-vs-expand]
+          (let [{:as paginated-concepts
+                 :keys [concepts concepts-count]} @paginated-concepts-sub]
             [:div {:class (c [:mt 5])}
              [:div {:class (c [:bg :white] [:rounded 10] [:p 5] :overflow-hidden)}
               [:div {:class (c :flex :justify-between :items-center [:mb 5])}
@@ -43,6 +44,14 @@
                         :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/maximize-card
                                                         :concepts-grid
                                                         {}]))}])]
+
+              (when-let [prev-page-number (get-in paginated-concepts [:paging :prev-page-number])]
+                [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page prev-page-number]))}
+                 "[prev-page]" prev-page-number])
+              (when-let [next-page-number (get-in paginated-concepts [:paging :next-page-number])]
+                [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page next-page-number]))}
+                 "[next-page]" next-page-number])
+
               [:div {:class (c :flex :flex-col)}
                [:div {:class (c :flex {:position "sticky" :top 0})}
                 [:div {:class [(if (= card-name :concepts-grid) extended-table-cell table-cell) (c [:bg :white] :font-bold [:border-b :black])]} "Code"]
