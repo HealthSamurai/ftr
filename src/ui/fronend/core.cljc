@@ -21,7 +21,9 @@
   (fn [{:keys [db]} [_ vs]]
     {:db (-> db
              (update :ui.fronend.concepts-grid.model/index dissoc :paging)
-             (assoc-in [page :vs-list :selected-vs] vs))
+             (assoc-in [page :vs-list :selected-vs] vs)
+             (dissoc :ui.fronend.diff-card.model/index  :ui.fronend.resource-card.model/index)
+             (update page dissoc :selected-card))
      :zen/rpc {:method :comp
                :params {:methods [:vs-expand :vs-tag-hashes]
                         :params {:module  (get-in db [page :selected-module])
@@ -62,7 +64,7 @@
                               {:background-color "rgb(235, 236, 241, 0.4)"} ])
                           (when (= (:value @selected-vs) (:value vs))
                             (c {:background-color "rgb(235, 236, 241) !important"}))]
-                  :on-click (fn [_e] (rf/dispatch [::vs-list-vs-click vs]))}
+                  :on-click (fn [_e] (println "AAAAAAAAAAAAAAA BLYAD") (rf/dispatch [::vs-list-vs-click vs]))}
             (:display vs)]))])))
 
 

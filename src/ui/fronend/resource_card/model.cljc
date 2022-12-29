@@ -6,7 +6,7 @@
 (def wizard-page :ui.fronend.init-wizard.model/index)
 
 
-(def page ::index)
+(def page ::index )
 
 
 (rf/reg-sub ::selected-vss

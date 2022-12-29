@@ -15,44 +15,24 @@
 
       :component-did-mount
       (fn [this]
-        (let [^js/Object e (if (:diff-editor props)
-                             (.createDiffEditor ^js/Object monacoe (dom/dom-node this)
-                                                #js{:language "clojure"
-                                                    :theme "vs"
-                                                    :minimap #js{:enabled false}
-                                                    :renderSideBySide false
-                                                    :enableSplitViewResizing false
-                                                    :glyphMargin false
-                                                    :folding false
-                                                    :lineDecorationsWidth 10
-                                                    :lineNumbersMinChars 3
-                                                    :lineNumbers "on"
-                                                    :scrollbar #js{:horizontal "hidden"
-                                                                   :vertical "hidden"}})
-                             (.create ^js/Object monacoe (dom/dom-node this)
-                                      #js{:language "clojure"
-                                          :theme "vs"
-                                          :minimap #js{:enabled false}
-                                          :value (:value props)
-                                          :lineNumbers "on"
-                                          :glyphMargin false
-                                          :folding false
-                                          :lineDecorationsWidth 10
-                                          :lineNumbersMinChars 3
-                                          :scrollbar #js{:horizontal "hidden"
-                                                         :vertical "hidden"}}))]
+        (let [^js/Object e (.createDiffEditor ^js/Object monacoe (dom/dom-node this)
+                                              #js{:language "clojure"
+                                                  :theme "vs"
+                                                  :minimap #js{:enabled false}
+                                                  :renderSideBySide true
+                                                  :enableSplitViewResizing false
+                                                  :glyphMargin false
+                                                  :folding false
+                                                  :lineDecorationsWidth 10
+                                                  :lineNumbersMinChars 3
+                                                  :lineNumbers "on"
+                                                  :scrollbar #js{:horizontal "hidden"
+                                                                 :vertical "hidden"}})]
 
-          (if (:diff-editor props)
-            (.setModel e #js{:original (.createModel monacoe (:value props) "clojure")
-                             :modified (.createModel monacoe (:value props) "clojure")})
+          (.setModel e #js{:original (.createModel monacoe (:from props) "clojure")
+                           :modified (.createModel monacoe (:to props) "clojure")})
 
-            (.onDidChangeModelContent e (fn [_]
-                                          (when-let [ev (:on-change props)]
-                                            (rf/dispatch [ev (:opts props) (.getValue e)])))))
-
-          (reset! editor e)
-
-          ))
+          (reset! editor e)))
 
       :component-will-unmount
       (fn [this]
@@ -61,16 +41,10 @@
 
 
       :component-did-update
-      (if (:diff-editor props)
-        (fn [this _]
-          (.setModel ^js/Object @editor
-                     #js{:original (.createModel monacoe (.getValue (goog.object/get (.getModel ^js/Object @editor) "modified")) "clojure")
-                         :modified (.createModel monacoe (:value (r/props this)) "clojure")}))
-        (fn [this _]
-          (let [^js/Object model (.getModel ^js/Object @editor)
-                value (:value (r/props this))
-                fr (.getFullModelRange model)]
-            (.pushEditOperations model #js[] #js[ #js{:range fr :text value}]))))})))
+      (fn [this _]
+        (.setModel ^js/Object @editor
+                   #js{:original (.createModel monacoe (.getValue (goog.object/get (.getModel ^js/Object @editor) "modified")) "clojure")
+                       :modified (.createModel monacoe (:value (r/props this)) "clojure")}))})))
 
 (defn index []
   (let [value (r/atom "key: val\n")]
