@@ -1,4 +1,6 @@
 (ns ui.backend.operations
+  (:import com.abahgat.suffixtree.GeneralizedSuffixTree
+           com.abahgat.suffixtree.Utils)
   (:require [ftr.utils.unifn.core :as u]
             [cheshire.core]
             [hiccup.core]
@@ -18,6 +20,39 @@
     (->> (line-seq rdr)
          (mapv (fn [json-row]
                  (cheshire.core/parse-string json-row keyword))))))
+
+
+(defn deaccent [str]
+  "Remove accent from string"
+  ;; http://www.matt-reid.co.uk/blog_post.php?id=69
+  (let [normalized (java.text.Normalizer/normalize str java.text.Normalizer$Form/NFD)]
+    (clojure.string/replace normalized #"\p{InCombiningDiacriticalMarks}+" "")))
+
+
+(defn sanitize-tree-key [str]
+  (-> str
+      deaccent
+      com.abahgat.suffixtree.Utils/normalize))
+
+
+(defn suffix-tree []
+  {:index []
+   :tree (com.abahgat.suffixtree.GeneralizedSuffixTree.)})
+
+
+(defn put! [tree k v]
+  (let [i         (count (:index tree))
+        new-index (conj (:index tree) v)]
+    (.put (:tree tree)
+          (sanitize-tree-key k)
+          i)
+    {:index new-index
+     :tree (:tree tree)}))
+
+
+(defn search [tree s]
+  (map (:index tree)
+       (.search (:tree tree) s)))
 
 
 (defmethod u/*fn ::ui [ctx]
@@ -197,7 +232,37 @@
           (reverse methods)))
 
 
+(defn get-cache [cache-atom path build-fn]
+  (-> cache-atom
+      (swap! update-in path #(or % (build-fn)))
+      (get-in path)))
+
+
+(defn build-module-tag-vs-names-tree [ctx module tag]
+  (let [vs-list-res (rpc ctx nil :vs-list {:module module :tag tag})
+        vs-names    (get-in vs-list-res [:result :vs-names])]
+    (reduce (fn [acc vs-name]
+              (put! acc vs-name vs-name))
+            (suffix-tree)
+            vs-names)))
+
+
+(defn get-module-tag-vs-names-tree [ctx module tag]
+  (get-cache (:suffix-trees-cache ctx)
+             [:vs-list (keyword module) (keyword tag)]
+             #(build-module-tag-vs-names-tree ctx module tag)))
+
+
+(defmethod rpc :search-in-vs-list [ctx request method {:as params
+                                                       :keys [module tag search-str]}]
+  (let [tree    (get-module-tag-vs-names-tree ctx module tag)
+        matches (search tree (sanitize-tree-key search-str))]
+    {:status :ok
+     :result (merge params {:matches matches})}))
+
+
 (comment
+
   (rpc nil
        nil
        :module-list
@@ -271,6 +336,25 @@
         :params {:module  :hl7-fhir-us-core
                  :tag     :init
                  :vs-name "http:--hl7.org-fhir-us-core-ValueSet-us-core-sexual-orientation"}})
+
+  (def suffix-trees-cache (atom {}))
+
+  (def ctx {:suffix-trees-cache suffix-trees-cache})
+
+  (rpc ctx
+       nil
+       :search-in-vs-list
+       {:module  :hl7-fhir-us-core
+        :tag     :init
+        :search-str "se"})
+
+  (rpc ctx
+       nil
+       :search-in-vs-list
+       {:module  :hl7-fhir-us-core
+        :tag     :init
+        :search-str "http://hl7.org/fhir/us/core/ValueSet/birthsex"})
+
 
   nil)
 

@@ -4,7 +4,16 @@
             [shadow.cljs.devtools.server :as shadow.server]
             [clojure.java.io :as io]
             [ui.backend.core]
-            [ui.backend.routes]))
+            [ui.backend.routes]
+            [clojure.tools.gitlibs]
+            [clojure.tools.build.api :as b]))
+
+
+(defn compile-suffixtree []
+  (b/javac {:src-dirs [(str (clojure.tools.gitlibs/cache-dir)
+                            "/libs/abahgat/suffixtree/b95b632e7a88ab8175714e0c4a55488048fb2d04/src/main/java")]
+            :basis (b/create-basis {:project "deps.edn"})
+            :class-dir "target/classes"}))
 
 
 (defn delete-recursively [f]
@@ -36,11 +45,14 @@
 
 
 (comment
-  (restart-ui)
+  (do
+    (compile-suffixtree)
 
-  (def server (ui.backend.core/start
-                {:web {:port 7777}
-                 :routes ui.backend.routes/routes}))
+    (restart-ui)
+
+    (def server (ui.backend.core/start
+                  {:web {:port 7777}
+                   :routes ui.backend.routes/routes})))
 
   ((:server-stop-fn server ))
 

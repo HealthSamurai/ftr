@@ -79,7 +79,8 @@
 (defn start [config]
   (let [ztx (zen.core/new-context)
         ctx (atom {:config config
-                   :zen ztx})
+                   :zen ztx
+                   :suffix-trees-cache (atom {})})
         _ (zen.core/read-ns ztx 'facade)
         handler-wrapper (-> (fn [req & [opts]]
                               (handler (assoc @ctx
