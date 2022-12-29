@@ -20,11 +20,12 @@
   ::vs-list-vs-click
   (fn [{:keys [db]} [_ vs]]
     {:db (assoc-in db [page :vs-list :selected-vs] vs)
-     :zen/rpc [{:method "vs-expand"
-                :params {:module  (get-in db [page :selected-module])
-                         :tag     (get-in db [page :selected-tag])
-                         :vs-name (:value vs)}
-                :path [page :vs-expand]}]}))
+     :zen/rpc {:method :comp
+               :params {:methods [:vs-expand :vs-tag-hashes]
+                        :params {:module  (get-in db [page :selected-module])
+                                 :tag     (get-in db [page :selected-tag])
+                                 :vs-name (:value vs)}}
+               :path [page :vs-expand]}}))
 
 
 (rf/reg-sub ::vs-list-selected-vs

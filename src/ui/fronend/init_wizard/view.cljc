@@ -3,7 +3,10 @@
             [ui.fronend.init-wizard.model :as model]
             [stylo.core :refer [c]]
             [re-frame.core :as rf]
-            [ui.fronend.concepts-grid.view]))
+
+            [ui.fronend.concepts-grid.view]
+            [ui.fronend.resource-card.view]
+            [ui.fronend.version-stepper.view]))
 
 
 (defn init-wizard []
@@ -23,6 +26,8 @@
                 :alt "back button"
                 :on-click (fn [_] (rf/dispatch [:ui.fronend.init-wizard.model/back-via-breadcrumb]))}]
          @wizard-breadcrumb]]
+       (when @selected-vs
+         [ui.fronend.version-stepper.view/tag-stepper])
        [:div {:class (c :flex)}
         (cond
           (not @selected-module)
@@ -52,7 +57,9 @@
 
 
           (some? @selected-vs)
-          [ui.fronend.concepts-grid.view/concept-grid])]])))
+          [:<>
+           [ui.fronend.concepts-grid.view/concept-grid]
+           [ui.fronend.resource-card.view/resource-column]])]])))
 
 
 (ui.fronend.pages/reg-page model/page init-wizard)

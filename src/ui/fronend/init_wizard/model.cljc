@@ -3,7 +3,7 @@
             [clojure.string :as str]))
 
 
-(def page ::index)
+(def page ::index )
 
 
 (rf/reg-sub ::module-list
@@ -48,19 +48,34 @@
             (fn [_]
               [(rf/subscribe [::selected-module])
                (rf/subscribe [::selected-tag])
-               (rf/subscribe [:ui.fronend.core/vs-list-selected-vs])])
+               (rf/subscribe [:ui.fronend.core/vs-list-selected-vs])
+               (rf/subscribe [::selected-vs-expand])])
 
-            (fn [[selected-module selected-tag selected-vs] _]
+            (fn [[selected-module selected-tag selected-vs {:as _selected-vs-expand,
+                                                            :keys [hash]}] _]
               (str/join " / " (filter identity [(when-not selected-module "Init Wizard")
                                                 (or selected-module "Select Module:")
                                                 (when selected-module (or selected-tag "Select Tag:"))
-                                                (when selected-tag (or (:display selected-vs) "Select ValueSet:"))]))))
+                                                (when selected-tag (or (:display selected-vs) "Select ValueSet:"))
+                                                (when (and selected-vs hash) (str (subs hash 0 7) "..."))]))))
 
 
 (rf/reg-sub
   ::selected-vs-expand
   (fn [db _]
     (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data])))
+
+
+(rf/reg-sub
+  ::selected-hash
+  (fn [db _]
+    (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data :hash])))
+
+
+(rf/reg-sub
+  ::hashes-list
+  (fn [db _]
+    (get-in db [:ui.fronend.init-wizard.model/index :vs-expand :data :hashes])))
 
 
 (rf/reg-event-fx ::get-modules-list
