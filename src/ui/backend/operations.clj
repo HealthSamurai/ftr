@@ -121,7 +121,8 @@
                            #(not= "Concept" (:resourceType %))
                            tf-file-content)]
     {:status :ok
-     :result {:concepts concepts}}))
+     :result {:concepts concepts
+              :concepts-count (count concepts)}}))
 
 
 (defmethod rpc :vs-hashes [ctx request method {:keys [module vs-name]}]
