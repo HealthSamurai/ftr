@@ -150,3 +150,15 @@
                      :params nil
                      :deinit nil
                      nil)))
+
+
+(rf/reg-event-fx ::maximize-card
+                 (fn [{db :db} [_ card opts]]
+                   {:db (assoc-in db [page :selected-card]
+                                  (merge {:card-name card}
+                                         opts))}))
+
+
+(rf/reg-sub ::maximized-card
+            (fn [db _]
+              (get-in db [page :selected-card])))
