@@ -62,27 +62,42 @@
 
               (cond
                 (true? (get-in paginated-concepts [:paging :disabled]))
-                [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
-                 "[enable]"]
+                [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))
+                        :class (c :font-light {:transition "0.03s"}
+                                  [:hover :cursor-pointer [:border-b 1 :black]])}
+                 "Enable Paging"]
 
                 (false? (get-in paginated-concepts [:paging :disabled]))
-                [:span {:on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
-                 "[disable]"])
+                [:span {:class (c :font-light {:transition "0.03s"}
+                                  [:hover :cursor-pointer [:border-b 1 :black]])
+                        :on-click (fn [_] (rf/dispatch [::model/toggle-paging]))}
+                 "Disable Paging"])
 
               (when (get-in paginated-concepts [:paginated])
                 [:<>
-                 (for [size [10 20 50]]
-                   [:span {:on-click (fn [_] (rf/dispatch [::model/set-page-size size]))}
-                    (if (= size (get-in paginated-concepts [:paging :page-size]))
-                      (str "[" size "]")
-                      (str size))])
-                 [:br]
+
+                 [:div
+                  [:span {:class (c :font-light)} "Page Size: "]
+                  (for [size [10 20 50]]
+                    [:span {:class [(c :font-light [:mr 3]
+                                       {:transition "0.03s"}
+                                       [:hover :cursor-pointer [:border-b 1 :black]])
+                                    (when (= size (get-in paginated-concepts [:paging :page-size]))
+                                      (c [:border-b 1 :black]))]
+                            :on-click (fn [_] (rf/dispatch [::model/set-page-size size]))}
+                     size])]
                  (when-let [prev-page-number (get-in paginated-concepts [:paging :prev-page-number])]
                    [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page prev-page-number]))}
-                    "[prev-page]" prev-page-number])
+                    [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
+                                     [:hover :cursor-pointer {:filter "contrast(100%)"}])
+                           :src "/static/images/nav-arrow-left.svg"}]
+                    (inc prev-page-number)])
                  (when-let [next-page-number (get-in paginated-concepts [:paging :next-page-number])]
                    [:span {:on-click (fn [_] (rf/dispatch [::model/nth-page next-page-number]))}
-                    "[next-page]" next-page-number])])
+
+                    [:img {:class (c :inline [:h "20px"] {:filter "contrast(1%)"}
+                                     [:hover :cursor-pointer {:filter "contrast(100%)"}])
+                           :src "/static/images/nav-arrow-right.svg"}]])])
 
               (if (and (:json-view? @local-state)
                        (= card-name :concepts-grid))
