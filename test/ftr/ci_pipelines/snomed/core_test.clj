@@ -89,6 +89,9 @@
     (str (snomed-test-utils/mock-server-url)
          (:version-info snomed-test-utils/mock-endpoints))
 
+    :download-url-regex
+    #"url=(.+)"
+
     :complete-download-url-format
     (str
      (snomed-test-utils/mock-server-url)

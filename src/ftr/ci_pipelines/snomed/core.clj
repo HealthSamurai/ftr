@@ -1,35 +1,29 @@
 (ns ftr.ci-pipelines.snomed.core
   (:require [clojure.string :as str]
             [clojure.java.io :as io]
-            [net.cgrand.enlive-html :as html]
             [ftr.utils.core]
             [ftr.utils.unifn.core :as u]
             [ftr.logger.core]
             [ftr.core]
             [ftr.ci-pipelines.snomed.db]
             [clojure.pprint]
-            [clojure.java.shell :as shell])
+            [clojure.java.shell :as shell]
+            [org.httpkit.client :as http])
   (:import java.io.File))
 
 
-(defn get-parsed-html-by-url [url]
+(defn get-html-text-by-url [url]
   (-> url
-      (java.net.URL.)
-      (html/html-resource)))
+      (http/get)
+      (deref)
+      :body))
 
 
 (defmethod u/*fn ::get-latest-snomed-info!
-  ([{:as _ctx, :keys [version-page-url complete-download-url-format api-key]}]
-   (let [parsed-html-page (get-parsed-html-by-url version-page-url)
-         element-with-download-url (html/select parsed-html-page
-                                                [[:p
-                                                  (html/left [:h4
-                                                              (html/has [[:a
-                                                                          (html/attr= :name "download-the-us-edition-of-snomed-ct")]])])]])
-         download-url (->> (html/select element-with-download-url
-                                        [[html/text-node (html/left :b)]])
-                           (filter #(str/includes? % "download"))
-                           first)]
+  ([{:as _ctx, :keys [version-page-url download-url-regex complete-download-url-format api-key]}]
+   (let [html-text (get-html-text-by-url version-page-url)
+         [_ download-url] (re-find download-url-regex
+                                   html-text)]
      {:snomed-info
       {:snomed-zip-url download-url
        :version (-> download-url
@@ -211,6 +205,9 @@
 (def config-defaults
   {:version-page-url
    "https://documentation.uts.nlm.nih.gov/automating-downloads.html"
+
+   :download-url-regex
+   #"url=(https://download.nlm.nih.gov/mlb/utsauth/USExt/.+?\.zip)"
 
    :complete-download-url-format
    "https://uts-ws.nlm.nih.gov/download?url=%s&apiKey=%s"

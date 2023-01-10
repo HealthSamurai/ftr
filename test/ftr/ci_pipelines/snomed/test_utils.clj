@@ -89,20 +89,7 @@
 
 (defn generate-snomed-version-info-html-with-download-url
   []
-  (hiccup.page/html5
-   [:body
-    [:h4
-     [:a#anch_8 {:href "#download-the-us-edition-of-snomed-ct"
-                 :name "download-the-us-edition-of-snomed-ct"}
-      "Download the US Edition of SNOMED CT"]]
-    [:p
-     "https://uts-ws.nlm.nih.gov/download"
-     [:br]
-     [:b "?url="]
-     (:archive mock-endpoints)
-     [:br]
-     [:b "&apiKey="]
-     "YOUR_API_KEY "]]))
+  (str "url=" (:archive mock-endpoints)))
 
 
 (defn mock-handler [req]
