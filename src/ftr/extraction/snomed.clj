@@ -8,6 +8,7 @@
   (:import [java.sql
             PreparedStatement]))
 
+
 (defn snomed-files
   "
   `sm-path` - Path to unzipped SNOMED CT bundle
@@ -23,19 +24,26 @@
 
   Return format: ({:name resource-name :path file-path} ...)"
   [sm-path]
-  (let [snapshot-relative-path "Snapshot/Terminology"
-        snapshot-path (str sm-path \/ snapshot-relative-path)]
-    (->> (io/file snapshot-path)
-         .list
-         (filter #(str/ends-with? % ".txt"))
-         (map
-           (fn [filename]
-             (let [full-path (str snapshot-path \/ filename)
-                   ;; filenames in SNOMED CT are like
-                   ;; sct2_Concept_Snapshot_...
-                   resource-name (second (str/split filename #"_"))]
-               {:path full-path
-                :name resource-name}))))))
+
+  (mapcat
+    (fn [sm-path']
+      (let [snapshot-relative-path "Snapshot/Terminology"
+            snapshot-path          (str sm-path' \/ snapshot-relative-path)]
+        (->> (io/file snapshot-path)
+             .list
+             (filter #(str/ends-with? % ".txt"))
+             (map
+               (fn [filename]
+                 (let [full-path     (str snapshot-path \/ filename)
+                       ;; filenames in SNOMED CT are like
+                       ;; sct2_Concept_Snapshot_...
+                       resource-name (second (str/split filename #"_"))]
+                   {:path full-path
+                    :name resource-name}))))))
+    (if (coll? sm-path)
+      sm-path
+      (list sm-path))))
+
 
 (defn init-db-tables
   "Run sqlite database migration.
@@ -57,9 +65,16 @@
   (let [connection (jdbc/get-connection db)
         reader (java.io.BufferedReader. (clojure.java.io/reader path))
         _ommitted_first-line (.readLine reader)]
+
     (.copyIn
       ^org.postgresql.copy.CopyManager
-      (get-copy-manager connection) (format "COPY %s FROM STDIN" table-name) reader)))
+      (get-copy-manager connection) (format "COPY tmp_%s FROM STDIN" table-name) reader)
+
+    (jdbc/execute! db [(format "INSERT INTO %s
+                                SELECT *
+                                FROM tmp_%s
+                                ON CONFLICT DO NOTHING"
+                               table-name table-name)])))
 
 (defn load-files!
   "Load needed snomed files
@@ -278,8 +293,8 @@ TO PROGRAM 'cat >> %s' csv delimiter e'\\x02' quote e'\\x01'"
                                    (conj #{})))}})
 
 
-(defmethod u/*fn ::populate-db-with-snomed-data [{:as _cfg, :keys [source-url db]}]
-  (populate-db-with-snomed-data! db source-url)
+(defmethod u/*fn ::populate-db-with-snomed-data [{:as _cfg, :keys [source-url source-urls db]}]
+  (populate-db-with-snomed-data! db (or source-urls source-url))
   {})
 
 

@@ -2,6 +2,8 @@
 -- https://confluence.ihtsdotools.org/display/DOCRELFMT/4.2.1+Concept+File+Specification
 DROP TABLE IF EXISTS concept;
 --;--
+DROP TABLE IF EXISTS tmp_concept;
+--;--
 CREATE TABLE concept
 (
     id TEXT PRIMARY KEY,
@@ -11,9 +13,14 @@ CREATE TABLE concept
     definitionStatusId TEXT
 );
 --;--
+CREATE  TABLE tmp_concept
+(LIKE concept INCLUDING DEFAULTS);
+--;--
 -- Description table
 -- https://confluence.ihtsdotools.org/display/DOCRELFMT/4.2.2+Description+File+Specification
 DROP TABLE IF EXISTS description;
+--;--
+DROP TABLE IF EXISTS tmp_description;
 --;--
 CREATE TABLE description
 (
@@ -28,8 +35,13 @@ CREATE TABLE description
     caseSignificanceId TEXT
 );
 --;--
+CREATE  TABLE tmp_description
+(LIKE description INCLUDING DEFAULTS);
+--;--
 -- Textual definition of concepts
 DROP TABLE IF EXISTS textdefinition;
+--;--
+DROP TABLE IF EXISTS tmp_textdefinition;
 --;--
 CREATE TABLE textdefinition
 (
@@ -44,9 +56,14 @@ CREATE TABLE textdefinition
     caseSignificanceId TEXT
 );
 --;--
+CREATE  TABLE tmp_textdefinition
+(LIKE textdefinition INCLUDING DEFAULTS);
+--;--
 -- Relationship table
 -- https://confluence.ihtsdotools.org/display/DOCRELFMT/4.2.3+Relationship+File+Specification
 DROP TABLE IF EXISTS relationship;
+--;--
+DROP TABLE IF EXISTS tmp_relationship;
 --;--
 CREATE TABLE relationship
 (
@@ -62,9 +79,14 @@ CREATE TABLE relationship
     modifierId TEXT
 );
 --;--
+CREATE  TABLE tmp_relationship
+(LIKE relationship INCLUDING DEFAULTS);
+--;--
 -- SDL table
 -- http://people.apache.org/~dongsheng/horak/100309_dag_structures_sql.pdf
 DROP TABLE IF EXISTS sdl;
+--;--
+DROP TABLE IF EXISTS tmp_sdl;
 --;--
 CREATE TABLE sdl
 (
@@ -72,6 +94,9 @@ CREATE TABLE sdl
     dst  text,
     dist integer
 );
+--;--
+CREATE  TABLE tmp_sdl
+(LIKE sdl INCLUDING DEFAULTS);
 --;--
 create or replace function jsonb_object_nullif(
     _data jsonb
