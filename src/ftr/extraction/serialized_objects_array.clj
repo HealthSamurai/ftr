@@ -3,7 +3,8 @@
             [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
             [clojure.string :as str]
-            [clj-yaml.core]))
+            [clj-yaml.core]
+            [cheshire.core]))
 
 
 (defmethod u/*fn ::create-value-set [cfg]
@@ -28,7 +29,7 @@
                (fn [el]
                  (let [v (get-in source (:path el))]
                    (cond-> el
-                     (not (str/blank? v))
+                     (not (nil? v))
                      (assoc :value v))))))
 
 
@@ -44,6 +45,7 @@
         deprecation-mark (get-in extracted-mapping [:concept :deprecated? :true-values])
         parent-id        (get-in extracted-mapping [:concept :parent-id :value])
         hierarchy-id     (get-in extracted-mapping [:concept :hierarchy-id :value])
+        ancestors        (get-in extracted-mapping [:concept :ancestors :value])
         concept (ftr.utils.core/strip-nils
                   {:resourceType "Concept"
                    :system       system
@@ -51,6 +53,7 @@
                    :code         code
                    :deprecated   (if (some #(= status %) deprecation-mark) true nil)
                    :display      display
+                   :ancestors    ancestors
                    :parent-id    parent-id
                    :hierarchy-id hierarchy-id
                    :property     (-> (:property extracted-mapping)
@@ -72,9 +75,16 @@
 
 
 (defmethod u/*fn ::import [{:as cfg,
-                            :keys [source-url]}]
+                            :keys [source-url format]}]
   (let [deserialized-objects
-        (clj-yaml.core/parse-stream (io/reader source-url))
+        (case format
+          "yaml"   (clj-yaml.core/parse-stream (io/reader source-url))
+          "ndjson" (->> source-url
+                        (io/reader)
+                        (line-seq)
+                        (map (fn [line]
+                               (doto (cheshire.core/parse-string line keyword)
+                                 (clojure.pprint/pprint))))))
 
         deserialized-objects-seq
         (process-deserialized-objects
@@ -93,7 +103,7 @@
 
 (comment
 
-  (clj-yaml.core/parse-stream (io/reader "/Users/ghrp/Downloads/external-care-team-relationship.yaml") )
+  (clj-yaml.core/parse-stream (io/reader "/Users/ghrp/Downloads/external-care-team-relationship.yaml"))
 
 
   )

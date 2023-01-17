@@ -1080,3 +1080,104 @@
 
   (t/testing "Clean up test-env"
     (ftr.utils.core/rmrf (:ftr-path soa-test-env-cfg))))
+
+
+(t/deftest ftr-from-ftr-source-type
+  (t/testing "Preparing test environment for base FTR generation"
+    (def base-ftr-env-cfg {:ftr-path           "/tmp/ftr-from-ftr/"
+                           :csv-source-initial "/tmp/ftr-from-ftr/fixtures/icd10.csv"})
+
+    (def base-csv-ftr-user-cfg
+      {:module            "icd10"
+       :source-url        (:csv-source-initial base-ftr-env-cfg)
+       :ftr-path          (:ftr-path base-ftr-env-cfg)
+       :tag               "v1"
+       :source-type       :flat-table
+       :extractor-options {:format      "csv"
+                           :csv-format  {:delimiter ","
+                                         :quote "\""}
+
+                           :header      true
+                           :header-row  0
+                           :data-row    1
+                           :hierarchy   true
+                           :mapping {:concept  {:code         {:column "ICD_CODE"}
+                                                :display      {:column "ICD_NAME"}
+                                                :deprecated?  {:column      "ACTIVE"
+                                                               :true-values ["1"]}
+                                                :parent-id    {:column "ID_PARENT"}
+                                                :hierarchy-id {:column "ID"}}
+                                     :property {"updated_date" {:column "DATE"}}}
+
+                           :code-system {:id "icd10", :url "http://hl7.org/fhir/sid/icd-10"}
+                           :value-set   {:id "icd10", :url "http://hl7.org/fhir/ValueSet/icd-10"}}})
+
+
+    (defn prepare-test-env! [{:as   _cfg,
+                              :keys [csv-source-initial]}]
+      (io/make-parents (io/file csv-source-initial))
+
+      (spit csv-source-initial
+            "ID,REC_CODE,ICD_CODE,ICD_NAME,ID_PARENT,ADDL_CODE,ACTIVE,DATE
+10344,20,XX,External causes of morbidity and mortality,,,1,
+16003,2001,V01-X59,Accidents,10344,,1,
+15062,20012,W00-X59,Other external causes of accidental injury,16003,,1,10/07/2020
+11748,2001203,W50-W64,Exposure to animate mechanical forces,15062,,1,
+11870,2001203W64,W64,Exposure to other and unspecified animate mechanical forces,11748,,1,
+11871,2001203W640,W64.0,Exposure to other and unspecified animate mechanical forces home while engaged in sports activity,11870,,1,
+11872,2001203W641,W64.00,\"Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity\",11871,,1,
+11873,2001203W641,W64.01,\"Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity\",11871,,1,"))
+
+    (defn clean-up-test-env! [{:as   _cfg,
+                               :keys [ftr-path]}]
+
+      (ftr.utils.core/rmrf ftr-path))
+
+
+    (t/testing "Generating base FTR"
+      (clean-up-test-env! base-ftr-env-cfg)
+      (prepare-test-env! base-ftr-env-cfg)
+
+      (sut/apply-cfg {:cfg base-csv-ftr-user-cfg})
+
+      (def base-ftr-file-path (:ftr-path base-ftr-env-cfg))
+
+      (def ftr-file-tree
+        (get-in (fs-tree->tree-map base-ftr-file-path)
+                (str/split (subs base-ftr-file-path 1) #"/")))
+
+      (t/testing "sees generated repository layout"
+        (matcho/match
+          ftr-file-tree
+          {"icd10"
+           {"vs"
+            {"http:--hl7.org-fhir-ValueSet-icd-10"
+             {"tf.6e4f5b5701a2b3f6c382614a563c9243029431eaca58e7cf8c9491dcb7eda1c4.ndjson.gz"
+              {}
+              "tag.v1.ndjson.gz" {}}}
+            "tags" {"v1.ndjson.gz" {} "v1.hash" {}}}
+           "fixtures" {"icd10.csv" {}}}))
+
+      #_(clean-up-test-env! base-ftr-env-cfg)
+
+      )))
+
+
+(comment
+  (sut/apply-cfg {:cfg
+                  {:module "soa"
+                   :source-url "/Users/ghrp/snomed.ndjson"
+                   :ftr-path "/tmp/ndjson-ftr"
+                   :tag "prod"
+                   :source-type :serialized-objects-array
+                   :extractor-options {:format "ndjson"
+                                       :mapping {:concept {:code {:path [:code]}
+                                                           :display {:path [:display]}
+                                                           :ancestors {:path [:ancestors]}}}
+                                       :code-system {:id "soa"
+                                                     :url "http://soa/cs"}
+                                       :value-set {:id "soa"
+                                                   :url "http://soa/vs"}}}})
+
+
+  )

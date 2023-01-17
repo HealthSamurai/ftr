@@ -422,3 +422,14 @@
                       :concepts            amount-of-concepts
                       :largest-code-system {:code-system (key largest-cs)
                                             :concepts    amount-of-concepts-in-largest-cs}})))}))
+
+
+(comment
+  (def a
+    (time (ftr.utils.core/parse-ndjson-gz "/Users/ghrp/ftr/snomed/vs/http:--snomed.info-sct/tf.1ccf5ffb3e489e1b9aefd51160158d87f962a4b681ea77353077ff0edde64d27.ndjson.gz")))
+
+  (count a)
+
+  (int (/ (total-memory a) 1000000))
+
+  )
