@@ -1082,6 +1082,243 @@
     (ftr.utils.core/rmrf (:ftr-path soa-test-env-cfg))))
 
 
+(t/deftest soa-ndjson-test
+  (def soa-ndjson-test-env-cfg
+    {:ftr-path   "/tmp/soa-ndjson/ftr"
+     :soa-source "test/fixture/ndjson/snomed-subset.ndjson"})
+
+
+  (def soa-ndjson-user-cfg {:module            "soa-ndjson"
+                            :source-url        (:soa-source soa-ndjson-test-env-cfg)
+                            :ftr-path          (:ftr-path soa-ndjson-test-env-cfg)
+                            :tag               "prod"
+                            :source-type       :serialized-objects-array
+                            :extractor-options {:format      "ndjson"
+                                                :mapping     {:concept {:code      {:path [:code]}
+                                                                        :display   {:path [:display]}
+                                                                        :ancestors {:path [:ancestors]}}}
+                                                :code-system {:description  "SNOMEDCT US tiny subset"
+                                                              :content      "complete"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "CodeSystem"
+                                                              :status       "active"
+                                                              :id           "snomedct"
+                                                              :valueSet     "http://snomed.info/sct"
+                                                              :url          "http://snomed.info/sct"}
+                                                :value-set   {:compose      {:include [{:system "http://snomed.info/sct"}]}
+                                                              :description  "SNOMEDCT US tiny subset"
+                                                              :id           "snomedct"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "ValueSet"
+                                                              :status       "active"
+                                                              :url          "http://snomed.info/sct"}}})
+
+  (t/testing "Clean up test-env"
+    (ftr.utils.core/rmrf (:ftr-path soa-ndjson-test-env-cfg)))
+
+  (t/testing "User provides config for ndjson SOA"
+    (let [{:as                                user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          soa-ndjson-user-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+          ftr-tree
+          {module
+           {"vs"
+            {value-set-name
+             {"tf.387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11.ndjson.gz" {}
+              (format "tag.%s.ndjson.gz" tag)                                                 {}}}
+            "tags" {(format "%s.ndjson.gz" tag) {}
+                    (format "%s.hash" tag)      {}}}}))
+
+      (t/testing "sees terminology tag file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag))
+          [{:hash
+            "387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11"
+            :name "soa-ndjson.http:--snomed.info-sct"}
+           nil?]))
+
+      (t/testing "sees terminology file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11.ndjson.gz"
+                                                  ftr-path
+                                                  module
+                                                  value-set-name))
+          [{:id           "snomedct"
+            :name         "SNOMEDCT"
+            :resourceType "CodeSystem"}
+           {:id           "snomedct"
+            :name         "SNOMEDCT"
+            :resourceType "ValueSet"}
+           {:code "10000006" :display "Radiating chest pain (finding)"}
+           {:code "1010235008" :display "Pain of left breast (finding)"}
+           {:code "1010237000" :display "Pain of right breast (finding)"}
+           {:code "102587001" :display "Acute chest pain (finding)"}
+           {:code "102588006" :display "Chest wall pain (finding)"}
+           {:code "102589003" :display "Atypical chest pain (finding)"}
+           {:code "103015000" :display "Thoracic nerve root pain (finding)"}
+           {:code    "1075631000119107"
+            :display "Pain of right sternoclavicular joint (finding)"}
+           {:code    "1075651000119101"
+            :display "Pain of left sternoclavicular joint (finding)"}
+           {:code "13057000" :display "Pleuropericardial chest pain (finding)"}
+           {:code "135876005" :display "Mastalgia of puberty (finding)"}
+           {:code "136791000119103" :display "Chronic thoracic back pain (finding)"}
+           {:code    "15743681000119106"
+            :display "Pain of bilateral shoulder blades (finding)"}
+           {:code "15960061000119102"
+            :display
+            "Unstable angina co-occurrent and due to coronary arteriosclerosis (disorder)"}
+           {:code "15960141000119102"
+            :display
+            "Angina co-occurrent and due to coronary arteriosclerosis (disorder)"}
+           {:code "15960341000119104"
+            :display
+            "Unstable angina due to arteriosclerosis of coronary artery bypass graft of transplanted heart (disorder)"}
+           {:code "15960381000119109"
+            :display
+            "Angina co-occurrent and due to arteriosclerosis of coronary artery bypass graft (disorder)"}
+           {:code "15960461000119105"
+            :display
+            "Unstable angina due to arteriosclerosis of autologous arterial coronary artery bypass graft (disorder)"}
+           {:code "15960541000119107"
+            :display
+            "Unstable angina due to arteriosclerosis of autologous vein coronary artery bypass graft (disorder)"}
+           {:code "15960581000119102"
+            :display
+            "Angina co-occurrent and due to arteriosclerosis of autologous vein coronary artery bypass graft (disorder)"}
+           {:code "15960661000119107"
+            :display
+            "Unstable angina co-occurrent and due to arteriosclerosis of coronary artery bypass graft (disorder)"}
+           {:code "161972006" :display "Central chest pain (finding)"}
+           {:code "161973001" :display "Anterior chest wall pain (finding)"}
+           {:code "161974007" :display "Parasternal pain (finding)"}
+           {:code "161977000" :display "Costal margin chest pain (finding)"}
+           {:code    "16754391000119100"
+            :display "Stable angina due to coronary arteriosclerosis (disorder)"}
+           {:code "19057007" :display "Status anginosus (disorder)"}
+           {:code "194823009" :display "Acute coronary insufficiency (disorder)"}
+           {:code "194828000" :display "Angina (disorder)"}
+           {:code "200430001" :display "Breastfeeding painful (finding)"}
+           {:code "202478007" :display "Sternoclavicular joint pain (finding)"}
+           {:code "20793008" :display "Scapulalgia (finding)"}
+           {:code "21470009" :display "Syncope anginosa (disorder)"}
+           {:code "2237002" :display "Pleuritic pain (finding)"}
+           {:code "225566008" :display "Ischemic chest pain (finding)"}
+           {:code "230597003" :display "Intercostal post-herpetic neuralgia (disorder)"}
+           {:code    "230648001"
+            :display "Abdominal cutaneous nerve entrapment syndrome (disorder)"}
+           {:code "233819005" :display "Stable angina (disorder)"}
+           {:code "233821000" :display "New onset angina (disorder)"}
+           {:code "233845001" :display "Cardiac syndrome X (finding)"}
+           {:code "237453001" :display "Cyclical mastalgia (finding)"}
+           {:code "237454007" :display "Non-cyclical mastalgia (finding)"}
+           {:code "237455008" :display "Trigger point mastalgia (finding)"}
+           {:code "237477007" :display "Pain associated with breast implant (disorder)"}
+           {:code "239175003" :display "Post-thoracotomy pain syndrome (finding)"}
+           {:code "247350000" :display "Sore nipple (finding)"}
+           {:code "247389006" :display "Intercostal neuralgia (finding)"}
+           {:code "247415009" :display "Painful lactation (finding)"}
+           {:code "267981009" :display "Pain in thoracic spine (finding)"}
+           {:code "274664007" :display "Chest pain on breathing (finding)"}
+           {:code "274668005" :display "Non-cardiac chest pain (finding)"}
+           {:code "279019008" :display "Central crushing chest pain (finding)"}
+           {:code "279035001" :display "Acute thoracic back pain (finding)"}
+           {:code "279036000" :display "Myofascial pain syndrome of thorax (disorder)"}
+           {:code "279037009" :display "Thoracic segmental dysfunction (finding)"}
+           {:code "279038004" :display "Thoracic back pain (finding)"}
+           {:code "279048002" :display "Internal mammary artery syndrome (finding)"}
+           {:code "279054001" :display "Pain when milk coming in (finding)"}
+           {:code "281245003" :display "Musculoskeletal chest pain (finding)"}
+           {:code "285385002" :display "Left sided chest pain (finding)"}
+           {:code "285386001" :display "Right sided chest pain (finding)"}
+           {:code "285389008" :display "Upper chest pain (finding)"}
+           {:code "297217002" :display "Rib pain (finding)"}
+           {:code "298254008" :display "Thoracic facet joint pain (finding)"}
+           {:code "29857009" :display "Chest pain (finding)"}
+           {:code "298579007" :display "Pain on movement of thoracic spine (finding)"}
+           {:code "298731003" :display "Pain of sternum (finding)"}
+           {:code "300995000" :display "Exercise-induced angina (disorder)"}
+           {:code "314116003" :display "Post infarct angina (disorder)"}
+           {:code "315025001" :display "Refractory angina (disorder)"}
+           {:code "315248002" :display "Intractable breast pain (finding)"}
+           {:code "315250005" :display "Persistent mastalgia (finding)"}
+           {:code "3368006" :display "Dull chest pain (finding)"}
+           {:code "34791000119103" :display "Chest pain due to pericarditis (finding)"}
+           {:code "35928006" :display "Nocturnal angina (disorder)"}
+           {:code "36859004" :display "Esophageal chest pain (finding)"}
+           {:code "371030007" :display "Squeezing chest pain (finding)"}
+           {:code "371806006" :display "Progressive angina (disorder)"}
+           {:code "371807002" :display "Atypical angina (disorder)"}
+           {:code "371808007"
+            :display
+            "Recurrent angina status post percutaneous transluminal coronary angioplasty (disorder)"}
+           {:code "371809004"
+            :display
+            "Recurrent angina following placement of coronary artery stent (disorder)"}
+           {:code "371810009"
+            :display
+            "Recurrent angina status post coronary artery bypass graft (disorder)"}
+           {:code    "371811008"
+            :display "Recurrent angina status post rotational atherectomy (disorder)"}
+           {:code "371812001"
+            :display
+            "Recurrent angina status post directional coronary atherectomy (disorder)"}
+           {:code    "41321000119101"
+            :display "Myofascial pain syndrome of thoracic spine (disorder)"}
+           {:code "41334000" :display "Angina, class II (disorder)"}
+           {:code    "425991004"
+            :display "Cervicothoracic segmental dysfunction (finding)"}
+           {:code "426396005" :display "Cardiac chest pain (finding)"}
+           {:code "429559004" :display "Typical angina (disorder)"}
+           {:code "444227004" :display "Acute postthoracotomy pain syndrome (finding)"}
+           {:code "4557003" :display "Preinfarction syndrome (disorder)"}
+           {:code "4568003" :display "Retrosternal pain (finding)"}
+           {:code "53430007" :display "Pain of breast (finding)"}
+           {:code "59021001" :display "Angina decubitus (disorder)"}
+           {:code "59139008" :display "Crushing chest pain (finding)"}
+           {:code "608831003" :display "Thoracic discogenic pain (disorder)"}
+           {:code "61490001" :display "Angina, class I (disorder)"}
+           {:code "713829001" :display "Postinfective intercostal neuralgia (disorder)"}
+           {:code    "713839007"
+            :display "Intercostal neuralgia as late effect of trauma (disorder)"}
+           {:code "71884009" :display "Precordial pain (finding)"}
+           {:code "735940001" :display "Pain of intercostal space (finding)"}
+           {:code "774134007" :display "Pain of right shoulder blade (finding)"}
+           {:code "774135008" :display "Pain of left shoulder blade (finding)"}
+           {:code    "791000119109"
+            :display "Angina due to type 2 diabetes mellitus (disorder)"}
+           {:code "7921000119104" :display "Anterior pleuritic pain (finding)"}
+           {:code "81953000" :display "Chest pain on exertion (finding)"}
+           {:code "83264000" :display "Epidemic pleurodynia (disorder)"}
+           {:code "85284003" :display "Angina, class III (disorder)"}
+           {:code "866043000" :display "Neuralgia of twelfth thoracic nerve (finding)"}
+           {:code "87343002" :display "Prinzmetal angina (disorder)"}
+           {:code "89323001" :display "Angina, class IV (disorder)"}
+           {:code "89638008" :display "Xiphodynia (finding)"}
+           {:code "89874002" :display "Xiphoidalgia syndrome (disorder)"}
+           {:code "9267009" :display "Chest pain at rest (finding)"}
+           {:code "95421005" :display "Intercostal myalgia (finding)"}
+           {:code "97001000119106" :display "Localized chest pain (finding)"}
+           {:code    "98611000119104"
+            :display "Chronic post-thoracotomy pain syndrome (finding)"}
+           nil?]))))
+
+  (t/testing "Clean up test-env"
+    (ftr.utils.core/rmrf (:ftr-path soa-ndjson-test-env-cfg))))
+
+
+
 (t/deftest ftr-from-ftr-source-type
   (t/testing "Preparing test environment for base FTR generation"
     (def base-ftr-env-cfg {:ftr-path           "/tmp/ftr-from-ftr/"
