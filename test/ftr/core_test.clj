@@ -1349,6 +1349,25 @@
                                                               :status       "active"
                                                               :url          "http://snomed.info/sct"}}})
 
+    (def base-ftr-test-other-env-cfg
+      {:ftr-path "/tmp/ftr-from-ftr"
+       :soa-source "test/fixture/ndjson/icd10-subset.ndjson"})
+
+    (def base-ftr-user-other-cfg {:module            "icd10base"
+                                  :source-url        (:soa-source base-ftr-test-other-env-cfg)
+                                  :ftr-path          (:ftr-path base-ftr-test-other-env-cfg)
+                                  :tag               "prod"
+                                  :source-type       :serialized-objects-array
+                                  :extractor-options {:format      "ndjson"
+                                                      :hierarchy    true
+                                                      :mapping     {:concept {:code      {:path [:code]}
+                                                                              :display   {:path [:definition]}
+                                                                              :hierarchy {:path [:hierarchy]}}}
+                                                      :code-system {:id  "icd10"
+                                                                    :url "http://hl7.org/fhir/sid/icd-10"}
+                                                      :value-set   {:id  "icd10"
+                                                                    :url "http://hl7.org/fhir/ValueSet/icd-10"}}})
+
     (def subset-ftr-test-env-cfg
       {:ftr-path "/tmp/ftr-from-ftr"
        :source-ftr (format "/tmp/ftr-from-ftr/%s" (:module base-ftr-user-cfg))})
@@ -1372,6 +1391,36 @@
                             :status       "active"
                             :url          "http://microsnomed.info/sct"}}})
 
+    (def subset-multiple-ftrs-test-env-cfg
+      {:ftr-path "/tmp/ftr-from-ftr"
+       :source-ftrs [(format "/tmp/ftr-from-ftr/%s" (:module base-ftr-user-cfg))
+                     (format "/tmp/ftr-from-ftr/%s" (:module base-ftr-user-other-cfg))]})
+
+    (def subset-multiple-ftrs-user-cfg
+      {:module            "snomed-icd10-subsets"
+       :source-urls       (:source-ftrs subset-multiple-ftrs-test-env-cfg)
+       :ftr-path          (:ftr-path subset-multiple-ftrs-test-env-cfg)
+       :tag               "prod"
+       :source-type       :ftr
+       :extractor-options {:target-tags (into {}
+                                              (map (fn [url] [url "prod"]))
+                                              (:source-ftrs subset-multiple-ftrs-test-env-cfg))
+                           :value-set
+                           {:compose      {:include [{:valueSet ["http://snomed.info/sct"]
+                                                      :filter   [{:op       "is-a"
+                                                                  :property "concept"
+                                                                  :value    "102587001"}]}
+                                                     {:valueSet ["http://hl7.org/fhir/ValueSet/icd-10"]
+                                                      :filter   [{:op       "descendant-of"
+                                                                  :property "concept"
+                                                                  :value    "A19"}]}]}
+                            :description  "SNOMEDCTUS and ICD10 micro subsets"
+                            :id           "micro-snomedct-icd10"
+                            :name         "MICRO-SNOMEDCT-ICD10"
+                            :resourceType "ValueSet"
+                            :status       "active"
+                            :url          "http://micro-snomed-and-icd10.info/sct"}}})
+
 
     (defn clean-up-test-env! [{:as _cfg, :keys [ftr-path]}]
       (ftr.utils.core/rmrf ftr-path))
@@ -1379,7 +1428,7 @@
     (clean-up-test-env! base-ftr-test-env-cfg))
 
 
-  (t/testing "Generating base FTR"
+  (t/testing "Generating base FTR’s"
     (let [{:as                                user-cfg, :keys [module ftr-path tag]
            {{value-set-name :url} :value-set} :extractor-options}
           base-ftr-user-cfg
@@ -1401,7 +1450,30 @@
              {"tf.387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11.ndjson.gz" {}
               (format "tag.%s.ndjson.gz" tag)                                                 {}}}
             "tags" {(format "%s.ndjson.gz" tag) {}
-                    (format "%s.hash" tag)      {}}}}))))
+                    (format "%s.hash" tag)      {}}}})))
+
+    (let [{:as                                user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          base-ftr-user-other-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+         ftr-tree
+         {module
+          {"vs"
+           {value-set-name
+            {"tf.e851a2bd2bcc49ac6091d14ce2e61cb516ea25475372c651ef66acffcd71b3cd.ndjson.gz" {}
+             (format "tag.%s.ndjson.gz" tag)                                                 {}}}
+           "tags" {(format "%s.ndjson.gz" tag) {}
+                   (format "%s.hash" tag)      {}}}}))))
 
   (t/testing "Generating new subset ftr using base ftr"
     (let [{:as                                user-cfg, :keys [module ftr-path tag]
@@ -1445,4 +1517,41 @@
            {:code "102587001" :display "Acute chest pain (finding)"}
            {:code "279035001" :display "Acute thoracic back pain (finding)"}
            {:code "444227004" :display "Acute postthoracotomy pain syndrome (finding)"}
-           nil?])))))
+           nil?]))))
+
+  (t/testing "Generating new subset ftr using multiple ftrs"
+    (let [{:as                                user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          subset-multiple-ftrs-user-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+          ftr-tree
+          {"snomedbase"
+           {}
+           "icd10base"
+           {}
+           "snomed-icd10-subsets"
+           {"vs"
+            {"http:--micro-snomed-and-icd10.info-sct"
+             {"tf.4daacc83654cb08174c255949af58372d95d71862e5addaffbd457e7edbc83ea.ndjson.gz"
+              {}
+              "tag.prod.ndjson.gz" {}}}
+            "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}}))
+
+      (t/testing "sees generated tf file"
+        (matcho/match
+         (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.4daacc83654cb08174c255949af58372d95d71862e5addaffbd457e7edbc83ea.ndjson.gz"
+                                                  (:ftr-path subset-multiple-ftrs-test-env-cfg)
+                                                  (:module subset-multiple-ftrs-user-cfg)
+                                                  value-set-name))
+          nil))))
+ )

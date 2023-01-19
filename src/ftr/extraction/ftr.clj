@@ -56,18 +56,33 @@
                     (reduce ftr.utils.core/deep-merge {}))})
 
 
-(defmethod u/*fn ::load-terminology [{:as _ctx, :keys [target-tag source-url value-set]}]
-  (let [tag-index-path (format "%s/tags/%s.ndjson.gz"
-                               source-url
-                               target-tag)
-        tag-index (ftr.utils.core/parse-ndjson-gz tag-index-path)
-        tf-paths (map (fn [{:as _tag-index-row,
-                            :keys [hash name]}]
-                        (let [vs-name (ftr.utils.core/separate-vs&module-names name)
-                              tf-path (format "%s/vs/%s/tf.%s.ndjson.gz"
-                                              source-url vs-name hash)]
+(defn construct-tag-index-info [src-url tag]
+  {:src-url src-url
+   :path    (format "%s/tags/%s.ndjson.gz"
+                 src-url
+                 tag)})
+
+
+(defmethod u/*fn ::load-terminology [{:as _ctx, :keys [target-tag
+                                                       source-url
+                                                       target-tags
+                                                       value-set]}]
+  (let [tag-index-paths (if (and target-tag source-url)
+                          [(construct-tag-index-info source-url target-tag)]
+                          (map (fn [[url tag]] (construct-tag-index-info url tag))
+                               target-tags))
+        tag-indexes (map (fn [{:keys [path src-url]}]
+                           (->> path
+                                (ftr.utils.core/parse-ndjson-gz)
+                                (map #(assoc % :src-url src-url))))
+                         tag-index-paths)
+        tf-paths (map (fn [{:as   _tag-index-row,
+                            :keys [hash name src-url]}]
+                           (let [vs-name (ftr.utils.core/separate-vs&module-names name)
+                                 tf-path (format "%s/vs/%s/tf.%s.ndjson.gz"
+                                                 src-url vs-name hash)]
                           tf-path))
-                      tag-index)]
+                      (flatten tag-indexes))]
     {:ztx (zen.core/new-context (-> (ftr->fhir-inter tf-paths)
                                     (assoc-in [:fhir/inter "ValueSet" (:url value-set)] (prepare-valueset value-set))))}))
 

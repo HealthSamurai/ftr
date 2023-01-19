@@ -45,6 +45,7 @@
         deprecation-mark (get-in extracted-mapping [:concept :deprecated? :true-values])
         parent-id        (get-in extracted-mapping [:concept :parent-id :value])
         hierarchy-id     (get-in extracted-mapping [:concept :hierarchy-id :value])
+        hierarchy        (get-in extracted-mapping [:concept :hierarchy :value])
         ancestors        (get-in extracted-mapping [:concept :ancestors :value])
         concept (ftr.utils.core/strip-nils
                   {:resourceType "Concept"
@@ -56,6 +57,7 @@
                    :ancestors    ancestors
                    :parent-id    parent-id
                    :hierarchy-id hierarchy-id
+                   :hierarchy    hierarchy
                    :property     (-> (:property extracted-mapping)
                                      (update-vals :value)
                                      ftr.utils.core/strip-nils
