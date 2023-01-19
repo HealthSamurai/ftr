@@ -1411,7 +1411,7 @@
                                                                   :property "concept"
                                                                   :value    "102587001"}]}
                                                      {:valueSet ["http://hl7.org/fhir/ValueSet/icd-10"]
-                                                      :filter   [{:op       "descendant-of"
+                                                      :filter   [{:op       "descendent-of"
                                                                   :property "concept"
                                                                   :value    "A19"}]}]}
                             :description  "SNOMEDCTUS and ICD10 micro subsets"
@@ -1542,16 +1542,26 @@
            "snomed-icd10-subsets"
            {"vs"
             {"http:--micro-snomed-and-icd10.info-sct"
-             {"tf.4daacc83654cb08174c255949af58372d95d71862e5addaffbd457e7edbc83ea.ndjson.gz"
+             {"tf.951f5cfd0fc0b5bb0443ac5d8b9449223f7e8f27f541ebb8bc7d1239c8bf4b17.ndjson.gz"
               {}
               "tag.prod.ndjson.gz" {}}}
             "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}}))
 
       (t/testing "sees generated tf file"
         (matcho/match
-         (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.4daacc83654cb08174c255949af58372d95d71862e5addaffbd457e7edbc83ea.ndjson.gz"
+         (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.951f5cfd0fc0b5bb0443ac5d8b9449223f7e8f27f541ebb8bc7d1239c8bf4b17.ndjson.gz"
                                                   (:ftr-path subset-multiple-ftrs-test-env-cfg)
                                                   (:module subset-multiple-ftrs-user-cfg)
                                                   value-set-name))
-          nil))))
- )
+         [{:resourceType "CodeSystem" :url "http://hl7.org/fhir/sid/icd-10"}
+          {:resourceType "CodeSystem" :url "http://snomed.info/sct"}
+          {:resourceType "ValueSet"   :url "http://micro-snomed-and-icd10.info/sct"}
+          {:code "A19.0" :display "Acute miliary tuberculosis of a single specified site"}
+          {:code "A19.1" :display "Acute miliary tuberculosis of multiple sites"}
+          {:code "A19.2" :display "Acute miliary tuberculosis, unspecified"}
+          {:code "A19.8" :display "Other miliary tuberculosis"}
+          {:code "A19.9" :display "Miliary tuberculosis, unspecified"}
+          {:code "102587001" :display "Acute chest pain (finding)"}
+          {:code "279035001" :display "Acute thoracic back pain (finding)"}
+          {:code "444227004" :display "Acute postthoracotomy pain syndrome (finding)"}
+          nil?])))))
