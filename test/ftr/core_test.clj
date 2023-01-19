@@ -1318,103 +1318,131 @@
     (ftr.utils.core/rmrf (:ftr-path soa-ndjson-test-env-cfg))))
 
 
+(t/deftest ftr-from-ftr-test
+  (t/testing "Preparing test env"
+    (def base-ftr-test-env-cfg
+      {:ftr-path "/tmp/ftr-from-ftr"
+       :soa-source "test/fixture/ndjson/snomed-subset.ndjson"})
 
-(t/deftest ftr-from-ftr-source-type
-  (t/testing "Preparing test environment for base FTR generation"
-    (def base-ftr-env-cfg {:ftr-path           "/tmp/ftr-from-ftr/"
-                           :csv-source-initial "/tmp/ftr-from-ftr/fixtures/icd10.csv"})
+    (def base-ftr-user-cfg {:module            "snomedbase"
+                            :source-url        (:soa-source base-ftr-test-env-cfg)
+                            :ftr-path          (:ftr-path base-ftr-test-env-cfg)
+                            :tag               "prod"
+                            :source-type       :serialized-objects-array
+                            :extractor-options {:format      "ndjson"
+                                                :mapping     {:concept {:code      {:path [:code]}
+                                                                        :display   {:path [:display]}
+                                                                        :ancestors {:path [:ancestors]}}}
+                                                :code-system {:description  "SNOMEDCT US tiny subset"
+                                                              :content      "complete"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "CodeSystem"
+                                                              :status       "active"
+                                                              :id           "snomedct"
+                                                              :valueSet     "http://snomed.info/sct"
+                                                              :url          "http://snomed.info/sct"}
+                                                :value-set   {:compose      {:include [{:system "http://snomed.info/sct"}]}
+                                                              :description  "SNOMEDCT US tiny subset"
+                                                              :id           "snomedct"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "ValueSet"
+                                                              :status       "active"
+                                                              :url          "http://snomed.info/sct"}}})
 
-    (def base-csv-ftr-user-cfg
-      {:module            "icd10"
-       :source-url        (:csv-source-initial base-ftr-env-cfg)
-       :ftr-path          (:ftr-path base-ftr-env-cfg)
-       :tag               "v1"
-       :source-type       :flat-table
-       :extractor-options {:format      "csv"
-                           :csv-format  {:delimiter ","
-                                         :quote "\""}
+    (def subset-ftr-test-env-cfg
+      {:ftr-path "/tmp/ftr-from-ftr"
+       :source-ftr (format "/tmp/ftr-from-ftr/%s" (:module base-ftr-user-cfg))})
 
-                           :header      true
-                           :header-row  0
-                           :data-row    1
-                           :hierarchy   true
-                           :mapping {:concept  {:code         {:column "ICD_CODE"}
-                                                :display      {:column "ICD_NAME"}
-                                                :deprecated?  {:column      "ACTIVE"
-                                                               :true-values ["1"]}
-                                                :parent-id    {:column "ID_PARENT"}
-                                                :hierarchy-id {:column "ID"}}
-                                     :property {"updated_date" {:column "DATE"}}}
-
-                           :code-system {:id "icd10", :url "http://hl7.org/fhir/sid/icd-10"}
-                           :value-set   {:id "icd10", :url "http://hl7.org/fhir/ValueSet/icd-10"}}})
+    (def subset-ftr-user-cfg
+      {:module            "snomedsubset"
+       :source-url        (:source-ftr subset-ftr-test-env-cfg)
+       :ftr-path          (:ftr-path subset-ftr-test-env-cfg)
+       :tag               "prod"
+       :source-type       :ftr
+       :extractor-options {:target-tag "prod"
+                           :value-set
+                           {:compose      {:include [{:valueSet ["http://snomed.info/sct"]
+                                                      :filter [{:op       "is-a"
+                                                                :property "concept"
+                                                                :value    "102587001"}]}]}
+                            :description  "SNOMEDCT US micro subset"
+                            :id           "microsnomedct"
+                            :name         "MICROSNOMEDCT"
+                            :resourceType "ValueSet"
+                            :status       "active"
+                            :url          "http://microsnomed.info/sct"}}})
 
 
-    (defn prepare-test-env! [{:as   _cfg,
-                              :keys [csv-source-initial]}]
-      (io/make-parents (io/file csv-source-initial))
-
-      (spit csv-source-initial
-            "ID,REC_CODE,ICD_CODE,ICD_NAME,ID_PARENT,ADDL_CODE,ACTIVE,DATE
-10344,20,XX,External causes of morbidity and mortality,,,1,
-16003,2001,V01-X59,Accidents,10344,,1,
-15062,20012,W00-X59,Other external causes of accidental injury,16003,,1,10/07/2020
-11748,2001203,W50-W64,Exposure to animate mechanical forces,15062,,1,
-11870,2001203W64,W64,Exposure to other and unspecified animate mechanical forces,11748,,1,
-11871,2001203W640,W64.0,Exposure to other and unspecified animate mechanical forces home while engaged in sports activity,11870,,1,
-11872,2001203W641,W64.00,\"Exposure to other and unspecified animate mechanical forces, home, while engaged in sports activity\",11871,,1,
-11873,2001203W641,W64.01,\"Exposure to other and unspecified animate mechanical forces, home, while engaged in leisure activity\",11871,,1,"))
-
-    (defn clean-up-test-env! [{:as   _cfg,
-                               :keys [ftr-path]}]
-
+    (defn clean-up-test-env! [{:as _cfg, :keys [ftr-path]}]
       (ftr.utils.core/rmrf ftr-path))
 
+    (clean-up-test-env! base-ftr-test-env-cfg))
 
-    (t/testing "Generating base FTR"
-      (clean-up-test-env! base-ftr-env-cfg)
-      (prepare-test-env! base-ftr-env-cfg)
 
-      (sut/apply-cfg {:cfg base-csv-ftr-user-cfg})
+  (t/testing "Generating base FTR"
+    (let [{:as                                user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          base-ftr-user-cfg
 
-      (def base-ftr-file-path (:ftr-path base-ftr-env-cfg))
+          value-set-name (ftr.utils.core/escape-url value-set-name)
 
-      (def ftr-file-tree
-        (get-in (fs-tree->tree-map base-ftr-file-path)
-                (str/split (subs base-ftr-file-path 1) #"/")))
+          _
+          (sut/apply-cfg {:cfg user-cfg})
 
-      (t/testing "sees generated repository layout"
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
         (matcho/match
-          ftr-file-tree
-          {"icd10"
+          ftr-tree
+          {module
            {"vs"
-            {"http:--hl7.org-fhir-ValueSet-icd-10"
-             {"tf.6e4f5b5701a2b3f6c382614a563c9243029431eaca58e7cf8c9491dcb7eda1c4.ndjson.gz"
+            {value-set-name
+             {"tf.387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11.ndjson.gz" {}
+              (format "tag.%s.ndjson.gz" tag)                                                 {}}}
+            "tags" {(format "%s.ndjson.gz" tag) {}
+                    (format "%s.hash" tag)      {}}}}))))
+
+  (t/testing "Generating new subset ftr using base ftr"
+    (let [{:as                                user-cfg, :keys [module ftr-path tag]
+           {{value-set-name :url} :value-set} :extractor-options}
+          subset-ftr-user-cfg
+
+          value-set-name (ftr.utils.core/escape-url value-set-name)
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+          ftr-tree
+          {"snomedbase"
+           {"vs"
+            {"http:--snomed.info-sct"
+             {"tf.387d11fec384fda8314fca79530f3895df068a2fbbe6300cf094f4845861ca11.ndjson.gz"
               {}
-              "tag.v1.ndjson.gz" {}}}
-            "tags" {"v1.ndjson.gz" {} "v1.hash" {}}}
-           "fixtures" {"icd10.csv" {}}}))
+              "tag.prod.ndjson.gz" {}}}
+            "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}
+           "snomedsubset"
+           {"vs"
+            {"http:--microsnomed.info-sct"
+             {"tag.prod.ndjson.gz" {}
+              "tf.df1384e9eeda8164bc3e73ef7586d41500a952744e7a6799f141fd40ebb7f894.ndjson.gz"
+              {}}}
+            "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}}))
 
-      #_(clean-up-test-env! base-ftr-env-cfg)
-
-      )))
-
-
-(comment
-  (sut/apply-cfg {:cfg
-                  {:module "soa"
-                   :source-url "/Users/ghrp/snomed.ndjson"
-                   :ftr-path "/tmp/ndjson-ftr"
-                   :tag "prod"
-                   :source-type :serialized-objects-array
-                   :extractor-options {:format "ndjson"
-                                       :mapping {:concept {:code {:path [:code]}
-                                                           :display {:path [:display]}
-                                                           :ancestors {:path [:ancestors]}}}
-                                       :code-system {:id "soa"
-                                                     :url "http://soa/cs"}
-                                       :value-set {:id "soa"
-                                                   :url "http://soa/vs"}}}})
-
-
-  )
+      (t/testing "sees generated tf file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.df1384e9eeda8164bc3e73ef7586d41500a952744e7a6799f141fd40ebb7f894.ndjson.gz"
+                                                  (:ftr-path subset-ftr-test-env-cfg)
+                                                  (:module subset-ftr-user-cfg)
+                                                  value-set-name))
+          [{:resourceType "CodeSystem" :url "http://snomed.info/sct"}
+           {:resourceType "ValueSet" :url "http://microsnomed.info/sct"}
+           {:code "102587001" :display "Acute chest pain (finding)"}
+           {:code "279035001" :display "Acute thoracic back pain (finding)"}
+           {:code "444227004" :display "Acute postthoracotomy pain syndrome (finding)"}
+           nil?])))))

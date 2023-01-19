@@ -185,3 +185,7 @@
 (defn flip [f]
   (fn [& args]
     (apply f (reverse args))))
+
+
+(defn separate-vs&module-names [module+vs-name]
+  (second (str/split module+vs-name #"\." 2)))

@@ -114,6 +114,14 @@
    ::write-tag-index-hash])
 
 
+(def ftr-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
 (defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
                                          ::keys [commit-type]
                                          {:keys [source-type]} :cfg}]
@@ -130,6 +138,9 @@
 
      [:append :serialized-objects-array]
      serialized-objects-array-pipeline
+
+     [:append :ftr]
+     ftr-pipeline
 
      [:tag-merge nil]
      tag-merge-pipeline)})
