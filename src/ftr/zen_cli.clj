@@ -5,7 +5,7 @@
             [clojure.pprint]
             [zen.core]
             [zen.store]
-            [cli-matic.core]))
+            [zen.cli-tools]))
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
@@ -23,25 +23,30 @@
        vtx))})
 
 
-(def cfg (-> zen.cli/commands
-             (assoc "build-ftr" (fn [opts]
-                                  (let [ztx (zen.cli/load-ztx opts)]
-                                    (zen.cli/load-used-namespaces ztx #{})
-                                    (ftr.zen-package/build-ftr ztx {:enable-logging? true}))))
-             (assoc "get-ftr-index-info" ftr.zen-package/get-ftr-index-info)))
+(defmethod zen.cli-tools/command 'extended-zen-cli/build-ftr [_ _ opts]
+  (let [ztx (zen.cli/load-ztx opts)]
+    (zen.cli/load-used-namespaces ztx #{})
+    (ftr.zen-package/build-ftr ztx {:enable-logging? true})))
+
+
+(defmethod zen.cli-tools/command 'extended-zen-cli/get-ftr-index-info [_ _ opts]
+  (ftr.zen-package/get-ftr-index-info opts))
 
 
 (defn -main
-  [& [cmd-name & args]]
-  (let [og-read-ns zen.core/read-ns]
+  [& args]
+  (let [og-read-ns zen.core/read-ns
+        ztx (zen.core/new-context)
+        _ (zen.core/read-ns ztx 'extended-zen-cli)]
     (with-redefs
       [zen.core/read-ns (fn [ztx zen-ns]
-                          (og-read-ns ztx zen-ns)
-                          (ftr.zen-package/build-complete-ftr-index ztx))
+                          (let [read-ns-result (og-read-ns ztx zen-ns)]
+                            (ftr.zen-package/build-complete-ftr-index ztx)
+                            read-ns-result))
        zen.core/validate (fn [ztx symbols data]
                            (-> (ftr.zen-package/validate ztx symbols data)
                                (select-keys [:errors :warnings :effects])))]
-      (if (some? cmd-name)
-        (clojure.pprint/pprint (zen.cli/cmd cfg cmd-name args))
-        (zen.cli/repl cfg))
+      (clojure.pprint/pprint (zen.cli-tools/cli-main ztx 'extended-zen-cli/config args {:prompt-fn
+                                                                                        #(do (print "ftr> ")
+                                                                                             (flush))}))
       (System/exit 0))))

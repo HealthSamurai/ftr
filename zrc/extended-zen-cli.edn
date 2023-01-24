@@ -1,0 +1,26 @@
+{ns extended-zen-cli
+ import #{zen.cli-tools
+          zen.cli} #_"This 2 deps comes transitively from zen-lang/zen and zen-lang/zen <- zen-lang/cli"
+
+
+ build-ftr
+ {:zen/tags   #{zen.cli-tools/command}
+  :zen/desc   "build-ftr"
+  :args-style :positional
+  :args       {:type     zen/vector
+               :maxItems 0}}
+
+
+ get-ftr-index-info
+ {:zen/tags   #{zen.cli-tools/command}
+  :zen/desc   "get-ftr-index-info"
+  :args-style :positional
+  :args       {:type     zen/vector
+               :maxItems 0}}
+
+
+ config
+ {:zen/tags #{zen.cli-tools/config}
+  :commands {:build-ftr          {:command build-ftr}
+             :get-ftr-index-info {:command get-ftr-index-info}
+             :zen                {:config zen.cli/config}}}}
