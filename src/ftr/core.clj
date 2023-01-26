@@ -122,6 +122,14 @@
    ::write-tag-index-hash])
 
 
+(def icd10-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
 (defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
                                          ::keys [commit-type]
                                          {:keys [source-type]} :cfg}]
@@ -141,6 +149,9 @@
 
      [:append :ftr]
      ftr-pipeline
+
+     [:append :icd10]
+     icd10-pipeline
 
      [:tag-merge nil]
      tag-merge-pipeline)})
@@ -187,3 +198,39 @@
              ::feeder
              ::write-tag-index-hash]
             ctx))
+
+
+(comment
+  (def a
+    (apply-cfg {:cfg {:module            "icd10"
+                      :source-url         "/Users/ghrp/Desktop/ICD2023SOURCE"
+                      :ftr-path          "/tmp/icd10"
+                      :tag               "prod"
+                      :source-type       :icd10
+                      :extractor-options {:code-system {:id           "icd-10"
+                                                        :url          "http://hl7.org/fhir/sid/icd-10"}
+                                          :value-set   {:id           "icd-10"
+                                                        :url          "http://hl7.org/fhir/ValueSet/icd-10"}}}}))
+
+
+  (def b
+    (apply-cfg {:cfg {:module            "icd10subset"
+                      :source-url        "/tmp/icd10/icd10"
+                      :ftr-path          "/tmp"
+                      :tag               "prod"
+                      :source-type       :ftr
+                      :extractor-options {:target-tag "prod"
+                                          :value-set
+                                          {:compose      {:include [{:valueSet ["http://hl7.org/fhir/ValueSet/icd-10"]
+                                                                     :filter [{:op       "is-a"
+                                                                               :property "concept"
+                                                                               :value    "S12.00"}]}]}
+                                           :description  "icd10 microsubset"
+                                           :id           "icd10microsubset"
+                                           :name         "ICD10MICROSUBSET"
+                                           :resourceType "ValueSet"
+                                           :status       "active"
+                                           :url          "http://icd10microsubset.info"}}}}))
+
+
+  )
