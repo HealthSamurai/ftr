@@ -1,5 +1,6 @@
 (ns ftr.logger.core
   (:require [ftr.utils.unifn.core :as u]
+            [ftr.utils.core]
             [progrock.core :as pr]
             [clojure.string :as str]))
 
