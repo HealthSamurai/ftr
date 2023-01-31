@@ -196,7 +196,8 @@
         (let [{:as _executed-command,
                :keys [exit err]}
               (apply shell/sh (first commands))]
-          (if (= exit 0)
+          (if (and (= exit 0)
+                   (seq err))
             (recur (next commands))
             {::u/status :error
              ::u/message err}))))))
