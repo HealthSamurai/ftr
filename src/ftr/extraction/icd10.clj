@@ -201,10 +201,12 @@
   (let [files (file-seq (io/file source-url))]
     {::source-files-names
      {:codes (first (filter (fn [f]
-                              (re-find #"icd10cm-order-.{4}\.txt" (.getName f)))
+                              (let [filename (.getName f)]
+                                (and (not (str/includes? filename "addenda"))
+                                     (re-find #"icd10cm-order-.+\.txt" filename))))
                             files))
       :tabular-index (first (filter (fn [f]
-                                      (re-find #"icd10cm-tabular-.{4}\.xml" (.getName f)))
+                                      (re-find #"icd10cm-tabular-.+\.xml" (.getName f)))
                                     files))}}))
 
 
