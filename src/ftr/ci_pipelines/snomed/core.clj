@@ -129,12 +129,12 @@
 
 (defmethod u/*fn ::generate-snomed-zen-package
   [{:as _ctx,
-    :keys [snomed-working-dir-path]
+    :keys [working-dir-path]
     {:keys [version]} :snomed-info}]
-  (when snomed-working-dir-path
-    (spit (str snomed-working-dir-path "/zen-package.edn")
+  (when working-dir-path
+    (spit (str working-dir-path "/zen-package.edn")
           {:deps {'zen.fhir "https://github.com/zen-fhir/zen.fhir.git"}})
-    (spit (doto (io/file (str snomed-working-dir-path "/zrc/snomed.edn"))
+    (spit (doto (io/file (str working-dir-path "/zrc/snomed.edn"))
                 (-> (.getParentFile) (.mkdirs)))
           (with-out-str (clojure.pprint/pprint {'ns 'snomed
                                                 'import #{'zen.fhir}
