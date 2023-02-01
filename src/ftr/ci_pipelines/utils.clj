@@ -73,13 +73,13 @@
 (defn- send-telegram-msg!
   [bot-token chat-id msg]
   (let [url (str "https://api.telegram.org/bot" bot-token "/sendMessage")]
-    (clojure.pprint/pprint @(http/post url
-                                       {:headers {"content-type" "application/json"}
-                                        :body (json/generate-string
-                                                {:chat_id chat-id
-                                                 :text msg
-                                                 :disable_notification true
-                                                 :parse_mode "HTML"})}))))
+    @(http/post url
+                {:headers {"content-type" "application/json"}
+                 :body (json/generate-string
+                         {:chat_id chat-id
+                          :text msg
+                          :disable_notification true
+                          :parse_mode "HTML"})})))
 
 
 (defmethod u/*fn ::send-tg-notification
