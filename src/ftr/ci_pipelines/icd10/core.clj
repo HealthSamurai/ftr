@@ -105,6 +105,8 @@
 
 
 (defn pipeline [args]
+  (println "ARGS: ")
+  (clojure.pprint/pprint args)
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
     (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
