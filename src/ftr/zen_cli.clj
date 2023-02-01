@@ -5,7 +5,8 @@
             [clojure.pprint]
             [zen.core]
             [zen.store]
-            [zen.cli-tools]))
+            [zen.cli-tools]
+            [zen.v2-validation]))
 
 
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set

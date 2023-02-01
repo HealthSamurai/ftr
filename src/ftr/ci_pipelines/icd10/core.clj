@@ -16,9 +16,12 @@
    (ftp/with-ftp [client "ftp://anonymous:pwd@ftp.cdc.gov/pub/Health_Statistics/NCHS/Publications/ICD10CM"
                   :file-type :binary]
      (let [release-dirs       (->> (ftp/client-FTPFile-directories client)
-                             (remove #(= "CM- Committee" (.getName %)))
-                             (sort #(compare (.getTimestamp %2) (.getTimestamp %1))))
-           latest-release-dir (first release-dirs)]
+                             (remove (fn [^org.apache.commons.net.ftp.FTPFile f]
+                                       (= "CM- Committee" (.getName f))))
+                             (sort (fn [^org.apache.commons.net.ftp.FTPFile f1
+                                        ^org.apache.commons.net.ftp.FTPFile f2]
+                                     (compare (.getTimestamp f2) (.getTimestamp f1)))))
+           latest-release-dir ^org.apache.commons.net.ftp.FTPFile (first release-dirs)]
        (ftp/client-cd client (.getName latest-release-dir))
 
        (.mkdirs (io/file download-dest))
@@ -36,8 +39,8 @@
    (let [download-dir    (io/file download-dest)
          downloaded-zips (->> download-dir
                               (.listFiles)
-                              (filter #(str/ends-with? (.getName %) ".zip"))
-                              (map #(.getAbsolutePath %)))]
+                              (filter (fn [^java.io.File f] (str/ends-with? (.getName f) ".zip")))
+                              (map (fn [^java.io.File f] (.getAbsolutePath f))))]
      (doseq [zip-path downloaded-zips]
        (zen.utils/unzip! zip-path
                          download-dest)))))
@@ -152,12 +155,12 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
-    (doto (u/*apply [::download-previous-icd-10-ftr-version!
-                     ::download-latest-icd10!
-                     ::unpack-downloaded-icd10!
-                     ::build-ftr-cfg
-                     :ftr.core/apply-cfg
-                     ::upload-to-gcp-bucket
-                     ::generate-icd-10-cm-zen-package
-                     ::push-zen-package]
-                    cfg))))
+    (u/*apply [::download-previous-icd-10-ftr-version!
+               ::download-latest-icd10!
+               ::unpack-downloaded-icd10!
+               ::build-ftr-cfg
+               :ftr.core/apply-cfg
+               ::upload-to-gcp-bucket
+               ::generate-icd-10-cm-zen-package
+               ::push-zen-package]
+              cfg)))

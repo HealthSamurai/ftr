@@ -33,7 +33,7 @@
                        (str (:system concept)  "-" (:url vs) "-" (:code concept)))))
 
 
-(defn spit-tf-file! [writer cs vs c]
+(defn spit-tf-file! [^java.io.BufferedWriter writer cs vs c]
   (let [sorted-code-systems (sort-by :id cs)]
     (with-open [w writer]
       (doseq [cs sorted-code-systems]
@@ -56,10 +56,8 @@
     {:keys [ftr-path]} :cfg
     {:keys [value-set code-system concepts]} :extraction-result}]
   (let [value-set (update value-set :name ftr.utils.core/escape-url)
-        {:keys [writer file digest]}
-        (-> ftr-path
-            create-temp-tf-path!
-            ftr.utils.core/make-sha256-gzip-writer)
+        {:keys [writer ^java.io.File file digest]}
+        (ftr.utils.core/make-sha256-gzip-writer (create-temp-tf-path! ftr-path))
 
         _ (spit-tf-file! writer code-system value-set concepts)
 

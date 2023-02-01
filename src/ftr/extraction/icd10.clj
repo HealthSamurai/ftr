@@ -200,12 +200,12 @@
 (defmethod u/*fn ::infer-source-files-paths [{:as _cfg, :keys [source-url]}] ;;TODO Separate from extractor logic
   (let [files (file-seq (io/file source-url))]
     {::source-files-names
-     {:codes (first (filter (fn [f]
+     {:codes (first (filter (fn [^java.io.File f]
                               (let [filename (.getName f)]
                                 (and (not (str/includes? filename "addenda"))
                                      (re-find #"icd10cm-order-.+\.txt" filename))))
                             files))
-      :tabular-index (first (filter (fn [f]
+      :tabular-index (first (filter (fn [^java.io.File f]
                                       (re-find #"icd10cm-tabular-.+\.xml" (.getName f)))
                                     files))}}))
 
@@ -217,17 +217,17 @@
   (let [code-system (first code-system)
         parsed-xml                     (clojure.xml/parse tabular-index)
         xml-zip                        (zip/xml-zip parsed-xml)
-        assoc-chapters                 (partial assoc-chapters xml-zip)
-        assoc-sections                 (partial assoc-sections xml-zip)
-        assoc-sections-direct-children (partial assoc-sections-direct-children xml-zip)
+        assoc-chapters+                 (partial assoc-chapters xml-zip)
+        assoc-sections+                 (partial assoc-sections xml-zip)
+        assoc-sections-direct-children+ (partial assoc-sections-direct-children xml-zip)
         {:keys [parsed-icd-10 ^java.io.BufferedReader reader]}
         (parse-icd10-ordered-file codes)
-        assoc-remaining-codes          (partial assoc-remaining-codes parsed-icd-10)
+        assoc-remaining-codes+          (partial assoc-remaining-codes parsed-icd-10)
         index                          (-> {}
-                                           (assoc-chapters)
-                                           (assoc-sections)
-                                           (assoc-sections-direct-children)
-                                           (assoc-remaining-codes))]
+                                           (assoc-chapters+)
+                                           (assoc-sections+)
+                                           (assoc-sections-direct-children+)
+                                           (assoc-remaining-codes+))]
     (.close reader)
     {::result
      {:concepts

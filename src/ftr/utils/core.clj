@@ -27,7 +27,7 @@
   (strip-when nil? m))
 
 
-(defn create-dir-if-not-exists!
+(defn create-dir-if-not-exists! ^java.io.File
   [path]
   (when (seq path)
     (let [file (io/file path)]
@@ -91,7 +91,7 @@
                          m))
 
 
-(defn generate-ndjson-row [obj]
+(defn generate-ndjson-row ^String [obj]
   (format "%s\n" (cheshire.core/generate-string (prepare-map-for-canonical-json-generation obj))))
 
 
@@ -123,15 +123,18 @@
   (readLine [this] "Reads and parse json line from reader"))
 
 
-(defn open-ndjson-gz-reader [input]
-  (let [ndjson-gz-reader (-> input
-                             (io/input-stream)
-                             (java.util.zip.GZIPInputStream.)
-                             (io/reader))]
+(defn open-ndjson-gz-reader ^ftr.utils.core.NdjsonReader
+  [input]
+  (let [^java.io.BufferedReader
+        ndjson-gz-reader
+        (-> input
+            (io/input-stream)
+            (java.util.zip.GZIPInputStream.)
+            (io/reader))]
     (reify NdjsonReader
-      (readLine [this] (-> ndjson-gz-reader
-                           .readLine
-                           (cheshire.core/parse-string keyword))))))
+      (readLine [_this] (-> ndjson-gz-reader
+                            .readLine
+                            (cheshire.core/parse-string keyword))))))
 
 
 (defn escape-url [url]
@@ -141,7 +144,9 @@
           (str/replace #" " "-")))
 
 
-(defn open-gz-writer [output]
+(defn open-gz-writer
+  ^java.io.BufferedWriter
+  [output]
   (-> output
       (io/file)
       (java.io.FileOutputStream.)
@@ -150,7 +155,9 @@
       (java.io.BufferedWriter.)))
 
 
-(defn open-gz-reader ^java.io.BufferedReader [input]
+(defn open-gz-reader
+  ^java.io.BufferedReader
+  [input]
   (-> input
       (io/input-stream)
       (java.util.zip.GZIPInputStream.)
@@ -191,7 +198,7 @@
   (second (str/split module+vs-name #"\." 2)))
 
 
-(defn gunzip [input output]
+(defn gunzip [^String input ^String output]
   (with-open [rdr (-> input
                       (java.io.FileInputStream.)
                       (java.util.zip.GZIPInputStream.))]

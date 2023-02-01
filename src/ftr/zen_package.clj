@@ -161,10 +161,10 @@
                                           :complete? true})))
 
 
-(defn- enrich-ftr-index-with-tf [ftr-index ftr-tag tf-path]
+(defn- enrich-ftr-index-with-tf
   "Enrich FTR index with terminology file"
-  (let [tf-reader
-        (ftr.utils.core/open-ndjson-gz-reader tf-path)
+  [ftr-index ftr-tag tf-path]
+  (let [tf-reader (ftr.utils.core/open-ndjson-gz-reader tf-path)
 
         {codesystems "CodeSystem"
          [{vs-url :url}] "ValueSet"}

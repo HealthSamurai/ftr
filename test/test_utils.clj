@@ -121,12 +121,12 @@
 (defn create-zip-archive-from-fs-tree [fs-tree out-path]
   (let [zip-parent-dir (.getParentFile (io/file out-path))]
     (when-not (.exists zip-parent-dir) (.mkdirs zip-parent-dir))
-    (with-open [zip-stream
-                ^java.util.zip.ZipOutputStream
+    (with-open [^java.util.zip.ZipOutputStream
+                zip-stream
                 (-> out-path
                     (io/output-stream)
                     (java.util.zip.ZipOutputStream.))]
-      (doseq [path (fs-tree->paths fs-tree)]
+      (doseq [^String path (fs-tree->paths fs-tree)]
         (let [zip-entry (java.util.zip.ZipEntry. path)]
           (.putNextEntry zip-stream zip-entry)
           (io/copy "" zip-stream)

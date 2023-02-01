@@ -4,12 +4,8 @@
             [cli-matic.core]
             [zen.cli]
             [ftr.zen-package]
-            [clojure.string :as str]))
-
-
-(defn build-ftr
-  ([args] (ftr.zen-package/build-ftr (zen.cli/load-ztx) args))
-  ([ztx args] (ftr.zen-package/build-ftr ztx args)))
+            [clojure.string :as str]
+            [clojure.pprint]))
 
 
 (defn parse-ftr-cfg [path]

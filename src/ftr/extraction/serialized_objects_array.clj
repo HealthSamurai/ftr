@@ -2,9 +2,9 @@
   (:require [clojure.java.io :as io]
             [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
-            [clojure.string :as str]
             [clj-yaml.core]
-            [cheshire.core]))
+            [cheshire.core]
+            [clojure.pprint]))
 
 
 (defmethod u/*fn ::create-value-set [cfg]

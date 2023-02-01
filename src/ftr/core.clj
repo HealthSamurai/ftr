@@ -27,7 +27,9 @@
         tags-path (format "%s/tags" module-path)
         vs-dir-path (format "%s/vs" module-path)
 
-        temp-tf-file (:terminology-file write-result)
+        temp-tf-file
+        ^java.io.File
+        (:terminology-file write-result)
         tf-name (some-> temp-tf-file (.getName))
         temp-tf-path (some-> temp-tf-file (.getAbsolutePath))
 

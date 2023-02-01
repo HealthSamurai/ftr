@@ -65,8 +65,8 @@
   [{:as _ctx,
     :keys [extracted-snomed-out-dir]
     {:keys [complete-download-url]} :snomed-info}]
-  (with-open [zip-stream
-              ^java.util.zip.ZipInputStream
+  (with-open [^java.util.zip.ZipInputStream
+              zip-stream
               (-> complete-download-url
                   (io/input-stream)
                   (java.util.zip.ZipInputStream.))]
