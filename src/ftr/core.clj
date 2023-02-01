@@ -62,8 +62,7 @@
           (str tag-index-hash \newline))))
 
 
-(defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]
-                            {:keys [ftr-path]} :cfg}]
+(defmethod u/*fn ::feeder [{:as ctx, :keys [extraction-result]}]
   (or (not-empty
         (last
           (for [[vs-url tf] extraction-result]

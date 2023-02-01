@@ -12,7 +12,7 @@
 (defmethod zen.v2-validation/compile-key :zen.fhir/value-set
   [_ _ztx value-set]
   {:rule
-   (fn [vtx data opts]
+   (fn [vtx data _opts]
      (if (= :required (:strength value-set))
        (let [schemas-stack (->> (:schema vtx) (partition-by #{:confirms}) (take-nth 2) (map first))]
          (update-in vtx [:fx :zen.fhir/value-set :value-sets] conj

@@ -10,7 +10,7 @@
   (:import (java.util UUID)))
 
 
-(defn build-ftr [ztx & [{:as opts, :keys [enable-logging?]}]]
+(defn build-ftr [ztx & [{:as _opts, :keys [enable-logging?]}]]
   (let [syms (zen.core/get-tag ztx 'zen.fhir/value-set)
         value-sets (->> syms
                         (map (partial zen.core/get-symbol ztx))
@@ -25,22 +25,6 @@
       (ftr.core/apply-cfg (cond-> {:cfg ftr}
                             enable-logging?
                             (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))))))
-
-
-(defn expand-zen-packages [path]
-  (let [modules (io/file path)]
-    (when (and (.exists modules) (.isDirectory modules))
-      (->> (.listFiles modules)
-           (map (fn [x] (str x "/ftr/")))
-           (filter #(.isDirectory (io/file %)))))))
-
-
-(defn expand-package-path [package-path]
-  (let [ftr-path         (str package-path "/ftr")
-        zen-packages-path (str package-path "/zen-packages")]
-    (cond->> (expand-zen-packages zen-packages-path)
-      (.exists (io/file ftr-path))
-      (cons ftr-path))))
 
 
 (defn read-ndjson-line! [^java.io.BufferedReader buffered-reader]
@@ -211,7 +195,7 @@
   (let [vs-sch
         (zen.core/get-symbol ztx vs-sym)
 
-        {:as enriched-vs-sch,
+        {:as _enriched-vs-sch,
          vs-uri :uri
          {ftr-tag    :tag
           ftr-module :module
@@ -315,7 +299,7 @@
     #_data))
 
 
-(defn validate-concept-via-ftr-index [ztx {{:as concept, :keys [code display]} :concept
+(defn validate-concept-via-ftr-index [ztx {{:as _concept, :keys [code display]} :concept
                                            :keys [valueset valueset-ftr-tag]}]
   (let [ftr-index (get-in @ztx [:zen.fhir/ftr-index :result valueset-ftr-tag])
         codesystems-used-in-this-valueset (get-in ftr-index [:valuesets valueset])

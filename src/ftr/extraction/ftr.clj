@@ -1,7 +1,6 @@
 (ns ftr.extraction.ftr
   (:require [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
-            [clojure.string :as str]
             [zen.core]
             [ftr.extraction.ig.value-set-expand]
             [ftr.extraction.ig.core]

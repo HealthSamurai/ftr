@@ -5,13 +5,13 @@
    [clojure.string :as str]))
 
 
-(defn vs-compose-concept-fn [value-set system version concepts]
+(defn vs-compose-concept-fn [_value-set _system _version concepts]
   (when (seq concepts)
     (let [concept-codes (into #{}
                               (comp (map :code)
                                     (map keyword))
                               concepts)
-          system-kw (keyword system)]
+          #_#_system-kw (keyword system)]
       (fn vs-compose-concept [concept]
         #_(and (= system-kw (:zen.fhir/system-kw concept))
                (contains? concept-codes (:zen.fhir/code-kw concept)))
@@ -94,7 +94,7 @@
                       (first filter-fns) #_"NOTE: eliminate every-pred to simplify stacktraces"
                       (apply every-pred filter-fns))
 
-          system-kw (keyword system)]
+          #_#_system-kw (keyword system)]
       (fn compose-filter [concept]
         #_(and (= system-kw (:zen.fhir/system-kw concept))
                (filter-fn concept))
@@ -460,18 +460,18 @@
     (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
 
 
-(comment
+;; (comment
 
-  (require '[clj-async-profiler.core :as prof])
+;;   (require '[clj-async-profiler.core :as prof])
 
-  (def srv (prof/serve-ui 8081))
+;;   (def srv (prof/serve-ui 8081))
 
-  (with-out-str (time (prof/profile (denormalize-into-concepts vs cs))))
-  ;; => "nil\n\"Elapsed time: 274580.148125 msecs\"\n"
+;;   (with-out-str (time (prof/profile (denormalize-into-concepts vs cs))))
+;;   ;; => "nil\n\"Elapsed time: 274580.148125 msecs\"\n"
 
-  (+ 1 1)
+;;   (+ 1 1)
 
-  nil)
+;;   nil)
 
 (defn denormalize-value-sets-into-concepts [ztx]
   (swap! ztx update-in [:fhir/inter "Concept"]

@@ -3,7 +3,6 @@
             [clojure.string :as str]
             [cheshire.core]
             [edamame.core :as edamame]
-            [com.rpl.specter :as sp]
             [zen.core :as zen-core]
             [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
@@ -77,7 +76,7 @@
 
 
 (defmethod process-on-load :default
-  [res]
+  [_res]
   #_(println :WARN :no-process-on-load :for (:resourceType res)))
 
 
@@ -202,7 +201,7 @@
           :file    (get-in new [:zen/loader :file])}})
 
 
-(defn resolve-clash-dispatch [rt old new]
+(defn resolve-clash-dispatch [rt _old _new]
   (keyword rt))
 
 
@@ -213,7 +212,7 @@
   (throw (Exception. (str (clash-ex-data ::no-resolve-clash-rules-defined old new)))))
 
 
-(defn get-package-priority [rt priority-map old new]
+(defn get-package-priority [_rt priority-map old new]
   (let [old-package  (keyword (get-in old [:zen/loader :package :name]))
         new-package  (keyword (get-in new [:zen/loader :package :name]))]
     {:old (get-in priority-map [old-package new-package])

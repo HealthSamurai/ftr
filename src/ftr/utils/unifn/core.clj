@@ -17,7 +17,7 @@
 (defmulti *fn (fn [{f ::fn}] (if (fn? f) ::function f)))
 
 (defmethod *fn ::identitY
-  [arg] {})
+  [_arg] {})
 
 (defmethod *fn ::function
   [{f ::fn :as arg}]
@@ -81,7 +81,7 @@
                                  (let [fx-res (*apply (or (get-in arg [:fx/registry k]) k) v)]
                                    (if (::status fx-res)
                                      (deep-merge patch fx-res)
-                                     (if-let [pth (get v :fx/result)]
+                                     (when-let [pth (get v :fx/result)]
                                        (assoc-in res pth fx-res)))
                                    )) (dissoc patch :fx) fx)
                        patch)

@@ -6,7 +6,7 @@
 
 
 (defn init [{:as _cfg, :keys [tag ftr-path module]}
-            & [{:as params, :keys [patch-plan-file-name]
+            & [{:as _params, :keys [patch-plan-file-name]
                 :or {patch-plan-file-name (str "update-plan-" (ftr.utils.core/gen-uuid))}}]]
   (let [tag-index-path (format "%s/%s/tags/%s.ndjson.gz" ftr-path module tag)
         tag-index (ftr.utils.core/parse-ndjson-gz tag-index-path)
@@ -33,7 +33,7 @@
 
 
 (defn tag-index->tag-index-map [tag-index]
-  (reduce (fn [acc {:as tag-index-entry, :keys [hash name]}]
+  (reduce (fn [acc {:as _tag-index-entry, :keys [hash name]}]
             (assoc acc name hash)) {} tag-index))
 
 

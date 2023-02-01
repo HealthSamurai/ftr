@@ -78,7 +78,7 @@
                                 {:command "remove"
                                  :description "Removes key from config"
                                  :runs (fn [{:keys [config]
-                                             [k v] :_arguments}]
+                                             [k _v] :_arguments}]
                                          (let [{:keys  [cfg cfg-path]
                                                 ::keys [error]} (get-ftr-cfg config)]
                                            (if-not error
@@ -86,8 +86,7 @@
                                              (println (str"\u001B[31m" error "\u001B[0m" )))))}
                                 {:command "view"
                                  :description "View config content"
-                                 :runs (fn [{:keys [config]
-                                             [k v] :_arguments}]
+                                 :runs (fn [{:keys [config]}]
                                          (let [{:keys  [cfg cfg-path]
                                                 ::keys [error]} (get-ftr-cfg config)]
                                            (if-not error

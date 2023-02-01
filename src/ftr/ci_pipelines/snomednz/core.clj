@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.pprint]
             [clojure.java.shell :as shell]
-            [ftr.ci-pipelines.snomed.db])
-  (:import java.io.File))
+            [ftr.ci-pipelines.snomed.db]))
 
 
 (defmethod u/*fn ::build-ftr-cfg
