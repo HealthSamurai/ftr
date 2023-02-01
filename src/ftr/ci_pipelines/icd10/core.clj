@@ -6,8 +6,8 @@
             [ftr.core]
             [ftr.utils.unifn.core :as u]
             [ftr.logger.core]
-            [clojure.java.shell :as shell]
-            [clojure.pprint]))
+            [clojure.pprint]
+            [ftr.ci-pipelines.utils]))
 
 
 (defmethod u/*fn ::download-latest-icd10!
@@ -69,37 +69,7 @@
                                            :description "This value set includes all ICD-10-CM codes."}}}})
 
 
-(defmethod u/*fn ::download-previous-icd-10-ftr-version!
-  [{:as _ctx, :keys [gs-object-url ftr-path]}]
-  (when gs-object-url
-    (let [{:as _execution-result
-           :keys [exit err]}
-          (shell/sh "gsutil" "cp" "-r" gs-object-url ftr-path)]
-      (when-not (= exit 0)
-        {::u/status :error
-         ::u/message err}))))
-
-
-(defmethod u/*fn ::upload-to-gcp-bucket
-  [{:as _ctx,
-    :keys [gs-ftr-object-url],
-    {:keys [ftr-path module]} :cfg}]
-  (when gs-ftr-object-url
-    (let [{:as _execution-result
-           :keys [exit err]}
-          (shell/sh "gsutil" "rsync" "-r"
-                    (str ftr-path \/ module)
-                    (str gs-ftr-object-url \/ module))]
-      (when-not (= exit 0)
-        {::u/status :error
-         ::u/message err}))))
-
-
-(defn get-zen-fhir-version! []
-  (str/trim (:out (shell/sh "git" "describe" "--tags" "--abbrev=0" :dir "zen.fhir"))))
-
-
-(defmethod u/*fn ::generate-icd-10-cm-zen-package
+(defmethod u/*fn ::generate-icd10-cm-zen-package
   [{:as _ctx,
     :keys [working-dir-path release-version]}]
   (when working-dir-path
@@ -112,7 +82,7 @@
                                                 'value-set
                                                 {:zen/tags #{'zen.fhir/value-set}
                                                  :zen/desc "This value set includes all ICD-10-CM codes."
-                                                 :zen.fhir/version (get-zen-fhir-version!)
+                                                 :zen.fhir/version (ftr.ci-pipelines.utils/get-zen-fhir-version!)
                                                  :fhir/code-systems
                                                  #{{:fhir/url "http://hl7.org/fhir/sid/icd-10"
                                                     :zen.fhir/content :bundled}}
@@ -126,24 +96,6 @@
                                                   :tag "prod"}}})))))
 
 
-(defmethod u/*fn ::push-zen-package
-  [{:as _ctx,
-    :keys [working-dir-path]}]
-  (when working-dir-path
-    (loop [commands [["git" "add" "--all" :dir working-dir-path]
-                     ["git" "commit" "-m" "Update zen package" :dir working-dir-path]
-                     ["git" "push" "-u" "origin" "main" :dir working-dir-path]]]
-      (when-not (nil? commands)
-        (let [{:as _executed-command,
-               :keys [exit err]}
-              (apply shell/sh (first commands))]
-          (if (or (= exit 0)
-                  (not (seq err)))
-            (recur (next commands))
-            {::u/status :error
-             ::u/message err}))))))
-
-
 (def config-defaults
   {:download-dest
    "/tmp/ftr/ci_pipelines/icd10"
@@ -155,12 +107,12 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
-    (u/*apply [::download-previous-icd-10-ftr-version!
+    (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                ::download-latest-icd10!
                ::unpack-downloaded-icd10!
                ::build-ftr-cfg
                :ftr.core/apply-cfg
-               ::upload-to-gcp-bucket
-               ::generate-icd-10-cm-zen-package
-               ::push-zen-package]
+               :ftr.ci-pipelines.utils/upload-to-gcp-bucket
+               ::generate-icd10-cm-zen-package
+               :ftr.ci-pipelines.utils/push-zen-package]
               cfg)))
