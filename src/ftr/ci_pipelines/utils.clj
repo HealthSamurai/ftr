@@ -73,26 +73,22 @@
 (defn- send-telegram-msg!
   [bot-token chat-id msg]
   (let [url (str "https://api.telegram.org/bot" bot-token "/sendMessage")]
-    (http/post url
-               {:headers {"content-type" "application/json"}
-                :body (json/generate-string
-                       {:chat_id chat-id
-                        :text msg
-                        :disable_notification true
-                        :parse_mode "HTML"})})))
+    (clojure.pprint/pprint @(http/post url
+                                       {:headers {"content-type" "application/json"}
+                                        :body (json/generate-string
+                                                {:chat_id chat-id
+                                                 :text msg
+                                                 :disable_notification true
+                                                 :parse_mode "HTML"})}))))
 
 
 (defmethod u/*fn ::send-tg-notification
   [{:as ctx,
-
     :keys
-    [::u/status
-     patch-generation-result
+    [patch-generation-result
      tg-bot-token tg-channel-id]
-
     {:keys [module]} :cfg}]
   (let [errors?             (= :error (::u/status ctx))
-        patch-created?      (:patch-created? patch-generation-result)
         results-details-msg (generate-patch-details-html errors? patch-generation-result)
         results-emoji       (if errors? "❌" "✅")
         final-msg           (format "Module: <b>%s</b> %s\n\n%s"
