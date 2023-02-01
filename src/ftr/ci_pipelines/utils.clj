@@ -91,9 +91,9 @@
   (let [errors?             (= :error (::u/status ctx))
         results-details-msg (generate-patch-details-html errors? patch-generation-result)
         results-emoji       (if errors? "❌" "✅")
-        final-msg           (format "Module: <b>%s</b> %s\n\n%s"
-                                    (str/upper-case module)
+        final-msg           (format "%s Module: <b>%s</b>\n\n%s"
                                     results-emoji
+                                    (str/upper-case module)
                                     results-details-msg)]
     (send-telegram-msg! tg-bot-token
                         tg-channel-id
