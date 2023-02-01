@@ -114,5 +114,6 @@
                :ftr.core/apply-cfg
                :ftr.ci-pipelines.utils/upload-to-gcp-bucket
                ::generate-icd10-cm-zen-package
-               :ftr.ci-pipelines.utils/push-zen-package]
+               :ftr.ci-pipelines.utils/push-zen-package
+               :ftr.ci-pipelines.utils/send-tg-notification]
               cfg)))

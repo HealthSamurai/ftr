@@ -185,6 +185,7 @@
                      :ftr.core/apply-cfg
                      :ftr.ci-pipelines.utils/upload-to-gcp-bucket
                      ::generate-snomed-zen-package
-                     :ftr.ci-pipelines.utils/push-zen-package]
+                     :ftr.ci-pipelines.utils/push-zen-package
+                     :ftr.ci-pipelines.utils/send-tg-notification]
                     cfg)
       (clojure.pprint/pprint))))
