@@ -24,7 +24,7 @@
     (doseq [ftr ftr-configs]
       (ftr.core/apply-cfg (cond-> {:cfg ftr}
                             enable-logging?
-                            (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))))))
+                            (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))))))
 
 
 (defn read-ndjson-line! [^java.io.BufferedReader buffered-reader]

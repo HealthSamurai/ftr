@@ -82,7 +82,7 @@
 
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
-                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
+                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
     (doto (u/*apply [#_::build-ftr-cfg
                      #_:ftr.core/apply-cfg
                      #_:ftr.ci-pipelines.snomed.core/upload-to-gcp-bucket

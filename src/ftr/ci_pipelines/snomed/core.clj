@@ -177,7 +177,7 @@
 
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
-                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
+                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
     (doto (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                      ::get-latest-snomed-info!
                      ::write-snomed-snapshot-terminology-folder!

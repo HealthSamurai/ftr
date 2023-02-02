@@ -106,7 +106,7 @@
 
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
-                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/dispatch-logger]))]
+                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
     (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                ::download-latest-icd10!
                ::unpack-downloaded-icd10!
