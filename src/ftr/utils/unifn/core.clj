@@ -51,6 +51,14 @@
      (assoc ret# :ftr.utils.unifn.core/eval-time-in-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0))))
 
 
+(defmacro maybe?-capture-out [expr opts]
+  `(if (get ~opts ::capture-out?)
+     (let [s# (new java.io.StringWriter)
+           ret# (binding [*out* s#] ~expr)]
+       (assoc ret# ::out (str s#)))
+     ~expr))
+
+
 (defn *apply-impl [{st ::status inter ::intercept f-name ::fn tracers ::tracers :as arg}]
   (if (and (not (= inter :all))
            (contains? #{:error :stop} st))
@@ -68,13 +76,15 @@
              (doseq [t tracers] (*apply t {:event ev :arg arg})))
            (merge arg ev))
         (let [patch
-              (evaluation-time
-                (if (::safe? arg)
-                  (try (*fn arg)
-                       (catch Exception e
-                         {::status :error
-                          ::message (with-out-str (stacktrace/print-stack-trace e))}))
-                  (*fn arg)))
+              (maybe?-capture-out
+                (evaluation-time
+                  (if (::safe? arg)
+                    (try (*fn arg)
+                         (catch Exception e
+                           {::status :error
+                            ::message (with-out-str (stacktrace/print-stack-trace e))}))
+                    (*fn arg)))
+                arg)
                patch (cond (map? patch) patch (nil? patch) {} :else {::value patch})
                patch (if-let [fx (:fx patch)]
                        (reduce (fn [res [k v]]
