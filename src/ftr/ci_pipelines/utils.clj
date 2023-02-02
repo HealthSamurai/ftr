@@ -86,15 +86,17 @@
   [{:as ctx,
     :keys
     [patch-generation-result
-     tg-bot-token tg-channel-id]
+     tg-bot-token tg-channel-id
+     ci-run-url]
     {:keys [module]} :cfg}]
   (let [errors?             (= :error (::u/status ctx))
         results-details-msg (generate-patch-details-html errors? patch-generation-result)
         results-emoji       (if errors? "❌" "✅")
-        final-msg           (format "%s Module: <b>%s</b>\n\n%s"
+        final-msg           (format "%s Module: <b>%s</b>\n\n%s\n\nSee <a href=\"%s\">CI run</a>."
                                     results-emoji
                                     (str/upper-case module)
-                                    results-details-msg)]
+                                    results-details-msg
+                                    ci-run-url)]
     (send-telegram-msg! tg-bot-token
                         tg-channel-id
                         final-msg)
