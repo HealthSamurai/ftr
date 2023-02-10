@@ -84,9 +84,7 @@
           "ndjson" (->> source-url
                         (io/reader)
                         (line-seq)
-                        (map (fn [line]
-                               (doto (cheshire.core/parse-string line keyword)
-                                 (clojure.pprint/pprint))))))
+                        (map (fn [line] (cheshire.core/parse-string line keyword)))))
 
         deserialized-objects-seq
         (process-deserialized-objects

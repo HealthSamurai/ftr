@@ -392,16 +392,17 @@
           m)))
 
 
-(defn process-concepts [ztx]
+(defn process-concepts [ztx {:keys [postpone-vs-expansion]}]
   (collect-concepts ztx)
-  (ftr.extraction.ig.value-set-expand/denormalize-value-sets-into-concepts ztx)
-  (swap! ztx update-in [:fhir/inter "Concept"]
-         (fn [codesystems-concepts]
-           (update-vals (flatten-nested-map
-                          codesystems-concepts
-                          2
-                          (fn [[system code]] (str system \- code)))
-                        #(process-concept ztx %)))))
+  (when-not postpone-vs-expansion
+    (ftr.extraction.ig.value-set-expand/denormalize-value-sets-into-concepts ztx)
+    (swap! ztx update-in [:fhir/inter "Concept"]
+           (fn [codesystems-concepts]
+             (update-vals (flatten-nested-map
+                            codesystems-concepts
+                            2
+                            (fn [[system code]] (str system \- code)))
+                          #(process-concept ztx %))))))
 
 
 (defn process-resource-type-dispatch [rt _ztx & [_params]] rt)
@@ -410,9 +411,9 @@
 (defmulti process-resource-type #'process-resource-type-dispatch)
 
 
-(defmethod process-resource-type :Concept [_ ztx & [{:as _params, :keys [skip-concept-processing]}]]
+(defmethod process-resource-type :Concept [_ ztx & [{:as params, :keys [skip-concept-processing]}]]
   (when-not skip-concept-processing
-    (process-concepts ztx)))
+    (process-concepts ztx params)))
 
 
 (defn process-resources [ztx & [{:as params, :keys [types]}]]
@@ -428,7 +429,9 @@
 
 
 (defmethod u/*fn ::load-terminology [{:as _ctx, :keys [cfg ztx]}]
-  (load-all ztx nil (merge cfg {:types #{:Concept}}))
+  (load-all ztx nil (merge cfg (cond-> {:types #{:Concept}}
+                                 (get cfg :supplements)
+                                 (assoc :postpone-vs-expansion true))))
   {})
 
 
@@ -527,11 +530,37 @@
                         concepts) nil)}))
 
 
-(defn import-from-cfg [cfg]
-  (::result (u/*apply [::load-terminology
-                       ::compose-tfs]
-                      {:ztx (zen-core/new-context {})
-                       :cfg cfg})))
+(defmethod u/*fn ::resolve-supplements [{:keys [ztx cfg]}]
+  {:ftr.extraction.ftr/supplementary-valuesets
+   (reduce (fn [supplementary-valuesets,
+                {:keys [source-url module tag]}]
+             (let [pipeline-cfg (assoc cfg
+                                       :ztx ztx
+                                       :source-url source-url
+                                       :module module
+                                       :target-tag tag)
+                   sup-vss (-> (u/*apply [:ftr.extraction.ftr/ftr->fhir-inter
+                                          :ftr.extraction.ftr/get-supplementary-valuesets
+                                          :ftr.extraction.ftr/enrich-existing-fhir-inter]
+                                         pipeline-cfg)
+                               (get :ftr.extraction.ftr/supplementary-valuesets))]
+               (into supplementary-valuesets sup-vss)))
+           #{}
+           (get cfg :supplements))})
 
 
+(defmethod u/*fn ::remove-supplementary-value-sets [{:as _ctx,
+                                                     ::keys [result]
+                                                     supp-vss :ftr.extraction.ftr/supplementary-valuesets}]
+  ^:non-deep-merge {::result (apply dissoc result supp-vss)})
 
+
+(defn import-from-cfg [{:as cfg, :keys [supplements]}]
+  (let [pipeline (filterv identity [::load-terminology
+                                    (when supplements ::resolve-supplements)
+                                    (when supplements :ftr.extraction.ftr/expand-valuesets)
+                                    ::compose-tfs
+                                    (when supplements ::remove-supplementary-value-sets)])]
+    (::result (u/*apply pipeline
+                        {:ztx (zen-core/new-context {})
+                         :cfg cfg}))))

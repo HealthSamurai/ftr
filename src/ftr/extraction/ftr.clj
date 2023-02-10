@@ -3,8 +3,7 @@
             [ftr.utils.core]
             [zen.core]
             [ftr.extraction.ig.value-set-expand]
-            [ftr.extraction.ig.core]
-            ))
+            [ftr.extraction.ig.core]))
 
 
 (defn prepare-concept [{:as concept,
@@ -62,12 +61,16 @@
                  tag)})
 
 
-(defmethod u/*fn ::load-terminology [{:as _ctx, :keys [target-tag
-                                                       source-url
-                                                       target-tags
-                                                       value-set]}]
+(defmethod u/*fn ::ftr->fhir-inter [{:as _ctx, :keys [target-tag
+                                                      source-url
+                                                      target-tags
+                                                      module]}]
   (let [tag-index-paths (if (and target-tag source-url)
-                          [(construct-tag-index-info source-url target-tag)]
+                          [(construct-tag-index-info
+                             (if module
+                               (str source-url \/ module)
+                               source-url)
+                             target-tag)]
                           (map (fn [[url tag]] (construct-tag-index-info url tag))
                                target-tags))
         tag-indexes (map (fn [{:keys [path src-url]}]
@@ -77,13 +80,35 @@
                          tag-index-paths)
         tf-paths (map (fn [{:as   _tag-index-row,
                             :keys [hash name src-url]}]
-                           (let [vs-name (ftr.utils.core/separate-vs&module-names name)
-                                 tf-path (format "%s/vs/%s/tf.%s.ndjson.gz"
-                                                 src-url vs-name hash)]
+                        (let [vs-name (ftr.utils.core/separate-vs&module-names name)
+                              tf-path (format "%s/vs/%s/tf.%s.ndjson.gz"
+                                              src-url vs-name hash)]
                           tf-path))
                       (flatten tag-indexes))]
-    {:ztx (zen.core/new-context (-> (ftr->fhir-inter tf-paths)
-                                    (assoc-in [:fhir/inter "ValueSet" (:url value-set)] (prepare-valueset value-set))))}))
+    {::fhir-inter (ftr->fhir-inter tf-paths)}))
+
+
+(defmethod u/*fn ::create-ztx-with-fhir-inter [{:as _ctx, ::keys [fhir-inter] :keys [value-set]}]
+  {:ztx (zen.core/new-context
+          (-> fhir-inter
+              (assoc-in [:fhir/inter "ValueSet" (:url value-set)] (prepare-valueset value-set))))})
+
+
+(defmethod u/*fn ::get-supplementary-valuesets [{:as _ctx, ::keys [fhir-inter]}]
+  {::supplementary-valuesets (-> fhir-inter
+                                 (get-in [:fhir/inter "ValueSet"])
+                                 keys
+                                 set)})
+
+
+(defmethod u/*fn ::enrich-existing-fhir-inter [{:as _ctx, ::keys [fhir-inter] :keys [ztx]}]
+  (let [{{:strs [CodeSystem ValueSet Concept]} :fhir/inter} fhir-inter]
+    (swap! ztx (fn [cont]
+                 (-> cont
+                     (update-in [:fhir/inter "CodeSystem"] merge CodeSystem)
+                     (update-in [:fhir/inter "ValueSet"] merge ValueSet)
+                     (update-in [:fhir/inter "Concept"] merge Concept))))
+    {}))
 
 
 (defmethod u/*fn ::expand-valuesets [{:as _ctx, :keys [ztx]}]
@@ -100,7 +125,8 @@
 
 
 (defn import-from-cfg [{:as cfg, :keys [value-set]}]
-  (-> [::load-terminology
+  (-> [::ftr->fhir-inter
+       ::create-ztx-with-fhir-inter
        ::expand-valuesets
        :ftr.extraction.ig.core/compose-tfs]
       (u/*apply cfg)

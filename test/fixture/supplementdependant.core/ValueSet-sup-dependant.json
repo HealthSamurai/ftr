@@ -1,0 +1,23 @@
+{
+  "compose": {
+    "include": [
+      {
+        "valueSet": [
+          "http://snomed.info/sct"
+        ],
+        "filter": [
+          {
+            "op": "is-a",
+            "property": "concept",
+            "value": "194828000"
+          }
+        ]
+      }
+    ]
+  },
+  "id": "sup-dependant",
+  "name": "sup-dependant",
+  "resourceType": "ValueSet",
+  "status": "active",
+  "url": "http://sup-dependant.info"
+}

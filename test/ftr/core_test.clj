@@ -1564,4 +1564,163 @@
           {:code "102587001" :display "Acute chest pain (finding)"}
           {:code "279035001" :display "Acute thoracic back pain (finding)"}
           {:code "444227004" :display "Acute postthoracotomy pain syndrome (finding)"}
-          nil?])))))
+          nil?]))))
+
+  )
+
+
+(t/deftest supplement-ftr-test
+  (def soa-ndjson-test-env-cfg
+    {:ftr-path   "/tmp/soa-ndjson/ftr"
+     :soa-source "test/fixture/ndjson/snomed-subset.ndjson"})
+
+  (def soa-ndjson-user-cfg {:module            "microsnomed"
+                            :source-url        (:soa-source soa-ndjson-test-env-cfg)
+                            :ftr-path          (:ftr-path soa-ndjson-test-env-cfg)
+                            :tag               "prod"
+                            :source-type       :serialized-objects-array
+                            :extractor-options {:format      "ndjson"
+                                                :mapping     {:concept {:code      {:path [:code]}
+                                                                        :display   {:path [:display]}
+                                                                        :ancestors {:path [:ancestors]}}}
+                                                :code-system {:description  "SNOMEDCT US tiny subset"
+                                                              :content      "complete"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "CodeSystem"
+                                                              :status       "active"
+                                                              :id           "snomedct"
+                                                              :valueSet     "http://snomed.info/sct"
+                                                              :url          "http://snomed.info/sct"}
+                                                :value-set   {:compose      {:include [{:system "http://snomed.info/sct"}]}
+                                                              :description  "SNOMEDCT US tiny subset"
+                                                              :id           "snomedct"
+                                                              :name         "SNOMEDCT"
+                                                              :resourceType "ValueSet"
+                                                              :status       "active"
+                                                              :url          "http://snomed.info/sct"}}})
+
+  (def sup-dep-test-env-cfg {:source-url "test/fixture/supplementdependant.core/"
+                             :ftr-path "/tmp/supdep/ftr"})
+
+  (def sup-dep-user-cfg {:module            "supplementdependant"
+                         :source-url        (:source-url sup-dep-test-env-cfg)
+                         :ftr-path          (:ftr-path sup-dep-test-env-cfg)
+                         :tag               "prod"
+                         :source-type       :ig
+                         :extractor-options {:supplements [{:source-url (:ftr-path soa-ndjson-test-env-cfg) :module "microsnomed" :tag "prod"}]}})
+
+  (t/testing "Clean up test-env"
+    (ftr.utils.core/rmrf (:ftr-path soa-ndjson-test-env-cfg)))
+
+  (t/testing "Generating supplement ftr"
+    (sut/apply-cfg {:cfg soa-ndjson-user-cfg}))
+
+  (t/testing "Generating supplement-dependant ftr"
+    (let [{:as user-cfg, :keys [ftr-path]}
+          sup-dep-user-cfg
+
+          value-set-name "http:--sup-dependant.info"
+
+          _
+          (sut/apply-cfg {:cfg user-cfg})
+
+          ftr-tree
+          (get-in (fs-tree->tree-map ftr-path) (str/split (subs ftr-path 1) #"/"))]
+
+      (t/testing "sees generated repository layout, tf sha is correct"
+        (matcho/match
+          ftr-tree
+          {"supplementdependant"
+           {"vs"
+            {"http:--snomed.info-sct" nil?
+             "http:--sup-dependant.info"
+             {"tag.prod.ndjson.gz" {}
+              "tf.a1e056f1bc60caa8bceb1ec5a20aa4e496628e76200da2a48dc5072bfe31ffa5.ndjson.gz"
+              {}}}
+            "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}}))
+
+      (t/testing "generated tag index file contains only one valueset - http://sup-dependant.info"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/tags/%s.ndjson.gz"
+                                                  (:ftr-path sup-dep-test-env-cfg)
+                                                  (:module sup-dep-user-cfg)
+                                                  (:tag sup-dep-user-cfg)))
+          [{:hash "a1e056f1bc60caa8bceb1ec5a20aa4e496628e76200da2a48dc5072bfe31ffa5"
+            :name "supplementdependant.http:--sup-dependant.info"}
+           nil?]))
+
+      (t/testing "sees generated tf file"
+        (matcho/match
+          (ftr.utils.core/parse-ndjson-gz (format "%s/%s/vs/%s/tf.a1e056f1bc60caa8bceb1ec5a20aa4e496628e76200da2a48dc5072bfe31ffa5.ndjson.gz"
+                                                  (:ftr-path sup-dep-test-env-cfg)
+                                                  (:module sup-dep-user-cfg)
+                                                  value-set-name))
+          [{:resourceType "CodeSystem"}
+           {:resourceType "ValueSet"}
+           {:code "15960061000119102"
+            :display
+            "Unstable angina co-occurrent and due to coronary arteriosclerosis (disorder)"}
+           {:code "15960141000119102"
+            :display
+            "Angina co-occurrent and due to coronary arteriosclerosis (disorder)"}
+           {:code "15960341000119104"
+            :display
+            "Unstable angina due to arteriosclerosis of coronary artery bypass graft of transplanted heart (disorder)"}
+           {:code "15960381000119109"
+            :display
+            "Angina co-occurrent and due to arteriosclerosis of coronary artery bypass graft (disorder)"}
+           {:code "15960461000119105"
+            :display
+            "Unstable angina due to arteriosclerosis of autologous arterial coronary artery bypass graft (disorder)"}
+           {:code "15960541000119107"
+            :display
+            "Unstable angina due to arteriosclerosis of autologous vein coronary artery bypass graft (disorder)"}
+           {:code "15960581000119102"
+            :display
+            "Angina co-occurrent and due to arteriosclerosis of autologous vein coronary artery bypass graft (disorder)"}
+           {:code "15960661000119107"
+            :display
+            "Unstable angina co-occurrent and due to arteriosclerosis of coronary artery bypass graft (disorder)"}
+           {:code "16754391000119100"
+            :display "Stable angina due to coronary arteriosclerosis (disorder)"}
+           {:code "19057007" :display "Status anginosus (disorder)"}
+           {:code "194823009" :display "Acute coronary insufficiency (disorder)"}
+           {:code "194828000" :display "Angina (disorder)"}
+           {:code "21470009" :display "Syncope anginosa (disorder)"}
+           {:code "233819005" :display "Stable angina (disorder)"}
+           {:code "233821000" :display "New onset angina (disorder)"}
+           {:code "300995000" :display "Exercise-induced angina (disorder)"}
+           {:code "314116003" :display "Post infarct angina (disorder)"}
+           {:code "315025001" :display "Refractory angina (disorder)"}
+           {:code "35928006" :display "Nocturnal angina (disorder)"}
+           {:code "371806006" :display "Progressive angina (disorder)"}
+           {:code "371807002" :display "Atypical angina (disorder)"}
+           {:code "371808007"
+            :display
+            "Recurrent angina status post percutaneous transluminal coronary angioplasty (disorder)"}
+           {:code "371809004"
+            :display
+            "Recurrent angina following placement of coronary artery stent (disorder)"}
+           {:code "371810009"
+            :display
+            "Recurrent angina status post coronary artery bypass graft (disorder)"}
+           {:code "371811008"
+            :display "Recurrent angina status post rotational atherectomy (disorder)"}
+           {:code "371812001"
+            :display
+            "Recurrent angina status post directional coronary atherectomy (disorder)"}
+           {:code "41334000" :display "Angina, class II (disorder)"}
+           {:code "429559004" :display "Typical angina (disorder)"}
+           {:code "4557003" :display "Preinfarction syndrome (disorder)"}
+           {:code "59021001" :display "Angina decubitus (disorder)"}
+           {:code "61490001" :display "Angina, class I (disorder)"}
+           {:code "791000119109"
+            :display "Angina due to type 2 diabetes mellitus (disorder)"}
+           {:code "85284003" :display "Angina, class III (disorder)"}
+           {:code "87343002" :display "Prinzmetal angina (disorder)"}
+           {:code "89323001" :display "Angina, class IV (disorder)"}
+           nil?]))))
+
+
+
+  )
