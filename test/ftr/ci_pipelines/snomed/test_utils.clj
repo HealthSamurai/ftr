@@ -1,10 +1,6 @@
 (ns ftr.ci-pipelines.snomed.test-utils
   (:require  [clojure.test :as t]
              [test-utils]
-             [org.httpkit.server]
-             [ring.middleware.params]
-             [ring.middleware.keyword-params]
-             [ring.util.response]
              [hiccup.page]
              [clojure.java.io :as io]))
 

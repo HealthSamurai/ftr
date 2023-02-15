@@ -2,7 +2,10 @@
   (:require [clojure.java.shell :as shell]
             [clojure.string :as str]
             [zen.package]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [org.httpkit.server]
+            [ring.middleware.params]
+            [ring.middleware.keyword-params])
   (:import java.io.File))
 
 
