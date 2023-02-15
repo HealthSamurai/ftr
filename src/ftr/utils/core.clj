@@ -72,8 +72,16 @@
       (run! io/delete-file (reverse (file-seq file))))))
 
 
-(defn parse-ndjson-gz [path]
+(defn normalize-url ^String [^String url]
+  (-> url
+      (java.net.URI.)
+      (.normalize)
+      (.toString)))
+
+
+(defn parse-ndjson-gz [^String path]
   (with-open [rdr (-> path
+                      (normalize-url)
                       (io/input-stream)
                       (java.util.zip.GZIPInputStream.)
                       (io/reader))]
@@ -124,10 +132,11 @@
 
 
 (defn open-ndjson-gz-reader ^ftr.utils.core.NdjsonReader
-  [input]
+  [^String path]
   (let [^java.io.BufferedReader
         ndjson-gz-reader
-        (-> input
+        (-> path
+            (normalize-url)
             (io/input-stream)
             (java.util.zip.GZIPInputStream.)
             (io/reader))]
@@ -157,8 +166,9 @@
 
 (defn open-gz-reader
   ^java.io.BufferedReader
-  [input]
-  (-> input
+  [^String path]
+  (-> path
+      (normalize-url)
       (io/input-stream)
       (java.util.zip.GZIPInputStream.)
       (io/reader)))
