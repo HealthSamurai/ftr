@@ -6,7 +6,7 @@
             [clojure.test :as t]
             [matcho.core :as matcho]
             [ftr.utils.core]
-            [test-utils]))
+            [ftr.test-utils :as test-utils]))
 
 
 (defn fs-tree->tree-map [path]

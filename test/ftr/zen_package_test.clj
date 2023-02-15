@@ -5,7 +5,7 @@
             [zen.package]
             [matcho.core :as matcho]
             [ftr.utils.core]
-            [test-utils]
+            [ftr.test-utils :as test-utils]
             [ftr.zen-package]
             [cheshire.core]
             [zen.core]

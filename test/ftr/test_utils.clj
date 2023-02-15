@@ -1,4 +1,4 @@
-(ns test-utils
+(ns ftr.test-utils
   (:require [clojure.java.shell :as shell]
             [clojure.string :as str]
             [zen.package]

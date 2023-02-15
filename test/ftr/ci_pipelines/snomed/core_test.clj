@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [ftr.utils.unifn.core :as u]
             [ftr.utils.core]
-            [test-utils]
+            [ftr.test-utils :as test-utils]
             [ftr.ci-pipelines.snomed.test-utils :as snomed-test-utils]))
 
 

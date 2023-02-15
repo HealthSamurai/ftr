@@ -1,6 +1,6 @@
 (ns ftr.ci-pipelines.snomed.test-utils
   (:require  [clojure.test :as t]
-             [test-utils]
+             [ftr.test-utils :as test-utils]
              [hiccup.page]
              [clojure.java.io :as io]))
 
