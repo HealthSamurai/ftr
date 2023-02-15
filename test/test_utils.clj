@@ -131,3 +131,20 @@
           (.putNextEntry zip-stream zip-entry)
           (io/copy "" zip-stream)
           (.closeEntry zip-stream))))))
+
+
+;;;;; mock server utils ;;;;;
+
+(def mock-server-opts {:port 7654})
+
+
+(defn start-mock-server [handler & [opts]]
+  (org.httpkit.server/run-server (-> handler
+                                     ring.middleware.keyword-params/wrap-keyword-params
+                                     ring.middleware.params/wrap-params)
+                                 (merge mock-server-opts opts)))
+
+
+(defn mock-server-url [& [port]]
+  (format "http://localhost:%s"
+          (or port (:port mock-server-opts))))

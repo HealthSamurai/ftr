@@ -1,5 +1,6 @@
 (ns ftr.ci-pipelines.snomed.test-utils
   (:require  [clojure.test :as t]
+             [test-utils]
              [org.httpkit.server]
              [ring.middleware.params]
              [ring.middleware.keyword-params]
@@ -106,17 +107,12 @@
 
     {:status 404}))
 
-(def mock-server-opts {:port 7654})
 
 (defn start-mock-server [& [opts]]
-  (org.httpkit.server/run-server (-> #'mock-handler
-                                     ring.middleware.keyword-params/wrap-keyword-params
-                                     ring.middleware.params/wrap-params)
-                                 (merge mock-server-opts opts)))
+  (test-utils/start-mock-server #'mock-handler opts))
 
-(defn mock-server-url [& [port]]
-  (format "http://localhost:%s"
-          (or port (:port mock-server-opts))))
+
+(def mock-server-url test-utils/mock-server-url)
 
 
 (comment
