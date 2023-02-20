@@ -181,12 +181,23 @@
    {:zen.fhir/resource (apply dissoc res :concept loader-keys)}))
 
 
-#_"NOTE: We know that hl7.fhir.r4.core ValueSet resources are clashing by url with hl7.terminology.r4 ValueSets resources.
-   Currently we always choose hl7.terminology.r4 ValueSets over those from hl7.fhir.r4.core.
-   We assume that there are no other ValueSets clashing.
-   If we find such a clash, we throw an exception to make it noticeable."
-(def package-priority
+#_"NOTE: We know that `hl7.fhir.r4.core` `ValueSet` resources are clashing by url with `hl7.terminology.r4` `ValueSet`s resources.
+   Currently we always choose `hl7.terminology.r4` `ValueSet`s over those from `hl7.fhir.r4.core`."
+(def terminology-resources-priority
   {:hl7.terminology.r4 #{:hl7.fhir.r4.core :hl7.fhir.us.carin-bb :hl7.fhir.us.davinci-pdex}})
+
+
+#_"NOTE: We know that there are clashes between some of the national
+   New Zealand IG packages. Currently we always choose
+   `fhir.org.nz.ig.base` over `hl7.org.nz.fhir.ig.mdr` because we
+   consider it inappropriate to override base (on the national level)
+   resources."
+(def struct-defs-priority
+  {:fhir.org.nz.ig.base #{:hl7.org.nz.fhir.ig.mdr}})
+
+
+;; We assume that there are no other resources clashing. If we find
+;; such a clash, we throw an exception to make it noticeable.
 
 
 (defn clash-ex-data [code old new]
@@ -212,7 +223,7 @@
   (throw (Exception. (str (clash-ex-data ::no-resolve-clash-rules-defined old new)))))
 
 
-(defn get-package-priority [_rt priority-map old new]
+(defn get-package-priority [priority-map old new]
   (let [old-package  (keyword (get-in old [:zen/loader :package :name]))
         new-package  (keyword (get-in new [:zen/loader :package :name]))]
     {:old (get-in priority-map [old-package new-package])
@@ -228,7 +239,7 @@
       (pos? compare-res)  ::skip-lower-priority)))
 
 
-(defmethod resolve-clash :CodeSystem [rt old new]
+(defmethod resolve-clash :CodeSystem [_rt old new]
   (let [status-weight  {:active  0
                         :draft   -10
                         :unknown -20
@@ -240,7 +251,7 @@
                         :not-present -40}
 
         {old-priority :old, new-priority :new}
-        (get-package-priority rt package-priority old new)
+        (get-package-priority terminology-resources-priority old new)
 
         result (decide-on-clash (juxt #(get status-weight (keyword (:status %)))
                                       #(get content-weight (keyword (:content %)))
@@ -255,22 +266,36 @@
       result)))
 
 
-(defmethod resolve-clash :ValueSet [rt old new]
-  (let [{old-priority :old, new-priority :new} (get-package-priority rt package-priority old new)]
-    (decide-on-clash (juxt :priority)
+(defn resolve-vs-or-sd-clash
+  "Choose between `old` and `new` resources when there is a clash.
+  `old` and `new` must be of the same resource type.
+
+  `vs` refers to `ValueSet` FHIR resource. `sd` refers to
+  `StructureDefinition` FHIR resource."
+  [old new priority-map]
+  (let [{old-priority :old, new-priority :new}
+        (get-package-priority priority-map old new)]
+    (decide-on-clash :priority
                      (assoc old :priority old-priority)
                      (assoc new :priority new-priority))))
 
 
-(defn check-priority [inter-old inter-new]
-  (let [rt-kw (keyword (:resourceType inter-old))]
-    (if (nil? inter-old)
-      ::no-clash
-      (resolve-clash rt-kw inter-old inter-new))))
+(defmethod resolve-clash :ValueSet [_rt old new]
+  (resolve-vs-or-sd-clash old new terminology-resources-priority))
 
 
-(defn ensure-no-clash [old new]
-  (case (check-priority old new)
+(defmethod resolve-clash :StructureDefinition [_rt old new]
+  (resolve-vs-or-sd-clash old new struct-defs-priority))
+
+
+(defn check-priority [inter-old inter-new res-type]
+  (if (nil? inter-old)
+    ::no-clash
+    (resolve-clash res-type inter-old inter-new)))
+
+
+(defn ensure-no-clash [old new res-type]
+  (case (check-priority old new res-type)
     (::no-clash ::override-with-higher-priority)
     new
 
@@ -295,8 +320,7 @@
                                    {:_source          "zen.fhir"
                                     :zen.fhir/version (:zen.fhir/version @ztx)}
                                    (select-keys res (conj loader-keys :_source)))]
-          (swap! ztx update-in [:fhir/inter rt url] ensure-no-clash processed-res))))))
-
+          (swap! ztx update-in [:fhir/inter rt url] ensure-no-clash processed-res rt))))))
 
 (def load-definiton load-definition)
 
