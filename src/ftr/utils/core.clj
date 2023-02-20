@@ -206,10 +206,3 @@
 
 (defn separate-vs&module-names [module+vs-name]
   (second (str/split module+vs-name #"\." 2)))
-
-
-(defn gunzip [^String input ^String output]
-  (with-open [rdr (-> input
-                      (java.io.FileInputStream.)
-                      (java.util.zip.GZIPInputStream.))]
-    (spit output (slurp rdr))))
