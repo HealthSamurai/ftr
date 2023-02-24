@@ -6,7 +6,8 @@
             [clojure.string :as str]
             [zen.v2-validation]
             [clojure.java.io :as io]
-            [zen.cli])
+            [zen.cli]
+            [taoensso.nippy :as nippy])
   (:import (java.util UUID)))
 
 
@@ -82,9 +83,17 @@
 
 
 (defn index-by-tags [tag-index-paths]
-  (reduce (fn [acc {:keys [tag path ftr-dir module]}]
-            (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
-              (update acc tag ftr.utils.core/deep-merge (make-ftr-index-by-tag-index tag-index ftr-dir module))))
+  (reduce (fn [acc {:keys [tag path ftr-dir module validation-index-path]}]
+            (if validation-index-path
+              (ftr.utils.core/deep-merge-with (fn [a b]
+                                                (cond (and (set? a) (set? b))
+                                                      (into a b)
+
+                                                      :else
+                                                      b))
+                                              acc (nippy/thaw-from-file validation-index-path))
+              (let [tag-index (ftr.utils.core/parse-ndjson-gz path)]
+                (update acc tag ftr.utils.core/deep-merge (make-ftr-index-by-tag-index tag-index ftr-dir module)))))
           {} tag-index-paths))
 
 
@@ -104,9 +113,13 @@
                                  vec
                                  (conj "ftr")
                                  (->> (str/join "/"))))]
-      (-> vs
-          (assoc-in [:ftr :zen/package-name] zen-package-name)
-          (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir)))
+      (cond-> (-> vs
+                  (assoc-in [:ftr :zen/package-name] zen-package-name)
+                  (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir))
+        (get-in vs [:ftr :validation-index])
+        (assoc-in [:ftr :validation-index-path] (str (str/join "/" path-to-package)
+                                                     \/
+                                                     (get-in vs [:ftr :validation-index :file])))))
     vs))
 
 
@@ -128,25 +141,33 @@
 
         tag-index-paths
         (for [[_package-name tag&module-pairs]      ftr-cfgs-grouped-by-package-name
-              {:keys [module tag inferred-ftr-dir]} (->> tag&module-pairs
-                                                         (keep #(not-empty (select-keys % [:tag :module :inferred-ftr-dir])))
-                                                         distinct)
+              {:keys [module tag inferred-ftr-dir validation-index-path]}
+              (->> tag&module-pairs
+                   (keep #(not-empty (select-keys % [:tag :module :inferred-ftr-dir :validation-index-path])))
+                   distinct)
 
               :let  [path (format "%s/%s/tags/%s.ndjson.gz" inferred-ftr-dir module tag)]
               :when (or (.exists (io/file path))
                         (url? path))]
 
-          {:tag     tag
-           :module  module
-           :ftr-dir inferred-ftr-dir
-           :path    path})]
+          (cond-> {:tag     tag
+                   :module  module
+                   :ftr-dir inferred-ftr-dir
+                   :path    path}
+             validation-index-path
+             (assoc :validation-index-path validation-index-path)))]
 
     (swap! ztx assoc :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
                                           :complete? true})))
 
 
+(defn serialize-ftr-index [ztx output-path]
+  (build-complete-ftr-index ztx)
+  (nippy/freeze-to-file output-path (get-in @ztx [:zen.fhir/ftr-index :result])))
+
+
 (defn- enrich-ftr-index-with-tf
-  "Enrich FTR index with terminology file"
+  "Enrich FTR index with terminology file."
   [ftr-index ftr-tag tf-path]
   (let [tf-reader (ftr.utils.core/open-ndjson-gz-reader tf-path)
 

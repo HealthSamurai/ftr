@@ -199,6 +199,19 @@
                    :else (assoc acc k v))))))))
 
 
+(defn deep-merge-with
+  "Recursively merges maps. Applies function f when we have duplicate keys."
+  [f & maps]
+  (letfn [(m [& xs]
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (try (apply merge-with m xs)
+                   (catch Exception e
+                     (println xs)
+                     (throw e)))
+              (apply f xs)))]
+    (reduce m maps)))
+
+
 (defn flip [f]
   (fn [& args]
     (apply f (reverse args))))
