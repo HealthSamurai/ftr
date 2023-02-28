@@ -5,7 +5,6 @@
             [clojure.pprint]
             [zen.core]
             [zen.store]
-            [zen.cli-tools]
             [zen.v2-validation]))
 
 
@@ -24,13 +23,13 @@
        vtx))})
 
 
-(defmethod zen.cli-tools/command 'extended-zen-cli/build-ftr [_ _ opts]
+(defmethod zen.cli/command 'extended-zen-cli/build-ftr [_ _ opts]
   (let [ztx (zen.cli/load-ztx opts)]
     (zen.cli/load-used-namespaces ztx #{})
     (ftr.zen-package/build-ftr ztx {:enable-logging? true})))
 
 
-(defmethod zen.cli-tools/command 'extended-zen-cli/get-ftr-index-info [_ _ opts]
+(defmethod zen.cli/command 'extended-zen-cli/get-ftr-index-info [_ _ opts]
   (ftr.zen-package/get-ftr-index-info opts))
 
 
@@ -47,7 +46,7 @@
        zen.core/validate (fn [ztx symbols data]
                            (-> (ftr.zen-package/validate ztx symbols data)
                                (select-keys [:errors :warnings :effects])))]
-      (clojure.pprint/pprint (zen.cli-tools/cli-main ztx 'extended-zen-cli/config args {:prompt-fn
-                                                                                        #(do (print "ftr> ")
-                                                                                             (flush))}))
+      (clojure.pprint/pprint (zen.cli/cli ztx 'extended-zen-cli/config args {:prompt-fn
+                                                                             #(do (print "ftr> ")
+                                                                                  (flush))}))
       (System/exit 0))))
