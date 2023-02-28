@@ -1,5 +1,8 @@
 .PHONY: test build alias
 
+init:
+	git submodule update --recursive && make up
+
 test:
 	clojure -M:kaocha:test
 
