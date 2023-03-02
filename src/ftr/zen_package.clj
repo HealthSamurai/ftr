@@ -129,10 +129,8 @@
     (instance? java.net.URL url)))
 
 
-(defn build-complete-ftr-index [ztx]
-  (let [syms                (zen.core/get-tag ztx 'zen.fhir/value-set)
-        value-sets          (map #(zen.core/get-symbol ztx %) syms)
-        enriched-value-sets (map enrich-vs value-sets)
+(defn build-ftr-index-by-vs-defs [valueset-definitions]
+  (let [enriched-value-sets (map enrich-vs valueset-definitions)
 
         ftr-cfgs-grouped-by-package-name
         (->> (keep :ftr enriched-value-sets)
@@ -154,16 +152,28 @@
                    :module  module
                    :ftr-dir inferred-ftr-dir
                    :path    path}
-             validation-index-path
-             (assoc :validation-index-path validation-index-path)))]
+            validation-index-path
+            (assoc :validation-index-path validation-index-path)))]
 
-    (swap! ztx assoc :zen.fhir/ftr-index {:result    (index-by-tags tag-index-paths)
+    (index-by-tags tag-index-paths)))
+
+
+(defn build-complete-ftr-index [ztx]
+  (let [syms                (zen.core/get-tag ztx 'zen.fhir/value-set)
+        value-sets          (map #(zen.core/get-symbol ztx %) syms)
+        validation-index (build-ftr-index-by-vs-defs value-sets)]
+
+    (swap! ztx assoc :zen.fhir/ftr-index {:result    validation-index
                                           :complete? true})))
 
 
 (defn serialize-ftr-index [ztx output-path]
   (build-complete-ftr-index ztx)
   (nippy/freeze-to-file output-path (get-in @ztx [:zen.fhir/ftr-index :result])))
+
+
+(defn serialize-ftr-validation-index-by-vs-defs [valueset-definitions output-path]
+  (nippy/freeze-to-file output-path (build-ftr-index-by-vs-defs valueset-definitions)))
 
 
 (defn- enrich-ftr-index-with-tf
