@@ -172,8 +172,8 @@
   (nippy/freeze-to-file output-path (get-in @ztx [:zen.fhir/ftr-index :result])))
 
 
-(defn serialize-ftr-validation-index-by-vs-defs [valueset-definitions output-path]
-  (nippy/freeze-to-file output-path (build-ftr-index-by-vs-defs valueset-definitions)))
+(defn serialize-ftr-validation-index-by-ti-paths [ti-paths output-path]
+  (nippy/freeze-to-file output-path (index-by-tags ti-paths)))
 
 
 (defn- enrich-ftr-index-with-tf
