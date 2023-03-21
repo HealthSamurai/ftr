@@ -4,3 +4,4 @@
 [submodule "hl7-fhir-r4-core"]
 	path = hl7-fhir-r4-core
 	url = https://github.com/zen-fhir/hl7-fhir-r4-core.git
+	shallow = true
