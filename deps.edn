@@ -33,7 +33,8 @@
          :extra-deps  {healthsamurai/matcho {:mvn/version "0.3.10"}
                        hiccup/hiccup        {:mvn/version "2.0.0-alpha2"}
                        ring/ring            {:mvn/version "1.9.6"}}
-         :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+         :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"
+                                 "-Xmx2G"]}
 
   :outdated {:extra-deps {olical/depot {:mvn/version "1.7.0"}}
              :main-opts  ["-m" "depot.outdated.main"]}
