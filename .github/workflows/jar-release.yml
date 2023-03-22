@@ -25,6 +25,7 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@9.5
         with:
           cli: 1.11.1.1155
+      - run: make init
       - run: make build
       - name: Release
         uses: softprops/action-gh-release@v1
