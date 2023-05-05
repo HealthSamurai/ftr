@@ -93,6 +93,7 @@
   (jdbc/execute! db ["ALTER TABLE concept ADD COLUMN IF NOT EXISTS definition text"])
   (jdbc/execute! db ["ALTER TABLE concept ADD COLUMN IF NOT EXISTS ancestors jsonb"])
   (jdbc/execute! db ["ALTER TABLE concept ADD COLUMN IF NOT EXISTS root jsonb"])
+  (jdbc/execute! db ["ALTER TABLE concept ADD COLUMN IF NOT EXISTS designation jsonb"])
 
   ;;Description table indexes
   (jdbc/execute! db ["DROP INDEX IF EXISTS description_conceptid; CREATE INDEX description_conceptid ON description (conceptid);"])
@@ -166,6 +167,17 @@ SET display = d.term
 FROM description d
 WHERE d.typeid = '900000000000003001' AND d.active = '1' AND d.conceptid = c.id"]))
 
+(defn join-designation [db]
+  (jdbc/execute! db ["
+UPDATE concept c
+SET designation =
+  (SELECT jsonb_agg(jsonb_build_object('language', d.languagecode, 'value', d.term))
+   FROM description d
+   WHERE d.typeid = '900000000000003001'
+     AND d.active = '1'
+     AND d.conceptid = c.id
+     AND d.languagecode <> 'en')"]))
+
 (defn join-textdefinitions [db]
   (jdbc/execute! db ["
 with aggs as (select conceptid cid, string_agg(term, '; ') saggs from textdefinition where active = '1' group by conceptid)
@@ -205,6 +217,7 @@ WHERE a.cid = c.id"]))
      (populate-concept-table-with-ancestors db)
      (calculate-concept-roots db)
      (join-displays db)
+     (join-designation db)
      (join-textdefinitions db))))
 
 
@@ -241,6 +254,7 @@ WHERE a.cid = c.id"]))
                            'valueset', jsonb_build_array('%s'),
                            'code', id,
                            'display', display,
+                           'designation', designation,
                            'ancestors', ancestors,
                            'property', jsonb_object_nullif(jsonb_build_object('roots', root)),
                            'definition', definition)) as snomed FROM concept ORDER BY id"
