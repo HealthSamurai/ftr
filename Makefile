@@ -4,7 +4,7 @@ init:
 	git submodule update --recursive && make up
 
 test:
-	clojure -M:kaocha:test
+	clojure -M:kaocha:test:pipeline
 
 build:
 	clojure -T:build uber
