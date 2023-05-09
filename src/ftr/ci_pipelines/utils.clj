@@ -3,7 +3,10 @@
             [clojure.java.shell :as shell]
             [clojure.string :as str]
             [cheshire.core :as json]
-            [org.httpkit.client :as http]))
+            [org.httpkit.client :as http]
+            [clojure.java.io :as io])
+  (:import java.io.File
+           [java.util.zip ZipInputStream]))
 
 
 (defmethod u/*fn ::download-previous-ftr-version!
@@ -101,3 +104,22 @@
                         tg-channel-id
                         final-msg)
     {}))
+
+
+(defn unzip-file!
+  "uncompress zip archive.
+  `input` - name of zip archive to be uncompressed.
+  `output` - name of folder where to output."
+  [input output]
+  (with-open [stream (-> input io/input-stream ZipInputStream.)]
+    (loop [entry (.getNextEntry stream)]
+      (if entry
+        (let [save-path (str output File/separatorChar (.getName entry))
+              out-file (File. save-path)]
+          (if (.isDirectory entry)
+            (if-not (.exists out-file)
+              (.mkdirs out-file))
+            (let [parent-dir (File. (.substring save-path 0 (.lastIndexOf save-path (int File/separatorChar))))]
+              (when-not (.exists parent-dir) (.mkdirs parent-dir))
+              (clojure.java.io/copy stream out-file)))
+          (recur (.getNextEntry stream)))))))
