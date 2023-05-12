@@ -1,0 +1,3 @@
+"LOINC_NUM","COMPONENT","PROPERTY","TIME_ASPCT","SYSTEM","SCALE_TYP","METHOD_TYP","CLASS","SHORTNAME","LONG_COMMON_NAME","RELATEDNAMES2","LinguisticVariantDisplayName"
+"14575-5","Recherche d'anticorps des groupes sanguins","Impression/interprétation d'étude","Temps ponctuel","Plasma/GR","Nominal","","Banque de sang","","","",""
+"43119-7","Recherche d'Ac nucléaires solubles","-","Temps ponctuel","Sérum","-","","Panel.sérologie","","","",""

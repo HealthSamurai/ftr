@@ -45,7 +45,7 @@
         (with-open [^PreparedStatement pstmnt c]
           (with-open [^ResultSet rset (.executeQuery pstmnt)]
             (while (.next rset)
-              (.write w (-> (.getString rset "snomed")
+              (.write w (-> (.getString rset "ftr_concept")
                             (cheshire.core/parse-string keyword)
                             (generate-concept-id vs)
                             (ftr.utils.core/generate-ndjson-row))))))))))

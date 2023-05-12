@@ -1,0 +1,130 @@
+(ns ftr.ci-pipelines.loinc.core
+  (:require [clj-http.client :as client]
+            [clj-http.cookies]
+            [clj-http.core]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [ftr.ci-pipelines.utils]
+            [ftr.core]
+            [ftr.logger.core]
+            [ftr.utils.unifn.core :as u])
+  (:import java.io.File))
+
+;;TODO sanitize sensitive keys, maybe on unifn level
+(def config-defaults
+  {:loinc-login-url    "https://loinc.org/wp-login.php"
+   :loinc-download-url "https://loinc.org/download/loinc-complete/"
+
+   :ftr-path             "/tmp/ftr"
+   :download-destination "/tmp/ftr/ci_pipelines/loinc/loinc.zip"
+   :extract-destination  "/tmp/ftr/ci_pipelines/loinc/uncompressed-loinc"
+   :working-dir-path     "/tmp/ftr/ci_pipelines/loinc/loinc"
+   :db                   "jdbc:postgresql://localhost:5125/ftr?user=ftr&password=password"
+   :lang                 []})
+
+
+(defn- extract-loinc-version [loinc-service-resp]
+  (let [normalized-headers    (update-keys (get loinc-service-resp :headers)
+                                           str/lower-case)
+        content-dispositition (get normalized-headers "content-disposition" "")]
+    (second (re-find #"filename=.*?(\d+(?:\.\d+)?).*" content-dispositition))))
+
+
+(defmethod u/*fn ::get-loinc-bundle!
+  [{:as _ctx, :keys [loinc-login-url loinc-download-url
+                     loinc-login loinc-password
+                     download-destination extract-destination]}]
+  (let [loinc-response
+        (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+          (client/post loinc-login-url {:form-params {"log" loinc-login
+                                                      "pwd" loinc-password}})
+
+          (client/post loinc-download-url {:form-params {"tc_accepted" "1"
+                                                         "tc_submit"   "Download"}
+                                           :as          :byte-array}))
+
+        response-body
+        (:body loinc-response)]
+
+    (io/make-parents download-destination)
+    (with-open [w (io/output-stream download-destination)]
+      (.write w response-body)
+      (ftr.ci-pipelines.utils/unzip-file! download-destination extract-destination))
+
+    {:loinc-version (extract-loinc-version loinc-response)}))
+
+
+(defmethod u/*fn ::build-ftr-cfg
+  [{:as _ctx,
+    :keys [db ftr-path loinc-version extract-destination lang]}]
+  {:cfg {:module            "loinc"
+         :source-url        extract-destination
+         :ftr-path          ftr-path
+         :tag               "prod"
+         :source-type       :loinc
+         :extractor-options {:db db
+                             :code-system {:resourceType "CodeSystem"
+                                           :id (str "loinc-" loinc-version)
+                                           :url "http://loinc.org"
+                                           :description "LOINC is a freely available international standard for tests, measurements, and observations"
+                                           :content "not-present"
+                                           :version loinc-version
+                                           :name "LOINC"
+                                           :publisher "Regenstrief Institute, Inc."
+                                           :status "active"
+                                           :caseSensitive false}
+
+                             :value-set   {:id (str "loinc-" loinc-version)
+                                           :resourceType "ValueSet"
+                                           :version loinc-version
+                                           :compose { :include [{:system "http://loinc.org"}]}
+                                           :status "active"
+                                           :name "LOINC"
+                                           :url "http://loinc.org/vs"}
+                             :lang lang}}})
+
+
+(defmethod u/*fn ::generate-loinc-zen-package
+  [{:as _ctx,
+    :keys [working-dir-path loinc-version]}]
+  (when working-dir-path
+    (io/make-parents (str working-dir-path "/zen-package.edn"))
+    (spit (str working-dir-path "/zen-package.edn")
+          {:deps {'zen.fhir "https://github.com/zen-fhir/zen.fhir.git"}})
+    (spit (doto (io/file (str working-dir-path "/zrc/loinc.edn"))
+            (-> (.getParentFile) (.mkdirs)))
+          (with-out-str (clojure.pprint/pprint {'ns 'loinc
+                                                'import #{'zen.fhir}
+                                                'value-set
+                                                {:zen/tags #{'zen.fhir/value-set}
+                                                 :zen/desc "Includes all concepts from LOINC."
+                                                 :zen.fhir/version (ftr.ci-pipelines.utils/get-zen-fhir-version!)
+                                                 :fhir/code-systems
+                                                 #{{:fhir/url "http://loinc.org"
+                                                    :zen.fhir/content :bundled}}
+                                                 :uri "http://loinc.org/vs"
+                                                 :version loinc-version
+                                                 :ftr
+                                                 {:module "loinc"
+                                                  :source-url "https://storage.googleapis.com"
+                                                  :ftr-path "ftr"
+                                                  :source-type :cloud-storage
+                                                  :tag "prod"}}})))))
+
+
+(defn pipeline [args]
+  (let [cfg (-> (merge config-defaults args)
+                (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
+    (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
+               ::get-loinc-bundle!
+               ::build-ftr-cfg
+               :ftr.core/apply-cfg
+               ::generate-loinc-zen-package
+               :ftr.ci-pipelines.utils/upload-to-gcp-bucket]
+              cfg)))
+
+
+(comment
+  (pipeline {})
+
+  )

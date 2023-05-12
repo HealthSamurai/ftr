@@ -219,3 +219,18 @@
 
 (defn separate-vs&module-names [module+vs-name]
   (second (str/split module+vs-name #"\." 2)))
+
+
+(defmacro print-wrapper
+  [& bodies]
+  (let [green "\u001B[32m"
+        clear-color "\u001B[0m"]
+    (reduce (fn [acc [f :as ff]]
+              `(~@acc
+                (printf ~"Executing step: `%s`\n" '~f)
+                (flush)
+                (printf "%sStep `%s` finished!%s\n%s\n"
+                        ~green '~f ~clear-color (with-out-str (time ~ff)))
+                (flush)))
+            '(do)
+            bodies)))

@@ -3,7 +3,8 @@
             [clojure.string :as str]
             [next.jdbc :as jdbc]
             [next.jdbc.prepare]
-            [ftr.utils.unifn.core :as u])
+            [ftr.utils.unifn.core :as u]
+            [ftr.utils.core])
   (:import [java.sql
             PreparedStatement]))
 
@@ -109,7 +110,9 @@
   ;;sdl table indexes
   (jdbc/execute! db ["DROP INDEX IF EXISTS sdl_src; CREATE INDEX sdl_src ON sdl (src);"])
   (jdbc/execute! db ["DROP INDEX IF EXISTS sdl_dst; CREATE INDEX sdl_dst ON sdl (dst);"])
-  (jdbc/execute! db ["DROP INDEX IF EXISTS sdl_src_dst; CREATE UNIQUE INDEX sdl_src_dst ON sdl USING btree (src, dst);"]))
+  (jdbc/execute! db ["DROP INDEX IF EXISTS sdl_src_dst; CREATE UNIQUE INDEX sdl_src_dst ON sdl USING btree (src, dst);"])
+
+  )
 
 (defn populate-sdl-table
   "For each concept find every ancestor and calculate distance between concept and this ancestor
@@ -187,29 +190,12 @@ FROM aggs a
 WHERE a.cid = c.id"]))
 
 
-(def green "\u001B[32m")
-(def clear-color "\u001B[0m")
-
-
-(defmacro print-wrapper
-  [& bodies]
-  (reduce (fn [acc [f :as ff]]
-            `(~@acc
-              (printf ~"Executing step: `%s`\n" '~f)
-              (flush)
-              (printf "%sStep `%s` finished!%s\n%s\n"
-                      ~green '~f ~clear-color (with-out-str (time ~ff)))
-              (flush)))
-          '(do)
-          bodies))
-
-
 (defn populate-db-with-snomed-data!
   "`db` - JDBC Connection string
    `path` - path to unzipped SNOMED CT folder"
   [db path]
   (let [sf (snomed-files path)]
-    (print-wrapper
+    (ftr.utils.core/print-wrapper
      (init-db-tables db)
      (load-files! db sf)
      (prepare-tables&build-indexes db)
@@ -257,7 +243,7 @@ WHERE a.cid = c.id"]))
                            'designation', designation,
                            'ancestors', ancestors,
                            'property', jsonb_object_nullif(jsonb_build_object('roots', root)),
-                           'definition', definition)) as snomed FROM concept ORDER BY id"
+                           'definition', definition)) as ftr_concept FROM concept ORDER BY id"
                                                                     (:url (first code-system))
                                                                     (:url value-set))]
                                                 {:fetch-size 1000})]

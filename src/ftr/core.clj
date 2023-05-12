@@ -131,6 +131,14 @@
    ::write-tag-index-hash])
 
 
+(def loinc-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
 (defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
                                          ::keys [commit-type]
                                          {:keys [source-type]} :cfg}]
@@ -153,6 +161,9 @@
 
      [:append :icd10]
      icd10-pipeline
+
+     [:append :loinc]
+     loinc-pipeline
 
      [:tag-merge nil]
      tag-merge-pipeline)})

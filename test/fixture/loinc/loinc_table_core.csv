@@ -1,0 +1,4 @@
+"LOINC_NUM","COMPONENT","PROPERTY","TIME_ASPCT","SYSTEM","SCALE_TYP","METHOD_TYP","CLASS","CLASSTYPE","LONG_COMMON_NAME","SHORTNAME","EXTERNAL_COPYRIGHT_NOTICE","STATUS","VersionFirstReleased","VersionLastChanged"
+"14575-5","Blood group antibody investigation","Imp","Pt","Plas/RBC","Nom","","BLDBK","1","Blood group antibody investigation [Interpretation] in Plasma or RBC","Bld gp Ab Invest PlasRBC-Imp","","ACTIVE","1.0k","2.73"
+"19146-0","Referral lab test results","Find","Pt","Referral lab test","Nar","","MISC","1","Referral lab test results","Ref Lab Test Results","","ACTIVE","1.0l","2.73"
+"43119-7","Extractable nuclear Ab panel","-","Pt","Ser","-","","PANEL.SERO","1","Extractable nuclear Ab panel - Serum","ENA Ab Pnl Ser","","ACTIVE","2.16","2.73"

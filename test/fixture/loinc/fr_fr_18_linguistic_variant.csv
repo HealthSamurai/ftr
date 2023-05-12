@@ -1,0 +1,4 @@
+"LOINC_NUM","COMPONENT","PROPERTY","TIME_ASPCT","SYSTEM","SCALE_TYP","METHOD_TYP","CLASS","SHORTNAME","LONG_COMMON_NAME","RELATEDNAMES2","LinguisticVariantDisplayName"
+"14575-5","Anticorps irréguliers (RAI)","Interprétation","Ponctuel","Plasma/Érythrocytes","Résultat nominal","","Immunohématologie","","Anticorps irréguliers (RAI) [Interprétation] Plasma/Érythrocytes ; Résultat nominal","",""
+"19146-0","Test de laboratoire (Résultats)","Recherche","Ponctuel","Test de référence","Résultat textuel","","Renseignements patient","","Test de laboratoire (Résultats) [Recherche] Test de référence ; Résultat textuel","",""
+"43119-7","Antigènes nucléaires solubles anticorps panel","-","Ponctuel","Sérum","-","","Panels Auto-immunité","","Antigènes nucléaires solubles anticorps panel [-] Sérum ; -","",""
