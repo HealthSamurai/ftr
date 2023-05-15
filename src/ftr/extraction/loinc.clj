@@ -154,11 +154,11 @@
   Arguments:
     `db` - JDBC connection string.
     `path` - String representing the base path to the LOINC data files.
-    `langs` - Optional sequence of language maps. Each language map should have the following keys:
-      - `id` - The identifier of the linguistic variant. (maps to ID column in LinguisticVariants/LinguisticVariants.csv)
-      - `lang` - The language code. (maps to ISO_LANGUAGE column in LinguisticVariants/LinguisticVariants.csv)
-      - `country` - The country code. (maps to ISO_COUNTRY column in LinguisticVariants/LinguisticVariants.csv"
-  [db path langs]
+    `cfg.langs` - Optional sequence of language maps. Each language map should have the following keys:
+        - `id` - The identifier of the linguistic variant. (maps to ID column in LinguisticVariants/LinguisticVariants.csv)
+        - `lang` - The language code. (maps to ISO_LANGUAGE column in LinguisticVariants/LinguisticVariants.csv)
+        - `country` - The country code. (maps to ISO_COUNTRY column in LinguisticVariants/LinguisticVariants.csv"
+  [db path {:as _cfg, :keys [langs]}]
   (let [path                       (fn [relative] (str path File/separatorChar relative))
         loinc-artifact->table-name (cond-> loinc-artifact->table-name
                                      (not-empty langs)
@@ -288,12 +288,14 @@
 
 
 (defn create-core-concepts
-  "Creates table with aidbox concept representation: https://docs.aidbox.app/modules-1/terminology/concept
+  "Creates table with aidbox concept representation: https://docs.aidbox.app/modules-1/terminology/concept.
 
    Arguments:
      `db` - JDBC connection string.
-     `value-set` - loinc all-codes value-set resource, extract url to put as backref on concept."
-  [db value-set]
+     `value-set` - loinc all-codes value-set resource, extract url to put as backref on concept.
+     `join-original-language-as-designation` - if `true`, stores original terminology language to designation,
+                                               just for search/translations purposes."
+  [db value-set join-original-language-as-designation]
   (q! db {:ql/type :pg/create-table-as
           :table   :loinc_concept
           :select
@@ -303,35 +305,35 @@
             :concept
             ^:pg/fn
             [:jsonb_strip_nulls
-             ^:pg/obj
-             {:id           [:|| "loinc-" :base.id]
-              :code         :base.id
-              :display
-              ^:pg/fn[:coalesce
-                      :loinc.LONG_COMMON_NAME
-                      [:->> :base.property "display"]]
-              :_source      "zen.fhir"
-              :system       "http://loinc.org"
-              :valueset
-              ^:pg/fn[:jsonb_build_array (:url value-set)]
-              :resourceType "Concept"
-              :designation
-              ^:jsonb/array[^:pg/obj {:language "en"
-                                      :value ^:pg/fn[:coalesce
-                                                     :loinc.LONG_COMMON_NAME
-                                                     [:->> :base.property "display"]]}]
-              :property
-              [:||
-               [:-
-                ^:pg/fn[:coalesce :base.property ^:pg/obj{}]
-                "display"]
-               ^:pg/fn[:coalesce :prim.property ^:pg/obj{}]
-               ^:pg/obj
-               {:ancestors
-                [:pg/parens {:ql/type :pg/select
-                             :select  ^:pg/fn [:jsonb_object_agg :src :dist]
-                             :from    {:m :sdl}
-                             :where   [:= :m.dst :base.id]}]}]}]}
+             (merge ^:pg/obj
+                    {:id           [:|| "loinc-" :base.id]
+                     :code         :base.id
+                     :display
+                     ^:pg/fn[:coalesce
+                             :loinc.LONG_COMMON_NAME
+                             [:->> :base.property "display"]]
+                     :_source      "zen.fhir"
+                     :system       "http://loinc.org"
+                     :valueset
+                     ^:pg/fn[:jsonb_build_array (:url value-set)]
+                     :resourceType "Concept"
+                     :property
+                     [:||
+                      [:-
+                       ^:pg/fn[:coalesce :base.property ^:pg/obj{}]
+                       "display"]
+                      ^:pg/fn[:coalesce :prim.property ^:pg/obj{}]
+                      ^:pg/obj
+                      {:ancestors
+                       [:pg/parens {:ql/type :pg/select
+                                    :select  ^:pg/fn [:jsonb_object_agg :src :dist]
+                                    :from    {:m :sdl}
+                                    :where   [:= :m.dst :base.id]}]}]}
+                    (when join-original-language-as-designation
+                      {:designation ^:jsonb/array[^:pg/obj {:language "en"
+                                                            :value ^:pg/fn[:coalesce
+                                                                           :loinc.LONG_COMMON_NAME
+                                                                           [:->> :base.property "display"]]}]}))]}
            :from      {:base :loinc_base_json}
            :left-join {:prim  {:table :partlink_primary_json
                                :on    [:= :prim.LoincNumber :base.id]}
@@ -598,7 +600,9 @@
               :if-exists true}))))
 
 
-(defn create-indexes&populate-tables [db langs value-set]
+(defn create-indexes&populate-tables
+  [db
+   {:as _cfg, :keys [langs value-set join-original-language-as-designation]}]
   (doseq [table #{"loinc_concept" "partlink_primary_json" "loinc_base_json" "sdl"}]
     (q! db {:ql/type :pg/drop-table
             :table-name table
@@ -609,7 +613,7 @@
   (insert-part-concepts-to-base-json-table db)
   (insert-remaining-part-concepts-to-base-json-table db)
   (create&populate-sdl-table db)
-  (create-core-concepts db value-set)
+  (create-core-concepts db value-set join-original-language-as-designation)
   (join-designations db langs))
 
 
@@ -621,17 +625,17 @@
    Arguments:
      `db`    - A JDBC connection string.
      `path`  - The path to the unzipped LOINC bundle.
-     `value-set` - ValuSet to markup concepts with backref
-     `langs` - A vector specifying the translations to be joined as designations.
-               Each value in the vector should be a map consisting of the columns values
-               from the LinguisticVariants.csv file: ISO_LANGUAGE, ISO_COUNTRY, ID.
-               If empty, designations are ommited.
-               Examples: [{:id \"8\",  :lang \"fr\", :country \"CA\"}
-                          {:id \"18\", :lang \"fr\", :country \"FR\"}]"
-  [db path value-set langs]
+     `cfg.value-set` - ValuSet to markup concepts with backref
+     `cfg.langs` - A vector specifying the translations to be joined as designations.
+                   Each value in the vector should be a map consisting of the columns values
+                   from the LinguisticVariants.csv file: ISO_LANGUAGE, ISO_COUNTRY, ID.
+                   If empty, designations are ommited.
+                   Examples: [{:id \"8\",  :lang \"fr\", :country \"CA\"}
+                              {:id \"18\", :lang \"fr\", :country \"FR\"}]"
+  [db path cfg]
   (ftr.utils.core/print-wrapper
-    (load-loinc-data db path langs)
-    (create-indexes&populate-tables db langs value-set)))
+    (load-loinc-data db path cfg)
+    (create-indexes&populate-tables db cfg)))
 
 
 (defmethod u/*fn ::create-value-set [cfg]
@@ -651,8 +655,8 @@
                                    (conj #{})))}})
 
 
-(defmethod u/*fn ::populate-db-with-loinc-data [{:as _cfg, :keys [source-url source-urls db lang value-set]}]
-  (populate-db-with-loinc-data! db (or source-urls source-url) value-set lang)
+(defmethod u/*fn ::populate-db-with-loinc-data [{:as cfg, :keys [source-url source-urls db]}]
+  (populate-db-with-loinc-data! db (or source-urls source-url) cfg)
   {})
 
 

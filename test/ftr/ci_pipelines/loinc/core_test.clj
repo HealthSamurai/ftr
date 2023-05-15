@@ -37,9 +37,10 @@
 (t/deftest extractor-test
   (prepare-test-env)
 
-  (pipeline {:extract-destination "/tmp/loinc_work_dir/uncompessed-loinc-bundle"
-             :lang [{:id "8",  :lang "fr", :country "CA"}
-                    {:id "18", :lang "fr", :country "FR"}]})
+  (pipeline {:extract-destination                   "/tmp/loinc_work_dir/uncompessed-loinc-bundle"
+             :join-original-language-as-designation true
+             :langs                                 [{:id "8", :lang "fr", :country "CA"}
+                                                     {:id "18", :lang "fr", :country "FR"}]})
 
   (matcho/match
     (test-utils/fs-tree->tree-map (:ftr-path sut/config-defaults))

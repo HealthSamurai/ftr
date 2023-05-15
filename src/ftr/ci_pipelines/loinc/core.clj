@@ -26,7 +26,7 @@
    :ftr-path             "/tmp/ftr"
    :working-dir-path     "/tmp/loinc_work_dir"
    :db                   "jdbc:postgresql://localhost:5125/ftr?user=ftr&password=password"
-   :lang                 []})
+   :langs                []})
 
 
 (defn- extract-loinc-version [loinc-service-resp]
@@ -67,13 +67,15 @@
 
 (defmethod u/*fn ::build-ftr-cfg
   [{:as _ctx,
-    :keys [db ftr-path loinc-version extract-destination lang]}]
+    :keys [db ftr-path loinc-version extract-destination langs
+           join-original-language-as-designation]}]
   {:cfg {:module            "loinc"
          :source-url        extract-destination
          :ftr-path          ftr-path
          :tag               "prod"
          :source-type       :loinc
          :extractor-options {:db db
+                             :join-original-language-as-designation join-original-language-as-designation
                              :code-system {:resourceType "CodeSystem"
                                            :id (str "loinc-" loinc-version)
                                            :url "http://loinc.org"
@@ -92,7 +94,7 @@
                                            :status "active"
                                            :name "LOINC"
                                            :url "http://loinc.org/vs"}
-                             :lang lang}}})
+                             :langs langs}}})
 
 
 (defmethod u/*fn ::clear-working-dir
