@@ -428,7 +428,20 @@
           :expr [[:pg/identifier :src] [:pg/identifier :dst]]}))
 
 
-(defn join-designations [db langs]
+(defn join-designations
+  "This function creates tables with names 'translation_{lang}_{country},{id}' for each language. 
+    Each table has two columns: 'code' and 'display'. The original data lacks a direct connection to the code,
+    so the function relies on another table to determine the corresponding code. 
+   The function also modifies the value of 'dsql.pg/keys-for-select' to adjust the order of inner join and left join operations,
+    ensuring that the inner join is executed first.
+
+   Arguments:
+     `db` - JDBC connection string.
+     `langs` - Optional sequence of language maps. Each language map should have the following keys:
+       - `id` - The identifier of the linguistic variant. (maps to ID column in LinguisticVariants/LinguisticVariants.csv)
+       - `lang` - The language code. (maps to ISO_LANGUAGE column in LinguisticVariants/LinguisticVariants.csv)
+       - `country` - The country code. (maps to ISO_COUNTRY column in LinguisticVariants/LinguisticVariants.csv"
+  [db langs]
   (doseq [lang-map langs]
     (let [prefix (make-linguistic-variant-file-prefix lang-map)]
       (q! db {:ql/type    :pg/create-table
