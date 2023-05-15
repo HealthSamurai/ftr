@@ -429,7 +429,7 @@
 
 
 (defn join-designations
-  "This function creates tables with names 'translation_{lang}_{country},{id}' for each language. 
+  "This function creates tables with names 'translation_{lang}{country}{id}' for each language.
     Each table has two columns: 'code' and 'display'. The original data lacks a direct connection to the code,
     so the function relies on another table to determine the corresponding code. 
    The function also modifies the value of 'dsql.pg/keys-for-select' to adjust the order of inner join and left join operations,
