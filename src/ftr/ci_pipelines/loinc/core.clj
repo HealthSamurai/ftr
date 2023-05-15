@@ -8,8 +8,7 @@
             [ftr.core]
             [ftr.logger.core]
             [ftr.utils.unifn.core :as u]
-            [ftr.utils.core :as sut]
-            [clojure.java.shell :as shell])
+            [ftr.utils.core :as sut])
   (:import java.io.File))
 
 
@@ -40,9 +39,6 @@
   [{:as _ctx, :keys [loinc-login-url loinc-download-url
                      loinc-login loinc-password
                      working-dir-path]}]
-  (println ::debug working-dir-path)
-  (prn ::debug (seq loinc-login) (seq loinc-password))
-
   (let [_ (.mkdirs (io/file working-dir-path))
         download-destination (str working-dir-path \/ "loinc-bundle.zip")
         extract-destination (str working-dir-path \/ "uncompessed-loinc-bundle")
@@ -62,8 +58,6 @@
     (with-open [w (io/output-stream download-destination)]
       (.write w response-body)
       (ftr.ci-pipelines.utils/unzip-file! download-destination extract-destination))
-
-    (shell/sh "ls" "-halt")
 
     {:loinc-version (extract-loinc-version loinc-response)
      :extract-destination extract-destination
@@ -141,7 +135,6 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
-    (prn ::debug cfg)
     (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                ::get-loinc-bundle!
                ::build-ftr-cfg
