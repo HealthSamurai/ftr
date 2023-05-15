@@ -429,11 +429,25 @@
 
 
 (defn join-designations
-  "This function creates tables with names 'translation_{lang}{country}{id}' for each language.
-    Each table has two columns: 'code' and 'display'. The original data lacks a direct connection to the code,
-    so the function relies on another table to determine the corresponding code. 
-   The function also modifies the value of 'dsql.pg/keys-for-select' to adjust the order of inner join and left join operations,
-    ensuring that the inner join is executed first.
+  "Construct translation tables for identified languages.
+
+   This function constructs tables labeled as 'translation_{lang}{country}{id}' for each identified language.
+   Each table contains two columns: 'loincnumber' and 'designation'.
+
+   The function addresses a limitation in the original LinguisticVariant artifact,
+   which provides translations for every component property
+   but lacks a direct link to property codes (e.g., scale_type, method_type, system) for each specific LOINC code translation.
+   To overcome this limitation, the function associates property codes
+   with the LOINC code being translated and appends translations to those properties.
+
+   If a translation is missing for a code, the function combines properties into
+   a single string using the pattern: <component>:<property>:<:time_aspct>:<system>:<scale_typ>:<method_typ>.
+
+   Additionally, the function modifies the value of 'dsql.pg/keys-for-select' to regulate
+   the sequence of inner join and left join operations.
+   This modification ensures that the inner join operation is performed before the left join.
+
+   As a result, each LOINC code receives its designation with the translated display.
 
    Arguments:
      `db` - JDBC connection string.
