@@ -141,6 +141,7 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
+    (prn ::debug cfg)
     (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                ::get-loinc-bundle!
                ::build-ftr-cfg
