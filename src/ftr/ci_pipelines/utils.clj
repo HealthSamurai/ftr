@@ -90,13 +90,22 @@
     :keys
     [patch-generation-result
      tg-bot-token tg-channel-id
-     ci-run-url]
+     ci-run-url
+     langs]
     {:keys [module]} :cfg}]
   (let [errors?             (= :error (::u/status ctx))
         results-details-msg (generate-patch-details-html errors? patch-generation-result)
         results-emoji       (if errors? "❌" "✅")
-        final-msg           (format "%s Module: <b>%s</b>\n\n%s\n\nSee <a href=\"%s\">CI run</a>."
+        langs-str           (if langs
+                              (str
+                                " "
+                                (->> langs
+                                     (map (fn [{:keys [lang country]}] (format "%s-%s" lang country)))
+                                     (str/join ", ")))
+                              "")
+        final-msg           (format "%s Module: <b>%s%s</b>\n\n%s\n\nSee <a href=\"%s\">CI run</a>."
                                     results-emoji
+                                    langs-str
                                     (str/upper-case module)
                                     results-details-msg
                                     ci-run-url)]

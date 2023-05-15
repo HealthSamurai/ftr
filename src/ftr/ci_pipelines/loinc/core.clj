@@ -141,8 +141,10 @@
                ::build-ftr-cfg
                :ftr.core/apply-cfg
                ::clear-working-dir
+               :ftr.ci-pipelines.utils/upload-to-gcp-bucket
                ::generate-loinc-zen-package
-               :ftr.ci-pipelines.utils/upload-to-gcp-bucket]
+               :ftr.ci-pipelines.utils/push-zen-package
+               :ftr.ci-pipelines.utils/send-tg-notification]
               cfg)))
 
 
