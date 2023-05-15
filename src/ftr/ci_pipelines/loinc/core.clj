@@ -41,7 +41,7 @@
                      loinc-login loinc-password
                      working-dir-path]}]
   (println ::debug working-dir-path)
-  (pr-str ::debug (seq loinc-login) (seq loinc-password))
+  (prn ::debug (seq loinc-login) (seq loinc-password))
 
   (let [_ (.mkdirs (io/file working-dir-path))
         download-destination (str working-dir-path \/ "loinc-bundle.zip")
