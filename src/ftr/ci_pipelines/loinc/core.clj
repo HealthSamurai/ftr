@@ -7,11 +7,19 @@
             [ftr.ci-pipelines.utils]
             [ftr.core]
             [ftr.logger.core]
-            [ftr.utils.unifn.core :as u])
+            [ftr.utils.unifn.core :as u]
+            [ftr.utils.core :as sut])
   (:import java.io.File))
 
 
-(def config-defaults
+(def
+  ^{:doc "Config defaults for `pipeline`.
+          What config entries you should provide for fully working pipeline:
+             `gs-object-url` - url to module bucket
+             `gs-ftr-object-url` - url to ftr bucket
+             `loinc-login` - LOINC account login
+             `loinc-password` - LOINC accout password"}
+  config-defaults
   {:loinc-login-url    "https://loinc.org/wp-login.php"
    :loinc-download-url "https://loinc.org/download/loinc-complete/"
 
@@ -32,7 +40,7 @@
   [{:as _ctx, :keys [loinc-login-url loinc-download-url
                      loinc-login loinc-password
                      working-dir-path]}]
-  (let [_ (io/make-parents working-dir-path)
+  (let [_ (.mkdirs (io/file working-dir-path))
         download-destination (str working-dir-path \/ "loinc-bundle.zip")
         extract-destination (str working-dir-path \/ "uncompessed-loinc-bundle")
 
@@ -48,13 +56,13 @@
         response-body
         (:body loinc-response)]
 
-    (io/make-parents download-destination)
     (with-open [w (io/output-stream download-destination)]
       (.write w response-body)
       (ftr.ci-pipelines.utils/unzip-file! download-destination extract-destination))
 
     {:loinc-version (extract-loinc-version loinc-response)
-     :extract-destination extract-destination}))
+     :extract-destination extract-destination
+     :download-destination download-destination}))
 
 
 (defmethod u/*fn ::build-ftr-cfg
@@ -85,6 +93,14 @@
                                            :name "LOINC"
                                            :url "http://loinc.org/vs"}
                              :lang lang}}})
+
+
+(defmethod u/*fn ::clear-working-dir
+  [{:as _ctx,
+    :keys [extract-destination download-destination]}]
+  (ftr.utils.core/rmrf extract-destination)
+  (ftr.utils.core/rmrf download-destination)
+  {})
 
 
 (defmethod u/*fn ::generate-loinc-zen-package
@@ -122,6 +138,7 @@
                ::get-loinc-bundle!
                ::build-ftr-cfg
                :ftr.core/apply-cfg
+               ::clear-working-dir
                ::generate-loinc-zen-package
                :ftr.ci-pipelines.utils/upload-to-gcp-bucket]
               cfg)))
