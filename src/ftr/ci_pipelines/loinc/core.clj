@@ -68,8 +68,8 @@
 (defmethod u/*fn ::build-ftr-cfg
   [{:as _ctx,
     :keys [db ftr-path loinc-version extract-destination langs
-           join-original-language-as-designation]}]
-  {:cfg {:module            "loinc"
+           join-original-language-as-designation module]}]
+  {:cfg {:module            (or module "loinc")
          :source-url        extract-destination
          :ftr-path          ftr-path
          :tag               "prod"
