@@ -10,13 +10,15 @@
 
 (defmethod u/*fn ::build-ftr-cfg
   [{:as   _ctx,
-    :keys [db ftr-path source-urls]}]
+    :keys [db ftr-path source-urls
+           join-original-language-as-designation]}]
   {:cfg {:module            "snomedca"
          :source-urls       source-urls
          :ftr-path          ftr-path
          :tag               "prod"
          :source-type       :snomed
-         :extractor-options {:db          db
+         :extractor-options {:join-original-language-as-designation join-original-language-as-designation
+                             :db          db
                              :code-system {:resourceType  "CodeSystem"
                                            :id            "snomedca"
                                            :url           "http://snomed.info/sct"
@@ -90,15 +92,17 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
-    (doto (u/*apply [::build-ftr-cfg
-                     #_:ftr.core/apply-cfg
+    (doto (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
+                     ::build-ftr-cfg
+                     :ftr.core/apply-cfg
                      :ftr.ci-pipelines.utils/upload-to-gcp-bucket
-                     ::generate-snomed-zen-package]
+                     #_::generate-snomed-zen-package]
                     cfg)
       (clojure.pprint/pprint))))
 
 
 (comment
-  (pipeline {:source-urls "/Users/ghrp/Downloads/SnomedCT_Canadian_EditionRelease_PRODUCTION_20220930T120000Z"})
+  (pipeline {:source-urls "/Users/ghrp/Downloads/SnomedCT_Canadian_EditionRelease_PRODUCTION_20220930T120000Z"
+             :join-original-language-as-designation true})
 
   )

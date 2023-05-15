@@ -170,16 +170,18 @@ SET display = d.term
 FROM description d
 WHERE d.typeid = '900000000000003001' AND d.active = '1' AND d.conceptid = c.id"]))
 
-(defn join-designation [db]
-  (jdbc/execute! db ["
+(defn join-designation [db {:as _cfg, :keys [join-original-language-as-designation]}]
+  (jdbc/execute! db [(format "
 UPDATE concept c
 SET designation =
-  (SELECT jsonb_agg(jsonb_build_object('language', d.languagecode, 'value', d.term))
+  (
+   SELECT jsonb_agg(jsonb_build_object('language', d.languagecode, 'value', d.term) ORDER BY d.languagecode)
    FROM description d
    WHERE d.typeid = '900000000000003001'
      AND d.active = '1'
      AND d.conceptid = c.id
-     AND d.languagecode <> 'en')"]))
+     %s)" (if-not join-original-language-as-designation
+            "AND d.languagecode <> 'en'" ""))]))
 
 (defn join-textdefinitions [db]
   (jdbc/execute! db ["
@@ -192,8 +194,9 @@ WHERE a.cid = c.id"]))
 
 (defn populate-db-with-snomed-data!
   "`db` - JDBC Connection string
-   `path` - path to unzipped SNOMED CT folder"
-  [db path]
+   `path` - path to unzipped SNOMED CT folder
+   `cfg` - various extractor configs"
+  [db path cfg]
   (let [sf (snomed-files path)]
     (ftr.utils.core/print-wrapper
      (init-db-tables db)
@@ -203,7 +206,7 @@ WHERE a.cid = c.id"]))
      (populate-concept-table-with-ancestors db)
      (calculate-concept-roots db)
      (join-displays db)
-     (join-designation db)
+     (join-designation db cfg)
      (join-textdefinitions db))))
 
 
@@ -224,8 +227,8 @@ WHERE a.cid = c.id"]))
                                    (conj #{})))}})
 
 
-(defmethod u/*fn ::populate-db-with-snomed-data [{:as _cfg, :keys [source-url source-urls db]}]
-  (populate-db-with-snomed-data! db (or source-urls source-url))
+(defmethod u/*fn ::populate-db-with-snomed-data [{:as cfg, :keys [source-url source-urls db]}]
+  (populate-db-with-snomed-data! db (or source-urls source-url) cfg)
   {})
 
 

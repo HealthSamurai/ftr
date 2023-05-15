@@ -99,14 +99,17 @@
 
 (defmethod u/*fn ::build-ftr-cfg
   [{:as _ctx,
-    :keys [db ftr-path extracted-snomed-out-dir]
+    :keys [db ftr-path extracted-snomed-out-dir
+           join-original-language-as-designation]
     {:keys [version snomed-folder-name]} :snomed-info}]
   {:cfg {:module            "snomed"
          :source-url        (str extracted-snomed-out-dir File/separatorChar snomed-folder-name)
          :ftr-path          ftr-path
          :tag               "prod"
          :source-type       :snomed
-         :extractor-options {:db db
+         :extractor-options {:join-original-language-as-designation
+                             join-original-language-as-designation
+                             :db db
                              :code-system {:resourceType "CodeSystem"
                                            :id "snomedct"
                                            :url "http://snomed.info/sct"
