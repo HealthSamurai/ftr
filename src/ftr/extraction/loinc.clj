@@ -315,6 +315,11 @@
               :valueset
               ^:pg/fn[:jsonb_build_array (:url value-set)]
               :resourceType "Concept"
+              :designation
+              ^:jsonb/array[^:pg/obj {:language "en"
+                                      :value ^:pg/fn[:coalesce
+                                                     :loinc.LONG_COMMON_NAME
+                                                     [:->> :base.property "display"]]}]
               :property
               [:||
                [:-

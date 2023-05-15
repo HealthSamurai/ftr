@@ -18,7 +18,7 @@
 
 
 (defn prepare-test-env []
-  (let [extraction-path (:extract-destination sut/config-defaults)]
+  (let [extraction-path (str (:working-dir-path sut/config-defaults) \/ "uncompessed-loinc-bundle")]
     (ftr.utils.core/rmrf (:ftr-path sut/config-defaults))
     (doseq [[to content] bundle-entries]
       (io/make-parents (str extraction-path \/ to))
@@ -37,7 +37,8 @@
 (t/deftest extractor-test
   (prepare-test-env)
 
-  (pipeline {:lang [{:id "8",  :lang "fr", :country "CA"}
+  (pipeline {:extract-destination "/tmp/loinc_work_dir/uncompessed-loinc-bundle"
+             :lang [{:id "8",  :lang "fr", :country "CA"}
                     {:id "18", :lang "fr", :country "FR"}]})
 
   (matcho/match
@@ -45,39 +46,45 @@
     {"loinc"
      {"vs"
       {"http:--loinc.org-vs"
-       {"tag.prod.ndjson.gz" {}
-        "tf.c7d2e686cd9c19fbee3e3bc68a42ebc481210e030db75d8d468789aefb174e55.ndjson.gz" {}}}
+       {"tf.b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040.ndjson.gz" {}
+        "tag.prod.ndjson.gz" {}}}
       "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}})
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
       (format "%s/loinc/tags/prod.ndjson.gz" (:ftr-path sut/config-defaults)))
-    [{:hash "c7d2e686cd9c19fbee3e3bc68a42ebc481210e030db75d8d468789aefb174e55"
+    [{:hash "b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040"
       :name "loinc.http:--loinc.org-vs"}
      nil?])
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
-      (format "%s/loinc/vs/http:--loinc.org-vs/tf.c7d2e686cd9c19fbee3e3bc68a42ebc481210e030db75d8d468789aefb174e55.ndjson.gz" (:ftr-path sut/config-defaults)))
+      (format "%s/loinc/vs/http:--loinc.org-vs/tf.b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040.ndjson.gz" (:ftr-path sut/config-defaults)))
     [{}
      {}
      {:id          "http:--loinc.org-http:--loinc.org-vs-14575-5"
       :code        "14575-5"
-      :designation [{:language "fr-CA"
+      :designation [{:language "en"
+                     :value "Blood group antibody investigation [Interpretation] in Plasma or RBC"}
+                    {:language "fr-CA"
                      :value
                      "Recherche d'anticorps des groupes sanguins:Impression/interprétation d'étude:Temps ponctuel:Plasma/GR:Nominal:"}
                     {:language "fr-FR"
                      :value
-                     "Anticorps irréguliers (RAI) [Interprétation] Plasma/Érythrocytes ; Résultat nominal"}]}
+                     "Anticorps irréguliers (RAI) [Interprétation] Plasma/Érythrocytes ; Résultat nominal"}
+                    nil?]}
      {:id "http:--loinc.org-http:--loinc.org-vs-19146-0" :code "19146-0"}
      {:id          "http:--loinc.org-http:--loinc.org-vs-43119-7"
       :code        "43119-7"
-      :designation [{:language "fr-CA"
+      :designation [{:language "en"
+                     :value "Extractable nuclear Ab panel - Serum"}
+                    {:language "fr-CA"
                      :value
                      "Recherche d'Ac nucléaires solubles:-:Temps ponctuel:Sérum:-:"}
                     {:language "fr-FR"
                      :value
-                     "Antigènes nucléaires solubles anticorps panel [-] Sérum ; -"}]}
+                     "Antigènes nucléaires solubles anticorps panel [-] Sérum ; -"}
+                    nil?]}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP36399-1" :code "LP36399-1"}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP422758-5" :code "LP422758-5"}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP422835-1" :code "LP422835-1"}

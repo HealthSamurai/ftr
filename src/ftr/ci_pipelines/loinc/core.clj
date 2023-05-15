@@ -10,7 +10,7 @@
             [ftr.utils.unifn.core :as u])
   (:import java.io.File))
 
-;;TODO sanitize sensitive keys, maybe on unifn level
+
 (def config-defaults
   {:loinc-login-url    "https://loinc.org/wp-login.php"
    :loinc-download-url "https://loinc.org/download/loinc-complete/"
