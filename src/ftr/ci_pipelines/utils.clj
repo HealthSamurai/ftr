@@ -105,8 +105,8 @@
                               "")
         final-msg           (format "%s Module: <b>%s%s</b>\n\n%s\n\nSee <a href=\"%s\">CI run</a>."
                                     results-emoji
-                                    langs-str
                                     (str/upper-case module)
+                                    langs-str
                                     results-details-msg
                                     ci-run-url)]
     (send-telegram-msg! tg-bot-token

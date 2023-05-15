@@ -8,7 +8,8 @@
             [ftr.core]
             [ftr.logger.core]
             [ftr.utils.unifn.core :as u]
-            [ftr.utils.core :as sut])
+            [ftr.utils.core :as sut]
+            [clojure.pprint])
   (:import java.io.File))
 
 
@@ -135,16 +136,17 @@
 (defn pipeline [args]
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
-    (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
-               ::get-loinc-bundle!
-               ::build-ftr-cfg
-               :ftr.core/apply-cfg
-               ::clear-working-dir
-               :ftr.ci-pipelines.utils/upload-to-gcp-bucket
-               ::generate-loinc-zen-package
-               :ftr.ci-pipelines.utils/push-zen-package
-               :ftr.ci-pipelines.utils/send-tg-notification]
-              cfg)))
+    (clojure.pprint/pprint
+      (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
+                 ::get-loinc-bundle!
+                 ::build-ftr-cfg
+                 :ftr.core/apply-cfg
+                 ::clear-working-dir
+                 :ftr.ci-pipelines.utils/upload-to-gcp-bucket
+                 ::generate-loinc-zen-package
+                 :ftr.ci-pipelines.utils/push-zen-package
+                 :ftr.ci-pipelines.utils/send-tg-notification]
+                cfg))))
 
 
 (comment
