@@ -16,9 +16,7 @@
    :loinc-download-url "https://loinc.org/download/loinc-complete/"
 
    :ftr-path             "/tmp/ftr"
-   :download-destination "/tmp/ftr/ci_pipelines/loinc/loinc.zip"
-   :extract-destination  "/tmp/ftr/ci_pipelines/loinc/uncompressed-loinc"
-   :working-dir-path     "/tmp/ftr/ci_pipelines/loinc/loinc"
+   :working-dir-path     "/tmp/loinc_work_dir"
    :db                   "jdbc:postgresql://localhost:5125/ftr?user=ftr&password=password"
    :lang                 []})
 
@@ -33,8 +31,12 @@
 (defmethod u/*fn ::get-loinc-bundle!
   [{:as _ctx, :keys [loinc-login-url loinc-download-url
                      loinc-login loinc-password
-                     download-destination extract-destination]}]
-  (let [loinc-response
+                     working-dir-path]}]
+  (let [_ (io/make-parents working-dir-path)
+        download-destination (str working-dir-path \/ "loinc-bundle.zip")
+        extract-destination (str working-dir-path \/ "uncompessed-loinc-bundle")
+
+        loinc-response
         (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
           (client/post loinc-login-url {:form-params {"log" loinc-login
                                                       "pwd" loinc-password}})
@@ -51,7 +53,8 @@
       (.write w response-body)
       (ftr.ci-pipelines.utils/unzip-file! download-destination extract-destination))
 
-    {:loinc-version (extract-loinc-version loinc-response)}))
+    {:loinc-version (extract-loinc-version loinc-response)
+     :extract-destination extract-destination}))
 
 
 (defmethod u/*fn ::build-ftr-cfg
