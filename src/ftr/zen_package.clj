@@ -8,7 +8,8 @@
             [clojure.java.io :as io]
             [zen.cli]
             [taoensso.nippy :as nippy])
-  (:import (java.util UUID)))
+  (:import (java.util UUID)
+           (java.nio.file Path)))
 
 
 (defn build-ftr [ztx & [{:as _opts, :keys [enable-logging?]}]]
@@ -102,24 +103,18 @@
     (let [{:as _ftr-manifest,
            :keys [ftr-path source-type source-url]}
           (get vs :ftr)
-          zen-file         (:zen/file vs)
-          path-to-package  (->> (str/split zen-file #"/")
-                                (take-while (complement #{"zrc"})))
-          zen-package-name (last path-to-package)
+          zen-file         (:zen/zen-path vs)
+          path-to-package  (.getParent (.toPath (io/file zen-file))) ;; Drop zrc dir
+          zen-package-name (str (.getFileName path-to-package))
           inferred-ftr-dir (if (= source-type :cloud-storage) ;;TODO Re-design manifests, harmonize source-types on ftr design/runtime phase
                              (str source-url \/ ftr-path) ;;That's uncorrect, cause source-url intended to store path to raw-terminology source,
-                                                          ;;same thing with the source-type.
-                             (-> path-to-package
-                                 vec
-                                 (conj "ftr")
-                                 (->> (str/join "/"))))]
+                             ;;same thing with the source-type.
+                             (str (.resolve path-to-package "ftr")))]
       (cond-> (-> vs
                   (assoc-in [:ftr :zen/package-name] zen-package-name)
                   (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir))
         (get-in vs [:ftr :validation-index])
-        (assoc-in [:ftr :validation-index-path] (str (str/join "/" path-to-package)
-                                                     \/
-                                                     (get-in vs [:ftr :validation-index :file])))))
+        (assoc-in [:ftr :validation-index-path] (str (.resolve path-to-package (get-in vs [:ftr :validation-index :file]))))))
     vs))
 
 
