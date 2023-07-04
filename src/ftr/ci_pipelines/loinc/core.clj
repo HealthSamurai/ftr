@@ -107,7 +107,7 @@
 
 (defmethod u/*fn ::generate-loinc-zen-package
   [{:as _ctx,
-    :keys [working-dir-path loinc-version]}]
+    :keys [working-dir-path loinc-version module]}]
   (when working-dir-path
     (io/make-parents (str working-dir-path "/zen-package.edn"))
     (spit (str working-dir-path "/zen-package.edn")
@@ -126,7 +126,7 @@
                                                  :uri "http://loinc.org/vs"
                                                  :version loinc-version
                                                  :ftr
-                                                 {:module "loinc"
+                                                 {:module (or module "loinc")
                                                   :source-url "https://storage.googleapis.com"
                                                   :ftr-path "ftr"
                                                   :source-type :cloud-storage
