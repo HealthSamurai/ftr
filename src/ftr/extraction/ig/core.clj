@@ -184,7 +184,7 @@
 #_"NOTE: We know that `hl7.fhir.r4.core` `ValueSet` resources are clashing by url with `hl7.terminology.r4` `ValueSet`s resources.
    Currently we always choose `hl7.terminology.r4` `ValueSet`s over those from `hl7.fhir.r4.core`."
 (def terminology-resources-priority
-  {:hl7.terminology.r4 #{:hl7.fhir.r4.core :hl7.fhir.us.carin-bb :hl7.fhir.us.davinci-pdex}})
+  {:hl7.terminology.r4 #{:hl7.fhir.r4b.core :hl7.fhir.r4.core :hl7.fhir.us.carin-bb :hl7.fhir.us.davinci-pdex}})
 
 
 #_"NOTE: We know that there are clashes between some of the national
