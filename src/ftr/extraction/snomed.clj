@@ -175,7 +175,7 @@ WHERE d.typeid = '900000000000003001' AND d.active = '1' AND d.conceptid = c.id"
 UPDATE concept c
 SET designation =
 jsonb_build_object('display',
-  (SELECT jsonb_agg(jsonb_build_object(d.languagecode, d.term) ORDER BY d.languagecode)
+  (SELECT jsonb_object_agg(d.languagecode, d.term)
    FROM description d
    WHERE d.typeid = '900000000000003001'
      AND d.active = '1'
