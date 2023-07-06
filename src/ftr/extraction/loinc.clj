@@ -574,17 +574,15 @@
 
       (q! db {:ql/type :pg/update
               :update  :loinc_concept
-              :set     {:concept [:pg/jsonb_set :concept [:designation :display]
-                                  [:||
-                                   [:#> :concept [:designation :display]]
-                                   ^:pg/obj {(make-fhir-lang lang-map)
-                                             {:ql/type :pg/sub-select
-                                              :select  :designation
-                                              :from    (keyword (format "translation_%s" prefix))
-                                              :where   [:=
-                                                        (keyword (str (format "translation_%s" prefix) ".loincnumber"))
-                                                        :loinc_concept.loincnumber]
-                                              :limit   1}}]]}
+              :set     {:concept [:pg/jsonb_set :concept [:designation :display (keyword (make-fhir-lang lang-map))]
+                                  ^:pg/fn[:to_jsonb
+                                          {:ql/type :pg/sub-select
+                                           :select  :designation
+                                           :from    (keyword (format "translation_%s" prefix))
+                                           :where   [:=
+                                                     (keyword (str (format "translation_%s" prefix) ".loincnumber"))
+                                                     :loinc_concept.loincnumber]
+                                           :limit   1}]]}
               :from (keyword (format "translation_%s" prefix))
               :where [:=
                       (keyword (str (format "translation_%s" prefix) ".loincnumber"))
