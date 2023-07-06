@@ -174,13 +174,13 @@ WHERE d.typeid = '900000000000003001' AND d.active = '1' AND d.conceptid = c.id"
   (jdbc/execute! db [(format "
 UPDATE concept c
 SET designation =
-  (
-   SELECT jsonb_agg(jsonb_build_object('language', d.languagecode, 'value', d.term) ORDER BY d.languagecode)
+jsonb_build_object('display',
+  (SELECT jsonb_agg(jsonb_build_object(d.languagecode, d.term) ORDER BY d.languagecode)
    FROM description d
    WHERE d.typeid = '900000000000003001'
      AND d.active = '1'
      AND d.conceptid = c.id
-     %s)" (if-not join-original-language-as-designation
+     %s))" (if-not join-original-language-as-designation
             "AND d.languagecode <> 'en'" ""))]))
 
 (defn join-textdefinitions [db]

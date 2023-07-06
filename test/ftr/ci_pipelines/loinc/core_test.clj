@@ -47,45 +47,35 @@
     {"loinc"
      {"vs"
       {"http:--loinc.org-vs"
-       {"tf.b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040.ndjson.gz" {}
+       {"tf.2a3f2e125cfe09f77cf129d6669fe937175e7191d59bd75ca4eac52a510406fe.ndjson.gz" {}
         "tag.prod.ndjson.gz" {}}}
       "tags" {"prod.ndjson.gz" {} "prod.hash" {}}}})
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
       (format "%s/loinc/tags/prod.ndjson.gz" (:ftr-path sut/config-defaults)))
-    [{:hash "b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040"
+    [{:hash "2a3f2e125cfe09f77cf129d6669fe937175e7191d59bd75ca4eac52a510406fe"
       :name "loinc.http:--loinc.org-vs"}
      nil?])
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
-      (format "%s/loinc/vs/http:--loinc.org-vs/tf.b42fe5da59a2fd08799e2f432833f73f2e063fdc76159fa31d511b479438b040.ndjson.gz" (:ftr-path sut/config-defaults)))
+      (format "%s/loinc/vs/http:--loinc.org-vs/tf.2a3f2e125cfe09f77cf129d6669fe937175e7191d59bd75ca4eac52a510406fe.ndjson.gz" (:ftr-path sut/config-defaults)))
     [{}
      {}
      {:id          "http:--loinc.org-http:--loinc.org-vs-14575-5"
       :code        "14575-5"
-      :designation [{:language "en"
-                     :value "Blood group antibody investigation [Interpretation] in Plasma or RBC"}
-                    {:language "fr-CA"
-                     :value
-                     "Recherche d'anticorps des groupes sanguins:Impression/interprétation d'étude:Temps ponctuel:Plasma/GR:Nominal:"}
-                    {:language "fr-FR"
-                     :value
-                     "Anticorps irréguliers (RAI) [Interprétation] Plasma/Érythrocytes ; Résultat nominal"}
-                    nil?]}
+      :designation {:display
+                    {:en "Blood group antibody investigation [Interpretation] in Plasma or RBC"
+                     :fr-CA "Recherche d'anticorps des groupes sanguins:Impression/interprétation d'étude:Temps ponctuel:Plasma/GR:Nominal:"
+                     :fr-FR "Anticorps irréguliers (RAI) [Interprétation] Plasma/Érythrocytes ; Résultat nominal"}}}
      {:id "http:--loinc.org-http:--loinc.org-vs-19146-0" :code "19146-0"}
      {:id          "http:--loinc.org-http:--loinc.org-vs-43119-7"
       :code        "43119-7"
-      :designation [{:language "en"
-                     :value "Extractable nuclear Ab panel - Serum"}
-                    {:language "fr-CA"
-                     :value
-                     "Recherche d'Ac nucléaires solubles:-:Temps ponctuel:Sérum:-:"}
-                    {:language "fr-FR"
-                     :value
-                     "Antigènes nucléaires solubles anticorps panel [-] Sérum ; -"}
-                    nil?]}
+      :designation {:display
+                    {:en    "Extractable nuclear Ab panel - Serum"
+                     :fr-CA "Recherche d'Ac nucléaires solubles:-:Temps ponctuel:Sérum:-:"
+                     :fr-FR "Antigènes nucléaires solubles anticorps panel [-] Sérum ; -"}}}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP36399-1" :code "LP36399-1"}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP422758-5" :code "LP422758-5"}
      {:id "http:--loinc.org-http:--loinc.org-vs-LP422835-1" :code "LP422835-1"}

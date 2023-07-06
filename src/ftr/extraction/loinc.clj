@@ -330,10 +330,9 @@
                                     :from    {:m :sdl}
                                     :where   [:= :m.dst :base.id]}]}]}
                     (when join-original-language-as-designation
-                      {:designation ^:jsonb/array[^:pg/obj {:language "en"
-                                                            :value ^:pg/fn[:coalesce
-                                                                           :loinc.LONG_COMMON_NAME
-                                                                           [:->> :base.property "display"]]}]}))]}
+                      {:designation ^:pg/obj {:display ^:pg/obj{:en ^:pg/fn[:coalesce
+                                                                            :loinc.LONG_COMMON_NAME
+                                                                            [:->> :base.property "display"]]}}}))]}
            :from      {:base :loinc_base_json}
            :left-join {:prim  {:table :partlink_primary_json
                                :on    [:= :prim.LoincNumber :base.id]}
@@ -460,6 +459,9 @@
   [db langs]
   (doseq [lang-map langs]
     (let [prefix (make-linguistic-variant-file-prefix lang-map)]
+      (q! db {:ql/type :pg/drop-table
+              :table-name (keyword (format "translation_%s" prefix))
+              :if-exists true})
       (q! db {:ql/type    :pg/create-table
               :table-name (keyword (format "translation_%s" prefix))
               :columns    {:loincnumber {:type "text"}
@@ -572,19 +574,17 @@
 
       (q! db {:ql/type :pg/update
               :update  :loinc_concept
-              :set     {:concept [:pg/jsonb_set :concept [:designation]
+              :set     {:concept [:pg/jsonb_set :concept [:designation :display]
                                   [:||
-                                   [:pg/coalesce
-                                    [:-> :concept :designation]
-                                    [:pg/cast "[]" :jsonb]]
-                                   ^:pg/obj {:language (make-fhir-lang lang-map)
-                                             :value    {:ql/type :pg/sub-select
-                                                        :select  :designation
-                                                        :from    (keyword (format "translation_%s" prefix))
-                                                        :where   [:=
-                                                                  (keyword (str (format "translation_%s" prefix) ".loincnumber"))
-                                                                  :loinc_concept.loincnumber]
-                                                        :limit   1}}]]}
+                                   [:#> :concept [:designation :display]]
+                                   ^:pg/obj {(make-fhir-lang lang-map)
+                                             {:ql/type :pg/sub-select
+                                              :select  :designation
+                                              :from    (keyword (format "translation_%s" prefix))
+                                              :where   [:=
+                                                        (keyword (str (format "translation_%s" prefix) ".loincnumber"))
+                                                        :loinc_concept.loincnumber]
+                                              :limit   1}}]]}
               :from (keyword (format "translation_%s" prefix))
               :where [:=
                       (keyword (str (format "translation_%s" prefix) ".loincnumber"))
