@@ -193,7 +193,12 @@
    consider it inappropriate to override base (on the national level)
    resources."
 (def struct-defs-priority
-  {:fhir.org.nz.ig.base #{:hl7.org.nz.fhir.ig.mdr}})
+  {:hl7.fhir.r4.core #{:hl7.fhir.uv.extensions.r4}
+   :fhir.org.nz.ig.base #{:hl7.org.nz.fhir.ig.mdr}})
+
+
+(def search-param-priority
+  {:hl7.fhir.r4.core #{:hl7.fhir.uv.extensions.r4}})
 
 
 ;; We assume that there are no other resources clashing. If we find
@@ -286,6 +291,10 @@
 
 (defmethod resolve-clash :StructureDefinition [_rt old new]
   (resolve-vs-or-sd-clash old new struct-defs-priority))
+
+
+(defmethod resolve-clash :SearchParameter [_rt old new]
+  (resolve-vs-or-sd-clash old new search-param-priority))
 
 
 (defn check-priority [inter-old inter-new res-type]
