@@ -414,9 +414,9 @@
         acc))))
 
 
-(defn all-vs-nested-refs->vs-idx [concepts-map nested-vs-refs-queue]
+(defn all-vs-nested-refs->vs-idx [concepts-map nested-vs-refs-queue & [precompiled-vs-idx]]
   (loop [acc {:vs-queue nested-vs-refs-queue
-              :vs-idx-acc {}}]
+              :vs-idx-acc (or precompiled-vs-idx {})}]
     (let [res-acc (refs-in-vs->vs-idx acc concepts-map (ffirst (:vs-queue acc)))]
       (if (seq (:vs-queue res-acc))
         (recur res-acc)
@@ -452,28 +452,16 @@
     valuesets))
 
 
-(defn denormalize-into-concepts [valuesets concepts-map]
-  #_(def vs valuesets)
-  #_(def cs concepts-map)
+(defn denormalize-into-concepts [valuesets concepts-map & [precompiled-vs-idx]]
   (let [nested-vs-refs-queue (build-valuesets-compose-idx valuesets)
-        new-vs-idx-entries   (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue)]
-    (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)))
+        new-vs-idx-entries   (all-vs-nested-refs->vs-idx concepts-map nested-vs-refs-queue precompiled-vs-idx)
+        res (reduce-vs-idx-into-concepts-map concepts-map new-vs-idx-entries)]
+    res))
 
 
-;; (comment
-
-;;   (require '[clj-async-profiler.core :as prof])
-
-;;   (def srv (prof/serve-ui 8081))
-
-;;   (with-out-str (time (prof/profile (denormalize-into-concepts vs cs))))
-;;   ;; => "nil\n\"Elapsed time: 274580.148125 msecs\"\n"
-
-;;   (+ 1 1)
-
-;;   nil)
-
-(defn denormalize-value-sets-into-concepts [ztx]
+(defn denormalize-value-sets-into-concepts [ztx & [precompiled-vs-idx]]
   (swap! ztx update-in [:fhir/inter "Concept"]
-         (partial denormalize-into-concepts
-                  (vals (get-in @ztx [:fhir/inter "ValueSet"])))))
+         #(denormalize-into-concepts
+            (vals (get-in @ztx [:fhir/inter "ValueSet"]))
+            %
+            precompiled-vs-idx)))
