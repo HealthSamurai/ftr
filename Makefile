@@ -7,7 +7,7 @@ test:
 	clojure -M:kaocha:test:pipeline
 
 build:
-	clojure -T:build:pipeline uber
+	clojure -T:build uber
 
 up:
 	docker compose up --detach --wait db

@@ -3,7 +3,8 @@
 
 (def version (format "1.2.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
-(def basis (b/create-basis {:project "deps.edn"}))
+(def basis (b/create-basis {:project "deps.edn"
+                            :aliases [:pipeline]}))
 (def uber-file "target/ftr.jar")
 (def uber-file-zen-cli "target/zen.jar")
 
