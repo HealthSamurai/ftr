@@ -51,6 +51,5 @@
   {:extra-paths ["build"]
    :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :extra-deps  {io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
-                                                :tag     "v0.2.1"
-                                                :sha     "68c494645d127d5e24c705d5f9014370c8054d04"}}
+                                                :sha     "cc1e33d003e2e9507e8e6e899611f56172dacc0a"}}
    :ns-default  build}}}
