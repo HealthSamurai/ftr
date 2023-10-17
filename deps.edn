@@ -26,7 +26,8 @@
                 com.velisco/clj-ftp {:mvn/version "1.1.0"}
                 ;; http-kit can't handle cookies, so, to download LOINC bundle we're using clj-http with
                 ;; pre-configured cookie-store
-                clj-http/clj-http   {:mvn/version "3.12.3"}}}
+                clj-http/clj-http   {:mvn/version "3.12.3"} ;
+                org.clj-commons/hickory {:mvn/version "0.7.3"}}}
 
   :nrepl
   {:extra-paths []
