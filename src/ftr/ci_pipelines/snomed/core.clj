@@ -8,7 +8,9 @@
             [ftr.ci-pipelines.snomed.db]
             [clojure.pprint]
             [org.httpkit.client :as http]
-            [ftr.ci-pipelines.utils])
+            [ftr.ci-pipelines.utils]
+            [hickory.core]
+            [hickory.select :as s])
   (:import java.io.File))
 
 
@@ -20,10 +22,19 @@
 
 
 (defmethod u/*fn ::get-latest-snomed-info!
-  ([{:as _ctx, :keys [version-page-url download-url-regex complete-download-url-format api-key]}]
-   (let [html-text (get-html-text-by-url version-page-url)
-         [_ download-url] (re-find download-url-regex
-                                   html-text)]
+  ([{:as _ctx, :keys [version-page-url complete-download-url-format api-key]}]
+   (let [html-text (slurp version-page-url)
+         parsed-html-text (-> html-text
+                              (hickory.core/parse)
+                              (hickory.core/as-hickory))
+         download-url (-> (s/select ;; TODO request guide from UMLS about automated SNOMED downloads, this solution is SUPER fragile
+                            (s/and
+                              (s/tag :a)
+                              (s/find-in-text #"Download Now!"))
+                            parsed-html-text)
+                          first
+                          :attrs
+                          :href)]
      {:snomed-info
       {:snomed-zip-url download-url
        :version (-> download-url
@@ -160,7 +171,7 @@
 
 (def config-defaults
   {:version-page-url
-   "https://documentation.uts.nlm.nih.gov/automating-downloads.html"
+   "https://www.nlm.nih.gov/healthit/snomedct/us_edition.html"
 
    :download-url-regex
    #"url=(https://download.nlm.nih.gov/mlb/utsauth/USExt/.+?\.zip)"
@@ -182,13 +193,13 @@
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
     (doto (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
-                     ::get-latest-snomed-info!
-                     ::write-snomed-snapshot-terminology-folder!
-                     ::build-ftr-cfg
-                     :ftr.core/apply-cfg
-                     :ftr.ci-pipelines.utils/upload-to-gcp-bucket
-                     ::generate-snomed-zen-package
-                     :ftr.ci-pipelines.utils/push-zen-package
-                     :ftr.ci-pipelines.utils/send-tg-notification]
+                    ::get-latest-snomed-info!
+                    ::write-snomed-snapshot-terminology-folder!
+                    ::build-ftr-cfg
+                    :ftr.core/apply-cfg
+                    :ftr.ci-pipelines.utils/upload-to-gcp-bucket
+                    ::generate-snomed-zen-package
+                    :ftr.ci-pipelines.utils/push-zen-package
+                    :ftr.ci-pipelines.utils/send-tg-notification]
                     cfg)
       (clojure.pprint/pprint))))
