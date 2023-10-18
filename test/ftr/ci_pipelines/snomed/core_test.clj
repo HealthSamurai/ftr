@@ -24,8 +24,9 @@
 
   (matcho/match
     (u/*apply [::sut/get-latest-snomed-info!] sut/config-defaults)
+
     {:snomed-info
-     {:complete-download-url #(str/starts-with? % "https://uts-ws.nlm.nih.gov/download?url=https://download.nlm.nih.gov/mlb/utsauth/USExt/SnomedCT_USEditionRF2_PRODUCTION_")}}))
+     {:complete-download-url #(str/starts-with? % "https://uts-ws.nlm.nih.gov/download?url=https://download.nlm.nih.gov/mlb/utsauth/USExt/SnomedCT_")}}))
 
 
 (t/deftest write-snomed-snapshot-terminology-folder-test
