@@ -5,7 +5,8 @@
    [clojure.pprint]
    [ftr.ci-pipelines.utils]
    [ftr.utils.unifn.core :as u]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [ftr.utils.core])
   (:import [java.io File]))
 
 
@@ -92,6 +93,14 @@
                                            :url "http://www.nlm.nih.gov/research/umls/rxnorm/valueset"}}}})
 
 
+(defmethod u/*fn ::clear-working-dir
+  [{:as _ctx,
+    :keys [extract-destination download-destination]}]
+  (ftr.utils.core/rmrf extract-destination)
+  (ftr.utils.core/rmrf download-destination)
+  {})
+
+
 (defmethod u/*fn ::generate-rxnorm-zen-package
   [{:as _ctx,
     :keys [working-dir-path rxnorm-version module]}]
@@ -124,15 +133,15 @@
   (let [cfg (-> (merge config-defaults args)
                 (assoc :ftr.utils.unifn.core/tracers [:ftr.logger.core/log-step]))]
     (clojure.pprint/pprint
-      (u/*apply [#_:ftr.ci-pipelines.utils/download-previous-ftr-version!
+      (u/*apply [:ftr.ci-pipelines.utils/download-previous-ftr-version!
                  ::get-rxnorm-bundle!
                  ::build-ftr-cfg
                  :ftr.core/apply-cfg
-                 #_::clear-working-dir
-                 #_:ftr.ci-pipelines.utils/upload-to-gcp-bucket
-                 #_::generate-rxnorm-zen-package
-                 #_:ftr.ci-pipelines.utils/push-zen-package
-                 #_:ftr.ci-pipelines.utils/send-tg-notification]
+                 ::clear-working-dir
+                 :ftr.ci-pipelines.utils/upload-to-gcp-bucket
+                 ::generate-rxnorm-zen-package
+                 :ftr.ci-pipelines.utils/push-zen-package
+                 :ftr.ci-pipelines.utils/send-tg-notification]
                 cfg))))
 
 
