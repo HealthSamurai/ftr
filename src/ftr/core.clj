@@ -139,6 +139,14 @@
    ::write-tag-index-hash])
 
 
+(def rxnorm-pipeline
+  [::extract-terminology
+   ::write-terminology-file
+   ::shape-ftr-layout
+   :ftr.post-write-coordination.core/coordinate
+   ::write-tag-index-hash])
+
+
 (defmethod u/*fn ::select-ftr-pipeline [{:as _ctx,
                                          ::keys [commit-type]
                                          {:keys [source-type]} :cfg}]
@@ -164,6 +172,9 @@
 
      [:append :loinc]
      loinc-pipeline
+
+     [:append :rxnorm]
+     rxnorm-pipeline
 
      [:tag-merge nil]
      tag-merge-pipeline)})

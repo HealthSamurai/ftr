@@ -5,7 +5,9 @@
             [ftr.extraction.serialized-objects-array]
             [ftr.extraction.ftr]
             [ftr.extraction.icd10]
-            [ftr.extraction.loinc]))
+            [ftr.extraction.loinc]
+            [ftr.extraction.rxnorm]))
+
 
 (defn extract [cfg]
   (let [{:keys [source-type source-url source-urls extractor-options]} cfg
@@ -21,4 +23,5 @@
       :serialized-objects-array (ftr.extraction.serialized-objects-array/import-from-cfg extractor-cfg)
       :ftr (ftr.extraction.ftr/import-from-cfg extractor-cfg)
       :icd10 (ftr.extraction.icd10/import-from-cfg extractor-cfg)
-      :loinc (ftr.extraction.loinc/import-from-cfg extractor-cfg))))
+      :loinc (ftr.extraction.loinc/import-from-cfg extractor-cfg)
+      :rxnorm (ftr.extraction.rxnorm/import-from-cfg extractor-cfg))))
