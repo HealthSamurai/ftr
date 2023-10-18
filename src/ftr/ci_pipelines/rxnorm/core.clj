@@ -7,6 +7,7 @@
    [ftr.ci-pipelines.utils]
    [ftr.logger.core]
    [ftr.utils.core]
+   [ftr.core]
    [ftr.utils.unifn.core :as u])
   (:import [java.io File]))
 
