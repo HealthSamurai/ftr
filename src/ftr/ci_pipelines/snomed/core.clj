@@ -37,13 +37,13 @@
                           :href)]
      {:snomed-info
       {:snomed-zip-url download-url
-       :version (-> download-url
-                    (str/split #"/")
-                    (last)
-                    (str/split #"_")
-                    (last)
-                    (str/split #"T")
-                    (first))
+       :version (some-> download-url
+                        (str/split #"/")
+                        (last)
+                        (str/split #"_")
+                        (last)
+                        (str/split #"T")
+                        (first))
        :complete-download-url (format complete-download-url-format download-url api-key)}})))
 
 
