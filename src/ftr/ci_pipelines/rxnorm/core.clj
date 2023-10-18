@@ -3,10 +3,11 @@
    [clj-http.client :as client]
    [clojure.java.io :as io]
    [clojure.pprint]
-   [ftr.ci-pipelines.utils]
-   [ftr.utils.unifn.core :as u]
    [clojure.string :as str]
-   [ftr.utils.core])
+   [ftr.ci-pipelines.utils]
+   [ftr.logger.core]
+   [ftr.utils.core]
+   [ftr.utils.unifn.core :as u])
   (:import [java.io File]))
 
 
