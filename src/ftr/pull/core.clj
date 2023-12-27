@@ -2,7 +2,8 @@
   (:require [ftr.utils.core]
             [ftr.patch-generator.core]
             [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [klog.core :as klog]))
 
 
 (defn init [{:as _cfg, :keys [tag ftr-path module]}
@@ -14,17 +15,25 @@
         patch-plan-file-path (format "%s/%s.ndjson.gz"
                                      bulk-patch-plans-folder
                                      patch-plan-file-name)]
-    (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
-      (doseq [{:as _ti-entry, :keys [hash name]} tag-index
-              :let [trimmed-name (second (str/split name #"\." 2))]]
-        (let [tf-path (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
-                              ftr-path
-                              module
-                              trimmed-name
-                              hash)]
-          (with-open [r (ftr.utils.core/open-gz-reader tf-path)]
-            (doseq [l (line-seq r)]
-              (.write w (str l \newline)))))))
+    (let [counter (atom 0)
+          tag-index-size (count tag-index)]
+      (with-open [w (ftr.utils.core/open-gz-writer patch-plan-file-path)]
+        (doseq [{:as _ti-entry, :keys [hash name]} tag-index
+                :let [trimmed-name (second (str/split name #"\." 2))]]
+          (let [tf-path (format "%s/%s/vs/%s/tf.%s.ndjson.gz"
+                                ftr-path
+                                module
+                                trimmed-name
+                                hash)]
+          (swap! counter inc)
+          (klog/info :ftr/initial-pull
+                     {:msg (format "Downloading %s terminology file %s/%s"
+                                   tf-path
+                                   @counter
+                                   tag-index-size)})
+            (with-open [r (ftr.utils.core/open-gz-reader tf-path)]
+              (doseq [l (line-seq r)]
+                (.write w (str l \newline))))))))
     {:patch-plan patch-plan-file-path}))
 
 

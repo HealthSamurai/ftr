@@ -1,6 +1,8 @@
 {:paths ["src" "resources" "zrc"]
 
- :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
+ :deps {klog/klog {:git/url "https://github.com/HealthSamurai/klog"
+                   :sha "8151622626915254bbd6b5ea0d0246d691e44010"}
+        org.clojure/clojure  {:mvn/version "1.11.1"}
         progrock/progrock    {:mvn/version "0.1.2"}
         org.clojure/data.csv {:mvn/version "1.0.1"}
         cheshire/cheshire    {:mvn/version "5.11.0"}
