@@ -171,13 +171,6 @@
         has-concept-check? (some? check-fn)
         any-system?        (nil? system)
         depends-on         (vec depends-on)
-
-        _ (when (not has-concept-check?)
-            (assert (or (some? system) has-dependencies?)
-                    "check fn may be missing only when depending on another value set or there's a system"))
-        _ (assert (or (not any-system?) has-dependencies?)
-                  "system may be missing only when depending on another value set")
-
         queue-path (concat [el-type]
                            (if any-system?
                              [:any-system]
@@ -185,15 +178,19 @@
                            (if allow-any-concept?
                              [depends-on :allow-any-concept]
                              [depends-on :pred-fns]))]
-    (cond-> vs-queue
-      allow-any-concept?
-      (assoc-in queue-path true)
+    (if (or (and (not has-concept-check?)
+                 (not (or (some? system) has-dependencies?)))
+            (not (or (not any-system?) has-dependencies?)))
+      vs-queue
+      (cond-> vs-queue
+        allow-any-concept?
+        (assoc-in queue-path true)
 
-      has-concept-check?
-      (update-in queue-path conj check-fn)
+        has-concept-check?
+        (update-in queue-path conj check-fn)
 
-      has-dependencies?
-      (update :deps (fnil into #{}) depends-on))))
+        has-dependencies?
+        (update :deps (fnil into #{}) depends-on)))))
 
 
 (defn push-compose-els-to-vs-queue [vs-queue el-type els]
