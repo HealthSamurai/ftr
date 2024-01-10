@@ -84,23 +84,56 @@
     ["suppress" {:type "text"}]
     ["cvf"      {:type "text"}]
     ["empt"     {:type "text"}]
+    ["idx"      {:type "serial"}]]
+   :rxnrel-columns
+   [["rxcui1"   {:type "text"}]
+    ["rxaui1"   {:type "text"}]
+    ["stype1"   {:type "text"}]
+    ["rel"      {:type "text"}]
+    ["rxcui2"   {:type "text"}]
+    ["rxaui2"   {:type "text"}]
+    ["stype2"   {:type "text"}]
+    ["rela"     {:type "text"}]
+    ["rui"      {:type "text"}]
+    ["srui"     {:type "text"}]
+    ["sab"      {:type "text"}]
+    ["sl"       {:type "text"}]
+    ["rg"       {:type "text"}]
+    ["dir"      {:type "text"}]
+    ["suppress" {:type "text"}]
+    ["cvf"      {:type "text"}]
+    ["empt"     {:type "text"}]
+    ["idx"      {:type "serial"}]]
+   :rxnsat-columns
+   [["rxcui"    {:type "text"}]
+    ["lui"      {:type "text"}]
+    ["sui"      {:type "text"}]
+    ["rxaui"    {:type "text"}]
+    ["stype"    {:type "text"}]
+    ["code"     {:type "text"}]
+    ["atui"     {:type "text"}]
+    ["satui"    {:type "text"}]
+    ["atn"      {:type "text"}]
+    ["sab"      {:type "text"}]
+    ["atv"      {:type "text"}]
+    ["suppress" {:type "text"}]
+    ["cvf"      {:type "text"}]
+    ["empt"     {:type "text"}]
     ["idx"      {:type "serial"}]]})
 
 
-(defn prepare-rxnconso-table!
-  "Prepares the RXNCONSO table by dropping it if it exists and then creating it afresh.
+(defn prepare-table!
+  "Prepares the table by dropping it if it exists and then creating it afresh.
 
-   RXNCONSO talbe represent info about RxNorm concepts.
-
-   Arguments:
+  Arguments:
    db - the database connection to be used for executing the SQL commands."
-  [db]
-  (drop-table-if-exists db "RXNCONSO")
+  [db table-name table-columns]
+  (drop-table-if-exists db table-name)
   (q! db
       {:ql/type :pg/create-table
-       :table-name "RXNCONSO"
+       :table-name table-name
        :if-not-exists true
-       :columns (:rxnconso-columns tables-columns)}))
+       :columns table-columns}))
 
 
 (defn filter-out-known-files
@@ -109,7 +142,7 @@
    Arguments
    rxnorm-files - collection of files constucted by `get&wrap-rxnorm-files` fn"
   [rxnorm-files]
-  (let [known-files #{"RXNCONSO.RRF"}]
+  (let [known-files #{"RXNCONSO.RRF" "RXNREL.RRF" "RXNSAT.RRF"}]
     (into #{} (filter #(contains? known-files (:file-name %))) rxnorm-files)))
 
 
@@ -149,7 +182,9 @@
   - `db`: A database connection string.
   - `path`: The file path to the directory containing RxNorm RRF files."
   [db path]
-  (prepare-rxnconso-table! db)
+  (prepare-table! db "RXNCONSO" (:rxnconso-columns tables-columns))
+  (prepare-table! db "RXNREL"   (:rxnrel-columns tables-columns))
+  (prepare-table! db "RXNSAT"   (:rxnsat-columns tables-columns))
   (let [rxnorm-files (get&wrap-rxnorm-files path)
         known-rxnorm-files (filter-out-known-files rxnorm-files)]
     (doseq [{:keys [file table-name]} known-rxnorm-files]
@@ -167,8 +202,21 @@
             :from :rxnconso
             :where ^:pg/op[:<> :sab "RXNORM"]}) ;; Codes with sab != RXNORM - requires tricky licensing process, so we omit them.
 
+    (q! db {:ql/type :pg/delete
+            :from :rxnrel
+            :where ^:pg/op[:<> :sab "RXNORM"]})
+
+    (q! db {:ql/type :pg/delete
+            :from :rxnsat
+            :where ^:pg/op[:<> :sab "RXNORM"]})
+
     (create-idx db :rxnconso "code")
-    (create-idx db :rxnconso "tty")))
+    (create-idx db :rxnconso "tty")
+    (create-idx db :rxnrel "rxcui1")
+    (create-idx db :rxnrel "rxcui2")
+    (create-idx db :rxnrel "rela")
+    (create-idx db :rxnsat "atv")
+    (create-idx db :rxnsat "atn")))
 
 
 (defmethod u/*fn ::create-value-set [cfg]
@@ -192,7 +240,52 @@
   (load-rxnorm-data db (or source-urls source-url))
   {})
 
+(def rxnsat-atn-collections
+  {:all     ["AMBIGUITY_FLAG"
+             "NDC"
+             "ORIG_CODE"
+             "ORIG_SOURCE"
+             "RXN_ACTIVATED"
+             "RXN_AI"
+             "RXN_AM"
+             "RXN_AVAILABLE_STRENGTH"
+             "RXN_BN_CARDINALITY"
+             "RXN_BOSS_FROM"
+             "RXN_BOSS_STRENGTH_DENOM_UNIT"
+             "RXN_BOSS_STRENGTH_DENOM_VALUE"
+             "RXN_BOSS_STRENGTH_NUM_UNIT"
+             "RXN_BOSS_STRENGTH_NUM_VALUE"
+             "RXN_HUMAN_DRUG"
+             "RXN_IN_EXPRESSED_FLAG"
+             "RXN_OBSOLETED"
+             "RXN_QUALITATIVE_DISTINCTION"
+             "RXN_QUANTITY"
+             "RXN_STRENGTH"
+             "RXN_VET_DRUG"
+             "RXTERM_FORM"]
 
+   :multi   ["ORIG_SOURCE"
+             "RXN_AM"
+             "RXN_BOSS_FROM"
+             "AMBIGUITY_FLAG"
+             "RXN_AVAILABLE_STRENGTH"
+             "RXN_OBSOLETED"
+             "RXN_ACTIVATED"
+             "ORIG_CODE"
+             "RXN_AI"]
+
+   :single  ["RXN_IN_EXPRESSED_FLAG"
+             "RXN_HUMAN_DRUG"
+             "RXN_BOSS_STRENGTH_DENOM_VALUE"
+             "RXN_BOSS_STRENGTH_NUM_VALUE"
+             "RXN_QUANTITY"
+             "RXN_BOSS_STRENGTH_NUM_UNIT"
+             "RXN_BOSS_STRENGTH_DENOM_UNIT"
+             "RXN_BN_CARDINALITY"
+             "RXN_STRENGTH"
+             "RXN_VET_DRUG"
+             "RXTERM_FORM"
+             "RXN_QUALITATIVE_DISTINCTION"]})
 
 
 (defmethod u/*fn ::create-concepts-copy-out-obj [{:as _cfg,
@@ -205,11 +298,11 @@
                        :select {:suppress :suppress
                                 :rxcui :rxcui
                                 :displays [:pg/sql "jsonb_agg(str order by CASE WHEN tty='SCD' THEN 110 WHEN tty='SCDG' THEN 120 WHEN tty='SCDF' THEN 130 WHEN tty='SCDC' THEN 140 WHEN tty='SBD' THEN 210 WHEN tty='SBDG' THEN 220 WHEN tty='SBDF' THEN 230 WHEN tty='SBDC' THEN 240 WHEN tty='MIN' THEN 310 WHEN tty='PIN' THEN 320 WHEN tty='IN' THEN 330 WHEN tty='GPCK' THEN 410 WHEN tty='BPCK' THEN 420 WHEN tty='PSN' THEN 510 WHEN tty='SY' THEN 520 WHEN tty='TMSY' THEN 530 WHEN tty='BN' THEN 610 WHEN tty='DF' THEN 710 WHEN tty='ET' THEN 720 WHEN tty='DFG' THEN 730 ELSE NULL END)"]}
-                                          ;; ^--- RXCONSO might contain multiple entries for a single RXCUI value. These entries
-                                          ;;      represent various additional variations of the same atom. We empirically determine
-                                          ;;      the 'priorities' of such variations to select the primary variant for the 'display'
-                                          ;;      value, while preserving the additional variants in the 'other-display' property.
-                                          ;;      https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix5.html
+                                           ;; ^--- RXCONSO might contain multiple entries for a single RXCUI value. These entries
+                                           ;;      represent various additional variations of the same atom. We empirically determine
+                                           ;;      the 'priorities' of such variations to select the primary variant for the 'display'
+                                           ;;      value, while preserving the additional variants in the 'other-display' property.
+                                           ;;      https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix5.html
                        :from :rxnconso
                        :group-by {:rxcui :rxcui :suppress :suppress}}}
                :select {:ql/type :pg/select
@@ -222,10 +315,46 @@
                                            :valueset
                                            ^:pg/fn[:jsonb_build_array (:url value-set)]
                                            :property  ^:pg/fn [:jsonb_strip_nulls
-                                                               ^:pg/obj {:other-display [:cond
-                                                                                         [:= ^:pg/fn[:jsonb_array_length [:- :preparations.displays 0]] 0] nil
-                                                                                         [:- :preparations.displays 0]]
-                                                                         :suppressible-flag :preparations.suppress}]}}
+                                                               [:||
+                                                                ^:pg/obj {:other-display [:cond
+                                                                                          [:= ^:pg/fn[:jsonb_array_length [:- :preparations.displays 0]] 0] nil
+                                                                                          [:- :preparations.displays 0]]
+                                                                          :suppressible-flag :preparations.suppress}
+
+                                                                {:ql/type :pg/cte
+                                                                 :with {:attrs
+                                                                        {:ql/type :pg/select
+                                                                         :select {:name :atn
+                                                                                  :value ^:pg/fn[:jsonb_agg :atv]}
+                                                                         :from :rxnsat
+                                                                         :where [:and
+                                                                                 [:= :rxcui :preparations.rxcui]
+                                                                                 [:in :atn [:pg/params-list (:multi rxnsat-atn-collections)]]]
+                                                                         :group-by :atn
+                                                                         :union-all {:wha {:ql/type :pg/sub-select
+                                                                                           :select {:name :atn
+                                                                                                    :value ^:pg/fn[:to_jsonb :atv]}
+                                                                                           :from :rxnsat
+                                                                                           :where [:and
+                                                                                                   [:= :rxcui :preparations.rxcui]
+                                                                                                   [:in :atn [:pg/params-list (:single rxnsat-atn-collections)]]]}}}}
+                                                                 :select {:ql/type :pg/select
+                                                                          :select ^:pg/fn[:jsonb_object_agg :name :value]
+                                                                          :from :attrs}}
+
+                                                                {:ql/type :pg/cte
+                                                                 :with {:rels
+                                                                        {:ql/type :pg/select
+                                                                         :select {:relation :rela
+                                                                                  :object ^:pg/fn[:jsonb_agg :rxcui1]}
+                                                                         :from :rxnrel
+                                                                         :where [:= :rxcui2 :preparations.rxcui]
+                                                                         :group-by :relation}}
+                                                                 :select {:ql/type :pg/select
+                                                                          :select ^:pg/fn[:jsonb_object_agg :relation :object]
+                                                                          :from :rels}
+
+                                                                 }]]}}
                         :from :preparations
                         :order-by :rxcui}}
         pstmnt ^PreparedStatement (jdbc/prepare connection (dsql/format query) {:fetch-size 1000})]
