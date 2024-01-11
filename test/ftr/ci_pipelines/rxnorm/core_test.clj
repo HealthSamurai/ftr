@@ -43,21 +43,24 @@
     {"rxnorm"
      {"vs"
       {"http:--www.nlm.nih.gov-research-umls-rxnorm-valueset"
-       {"tag.prod.ndjson.gz"                                                            {}
-        "tf.624ca9e321f99eb8b4eaee11c9e7da88353a8e0e4c23e61debc6c37a112e1f83.ndjson.gz" {}}}
-      "tags" {"prod.ndjson.gz" {}
-              "prod.hash"      {}}}})
+       {"tag.prod.ndjson.gz" {},
+        "tf.61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485.ndjson.gz"
+        {}}},
+      "tags" {"prod.ndjson.gz" {}, "prod.hash" {}}}}
+
+)
+
+  (matcho/match
+   (ftr.utils.core/parse-ndjson-gz
+    (format "%s/rxnorm/tags/prod.ndjson.gz" (:ftr-path sut/config-defaults)))
+   [{:hash
+     "61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485",
+     :name "rxnorm.http:--www.nlm.nih.gov-research-umls-rxnorm-valueset"}
+    nil])
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
-      (format "%s/rxnorm/tags/prod.ndjson.gz" (:ftr-path sut/config-defaults)))
-    [{:hash "624ca9e321f99eb8b4eaee11c9e7da88353a8e0e4c23e61debc6c37a112e1f83"
-      :name "rxnorm.http:--www.nlm.nih.gov-research-umls-rxnorm-valueset"}
-     nil?])
-
-  (matcho/match
-    (ftr.utils.core/parse-ndjson-gz
-      (format "%s/rxnorm/vs/http:--www.nlm.nih.gov-research-umls-rxnorm-valueset/tf.624ca9e321f99eb8b4eaee11c9e7da88353a8e0e4c23e61debc6c37a112e1f83.ndjson.gz"
+      (format "%s/rxnorm/vs/http:--www.nlm.nih.gov-research-umls-rxnorm-valueset/tf.61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485.ndjson.gz"
               (:ftr-path sut/config-defaults)))
     [{:publisher    "National Library of Medicine (NLM)"
       :content      "not-present"
