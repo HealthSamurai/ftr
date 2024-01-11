@@ -297,7 +297,8 @@
                :with {:preparations
                       {:ql/type :pg/select
                        :select {:suppress :suppress
-                                :rxcui :rxcui
+                                :rxcui  :rxcui
+                                :tty    [:pg/sql "jsonb_agg(tty order by CASE WHEN tty='SCD' THEN 110 WHEN tty='SCDG' THEN 120 WHEN tty='SCDF' THEN 130 WHEN tty='SCDC' THEN 140 WHEN tty='SBD' THEN 210 WHEN tty='SBDG' THEN 220 WHEN tty='SBDF' THEN 230 WHEN tty='SBDC' THEN 240 WHEN tty='MIN' THEN 310 WHEN tty='PIN' THEN 320 WHEN tty='IN' THEN 330 WHEN tty='GPCK' THEN 410 WHEN tty='BPCK' THEN 420 WHEN tty='PSN' THEN 510 WHEN tty='SY' THEN 520 WHEN tty='TMSY' THEN 530 WHEN tty='BN' THEN 610 WHEN tty='DF' THEN 710 WHEN tty='ET' THEN 720 WHEN tty='DFG' THEN 730 ELSE NULL END)"]
                                 :displays [:pg/sql "jsonb_agg(str order by CASE WHEN tty='SCD' THEN 110 WHEN tty='SCDG' THEN 120 WHEN tty='SCDF' THEN 130 WHEN tty='SCDC' THEN 140 WHEN tty='SBD' THEN 210 WHEN tty='SBDG' THEN 220 WHEN tty='SBDF' THEN 230 WHEN tty='SBDC' THEN 240 WHEN tty='MIN' THEN 310 WHEN tty='PIN' THEN 320 WHEN tty='IN' THEN 330 WHEN tty='GPCK' THEN 410 WHEN tty='BPCK' THEN 420 WHEN tty='PSN' THEN 510 WHEN tty='SY' THEN 520 WHEN tty='TMSY' THEN 530 WHEN tty='BN' THEN 610 WHEN tty='DF' THEN 710 WHEN tty='ET' THEN 720 WHEN tty='DFG' THEN 730 ELSE NULL END)"]}
                        ;; ^--- RXCONSO might contain multiple entries for a single RXCUI value. These entries
                        ;;      represent various additional variations of the same atom. We empirically determine
@@ -320,7 +321,8 @@
                                                                 ^:pg/obj {:other-display [:cond
                                                                                           [:= ^:pg/fn[:jsonb_array_length [:- :preparations.displays 0]] 0] nil
                                                                                           [:- :preparations.displays 0]]
-                                                                          :suppressible-flag :preparations.suppress}
+                                                                          :suppressible-flag :preparations.suppress
+                                                                          :tty :preparations.tty}
 
                                                                 {:ql/type :pg/cte
                                                                  :with {:attrs
@@ -340,7 +342,7 @@
                                                                                                    [:= :rxcui :preparations.rxcui]
                                                                                                    [:in :atn [:pg/inplace-params-list (:single rxnsat-atn-collections)]]]}}}}
                                                                  :select {:ql/type :pg/select
-                                                                          :select {:attrs_res [:pg/coalesce ^:pg/fn[:jsonb_object_agg :name :value] ^:pg/obj {}]}
+                                                                          :select {:attrs_res [:pg/coalesce ^:pg/fn[:jsonb_object_agg ^:pg/fn[:lower :name] :value] ^:pg/obj {}]}
                                                                           :from :attrs}}
 
                                                                 {:ql/type :pg/cte
