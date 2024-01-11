@@ -210,11 +210,13 @@
             :from :rxnsat
             :where ^:pg/op[:<> :sab "RXNORM"]})
 
-    (create-idx db :rxnconso "code")
+    (create-idx db :rxnconso "rxcui")
+    (create-idx db :rxnconso "suppress")
     (create-idx db :rxnconso "tty")
     (create-idx db :rxnrel "rxcui1")
     (create-idx db :rxnrel "rxcui2")
     (create-idx db :rxnrel "rela")
+    (create-idx db :rxnsat "rxcui")
     (create-idx db :rxnsat "atv")
     (create-idx db :rxnsat "atn")))
 
@@ -291,18 +293,17 @@
 (defmethod u/*fn ::create-concepts-copy-out-obj [{:as _cfg,
                                                   :keys [db]
                                                   {:keys [value-set code-system]} ::result}]
-  (let [connection (jdbc/get-connection db)
-        query {:ql/type :pg/cte
+  (let [query {:ql/type :pg/cte
                :with {:preparations
                       {:ql/type :pg/select
                        :select {:suppress :suppress
                                 :rxcui :rxcui
                                 :displays [:pg/sql "jsonb_agg(str order by CASE WHEN tty='SCD' THEN 110 WHEN tty='SCDG' THEN 120 WHEN tty='SCDF' THEN 130 WHEN tty='SCDC' THEN 140 WHEN tty='SBD' THEN 210 WHEN tty='SBDG' THEN 220 WHEN tty='SBDF' THEN 230 WHEN tty='SBDC' THEN 240 WHEN tty='MIN' THEN 310 WHEN tty='PIN' THEN 320 WHEN tty='IN' THEN 330 WHEN tty='GPCK' THEN 410 WHEN tty='BPCK' THEN 420 WHEN tty='PSN' THEN 510 WHEN tty='SY' THEN 520 WHEN tty='TMSY' THEN 530 WHEN tty='BN' THEN 610 WHEN tty='DF' THEN 710 WHEN tty='ET' THEN 720 WHEN tty='DFG' THEN 730 ELSE NULL END)"]}
-                                           ;; ^--- RXCONSO might contain multiple entries for a single RXCUI value. These entries
-                                           ;;      represent various additional variations of the same atom. We empirically determine
-                                           ;;      the 'priorities' of such variations to select the primary variant for the 'display'
-                                           ;;      value, while preserving the additional variants in the 'other-display' property.
-                                           ;;      https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix5.html
+                       ;; ^--- RXCONSO might contain multiple entries for a single RXCUI value. These entries
+                       ;;      represent various additional variations of the same atom. We empirically determine
+                       ;;      the 'priorities' of such variations to select the primary variant for the 'display'
+                       ;;      value, while preserving the additional variants in the 'other-display' property.
+                       ;;      https://www.nlm.nih.gov/research/umls/rxnorm/docs/appendix5.html
                        :from :rxnconso
                        :group-by {:rxcui :rxcui :suppress :suppress}}}
                :select {:ql/type :pg/select
@@ -329,7 +330,7 @@
                                                                          :from :rxnsat
                                                                          :where [:and
                                                                                  [:= :rxcui :preparations.rxcui]
-                                                                                 [:in :atn [:pg/params-list (:multi rxnsat-atn-collections)]]]
+                                                                                 [:in :atn [:pg/inplace-params-list (:multi rxnsat-atn-collections)]]]
                                                                          :group-by :atn
                                                                          :union-all {:wha {:ql/type :pg/sub-select
                                                                                            :select {:name :atn
@@ -337,28 +338,39 @@
                                                                                            :from :rxnsat
                                                                                            :where [:and
                                                                                                    [:= :rxcui :preparations.rxcui]
-                                                                                                   [:in :atn [:pg/params-list (:single rxnsat-atn-collections)]]]}}}}
+                                                                                                   [:in :atn [:pg/inplace-params-list (:single rxnsat-atn-collections)]]]}}}}
                                                                  :select {:ql/type :pg/select
-                                                                          :select ^:pg/fn[:jsonb_object_agg :name :value]
+                                                                          :select {:attrs_res [:pg/coalesce ^:pg/fn[:jsonb_object_agg :name :value] ^:pg/obj {}]}
                                                                           :from :attrs}}
 
                                                                 {:ql/type :pg/cte
                                                                  :with {:rels
                                                                         {:ql/type :pg/select
                                                                          :select {:relation :rela
-                                                                                  :object ^:pg/fn[:jsonb_agg :rxcui1]}
+                                                                                  :object
+                                                                                  ^:pg/fn [:jsonb_agg
+                                                                                           ^:pg/fn [:jsonb_build_object
+                                                                                                    "code" :rxcui1
+                                                                                                    "display" {:ql/type :pg/sub-select
+                                                                                                               :select  :conso.str
+                                                                                                               :from {:conso :rxnconso}
+                                                                                                               :where [:and
+                                                                                                                       [:not-in :conso.tty [:pg/inplace-params-list ["SY" "TMSY" "PSN"]]]
+                                                                                                                       [:= :conso.rxcui :rxcui1]]}]]}
                                                                          :from :rxnrel
                                                                          :where [:= :rxcui2 :preparations.rxcui]
                                                                          :group-by :relation}}
                                                                  :select {:ql/type :pg/select
-                                                                          :select ^:pg/fn[:jsonb_object_agg :relation :object]
-                                                                          :from :rels}
-
-                                                                 }]]}}
+                                                                          :select {:rels_res [:pg/coalesce ^:pg/fn[:jsonb_object_agg :relation :object] ^:pg/obj {}]}
+                                                                          :from :rels}}]]}}
                         :from :preparations
                         :order-by :rxcui}}
-        pstmnt ^PreparedStatement (jdbc/prepare connection (dsql/format query) {:fetch-size 1000})]
-    {::result {:concepts pstmnt}}))
+        _ (jdbc/execute! (jdbc/get-connection db) ["VACUUM FULL ANALYZE"])
+        prepared-statement (jdbc/prepare
+                             (jdbc/get-connection db)
+                             (dsql/format query)
+                             {:fetch-size 1000})]
+    {::result {:concepts prepared-statement}}))
 
 
 (defn import-from-cfg [cfg]
