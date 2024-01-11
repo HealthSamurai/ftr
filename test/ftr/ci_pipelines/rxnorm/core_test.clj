@@ -44,7 +44,7 @@
      {"vs"
       {"http:--www.nlm.nih.gov-research-umls-rxnorm-valueset"
        {"tag.prod.ndjson.gz" {},
-        "tf.61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485.ndjson.gz"
+        "tf.fb592cc629824d83c68682dbec3e0611b23eb5ccb770a854cdda1aebcc4fb887.ndjson.gz"
         {}}},
       "tags" {"prod.ndjson.gz" {}, "prod.hash" {}}}}
 
@@ -54,13 +54,13 @@
    (ftr.utils.core/parse-ndjson-gz
     (format "%s/rxnorm/tags/prod.ndjson.gz" (:ftr-path sut/config-defaults)))
    [{:hash
-     "61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485",
+     "fb592cc629824d83c68682dbec3e0611b23eb5ccb770a854cdda1aebcc4fb887",
      :name "rxnorm.http:--www.nlm.nih.gov-research-umls-rxnorm-valueset"}
     nil])
 
   (matcho/match
     (ftr.utils.core/parse-ndjson-gz
-      (format "%s/rxnorm/vs/http:--www.nlm.nih.gov-research-umls-rxnorm-valueset/tf.61ba58d1ba96c662a73f603a68608e577fa8e3a39ebfa11b5dbd92d64f6b2485.ndjson.gz"
+      (format "%s/rxnorm/vs/http:--www.nlm.nih.gov-research-umls-rxnorm-valueset/tf.fb592cc629824d83c68682dbec3e0611b23eb5ccb770a854cdda1aebcc4fb887.ndjson.gz"
               (:ftr-path sut/config-defaults)))
     [{:publisher    "National Library of Medicine (NLM)"
       :content      "not-present"
@@ -80,14 +80,15 @@
       :version      "20070101"}
      {:code         "1337"
       :display      "tablets"
-      :property     {:suppressible-flag "O"}
+      :property     {:suppressible-flag "O" :tty "SCD"}
       :resourceType "Concept"
       :system       "http://www.nlm.nih.gov/research/umls/rxnorm"
       :valueset     ["http://www.nlm.nih.gov/research/umls/rxnorm/valueset"]}
      {:code         "2665426"
       :display      "0.8 ML adalimumab-adaz 50 MG/ML Prefilled Syringe [Hyrimoz]"
       :property
-      {:other-display
+      {:tty "SCD"
+       :other-display
        ["Hyrimoz 40 MG in 0.8 ML Prefilled Syringe"
         "0.8 ML Hyrimoz 50 MG/ML Prefilled Syringe"
         "Hyrimoz 40 MG per 0.8 ML Prefilled Syringe"]
@@ -98,7 +99,8 @@
      {:code         "2665428"
       :display      "cholecalciferol 0.075 MG / folic acid 1 MG Oral Capsule"
       :property
-      {:other-display
+      {:tty "SCD"
+       :other-display
        ["vitamin D 3 75 MCG (3000 UNT) / folic acid 1 MG Oral Capsule"
         "vitamin D 3 75 MCG (3000 UNT) / folic acid 1 MG Oral Capsule"
         "cholecalciferol 0.075 MG / folate 1 MG Oral Capsule"]

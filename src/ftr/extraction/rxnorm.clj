@@ -322,7 +322,7 @@
                                                                                           [:= ^:pg/fn[:jsonb_array_length [:- :preparations.displays 0]] 0] nil
                                                                                           [:- :preparations.displays 0]]
                                                                           :suppressible-flag :preparations.suppress
-                                                                          :tty :preparations.tty}
+                                                                          :tty [:#>> :preparations.tty [0]]}
 
                                                                 {:ql/type :pg/cte
                                                                  :with {:attrs
