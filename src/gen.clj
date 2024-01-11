@@ -22,8 +22,7 @@
             :code   {:type zen/string
                      :zen.fhir/type "string"}
             :display  {:type zen/string
-                       :zen.fhir/type "string"}
-            :definition {:type zen/string
+                       :zen.fhir/type "string"} :definition {:type zen/string
                          :zen.fhir/type "string"}
             :ancestors {:type zen/map
                         :validation-type :open}
@@ -129,34 +128,35 @@
              "RXTERM_FORM"
              "RXN_QUALITATIVE_DISTINCTION"]})
 
-(def helpful-map
-  (let [connection (jdbc/get-connection "jdbc:postgresql://localhost:5125/ftr?user=ftr&password=password")
-        multi-attrs (:multi rxnsat-atn-collections)
-        single-attrs (:single rxnsat-atn-collections)
-        rels (->>
-              (dsql/format {:ql/type :pg/select
-                            :select {:rel [:distinct :rela]}
-                            :from    :rxnrel})
-              (jdbc/execute! connection)
-              (map #(get % :rxnrel/rel))
-              (filter #(not (nil? %))))
-        rels (->> rels
-                  (reduce
-                   (fn [acc value]
-                     (assoc acc (keyword (str/lower-case value)) :multi-rel))
-                   {}))
-        multi-attrs (->> multi-attrs
-                         (reduce
-                          (fn [acc value]
-                            (assoc acc (keyword (str/lower-case value)) :multi-attr))
-                          {}))
-        single-attrs (->> single-attrs
-                          (reduce
-                           (fn [acc value]
-                             (assoc acc (keyword (str/lower-case value)) :single-attr))
-                           {}))
-        attrs  (merge rels multi-attrs single-attrs)]
-    attrs))
+(comment
+  (def helpful-map
+    (let [connection (jdbc/get-connection "jdbc:postgresql://localhost:5125/ftr?user=ftr&password=password")
+          multi-attrs (:multi rxnsat-atn-collections)
+          single-attrs (:single rxnsat-atn-collections)
+          rels (->>
+                (dsql/format {:ql/type :pg/select
+                              :select {:rel [:distinct :rela]}
+                              :from    :rxnrel})
+                (jdbc/execute! connection)
+                (map #(get % :rxnrel/rel))
+                (filter #(not (nil? %))))
+          rels (->> rels
+                    (reduce
+                     (fn [acc value]
+                       (assoc acc (keyword (str/lower-case value)) :multi-rel))
+                     {}))
+          multi-attrs (->> multi-attrs
+                           (reduce
+                            (fn [acc value]
+                              (assoc acc (keyword (str/lower-case value)) :multi-attr))
+                            {}))
+          single-attrs (->> single-attrs
+                            (reduce
+                             (fn [acc value]
+                               (assoc acc (keyword (str/lower-case value)) :single-attr))
+                             {}))
+          attrs  (merge rels multi-attrs single-attrs)]
+      attrs)))
 
 (defn to-zen-name [kw & [postfix]]
   (let [res (-> kw
