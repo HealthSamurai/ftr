@@ -189,9 +189,8 @@
                       :single-attr
                       (assoc acc
                              (keyword (str/lower-case (kw-to-string k)))
-                             '{:type zen/map
-                               :keys {:type zen/string
-                                      :zen.fhir/type "string"}})
+                             '{:type zen/string
+                               :zen.fhir/type "string"})
                       :multi-attr
                       (assoc acc
                              (keyword (str/lower-case (kw-to-string k)))
@@ -264,13 +263,13 @@
                       (assoc acc
                              (to-zen-name k "code")
                              `{:zen/tags #{aidbox.search-parameter.v1/search-parameter}
-                               :name ~(to-camel-name "code")
+                               :name ~(to-camel-name k "code")
                                :type :token
                                :resource {:resourceType "Entity" :id "Concept"}
                                :expression [["property" ~(kw-to-string k) "code"]]}
                              (to-zen-name k "display")
                              `{:zen/tags #{aidbox.search-parameter.v1/search-parameter}
-                               :name ~(to-camel-name "display")
+                               :name ~(to-camel-name k "display")
                                :type :string
                                :resource {:resourceType "Entity" :id "Concept"}
                                :expression [["property" ~(kw-to-string k) "display"]]})))
@@ -328,5 +327,6 @@
                               set)}}
    (generate-index-schemas)
    (generate-search-schemas))
+
 
   )
