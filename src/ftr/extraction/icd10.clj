@@ -236,7 +236,8 @@
            (map (fn [concept]
                   (assoc concept
                          :valueset [(:url value-set)]
-                         :system (:url code-system)))))}}))
+                         :system (:url code-system)
+                         :resourceType "Concept"))))}}))
 
 
 (defn import-from-cfg [cfg]
