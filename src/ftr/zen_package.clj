@@ -8,8 +8,7 @@
             [clojure.java.io :as io]
             [zen.cli]
             [taoensso.nippy :as nippy])
-  (:import (java.util UUID)
-           (java.nio.file Path)))
+  (:import (java.util UUID)))
 
 
 (defn build-ftr [ztx & [{:as _opts, :keys [enable-logging?]}]]
@@ -98,6 +97,7 @@
           {} tag-index-paths))
 
 
+
 (defn enrich-vs [vs]
   (if (contains? vs :ftr)
     (let [{:as _ftr-manifest,
@@ -114,7 +114,10 @@
                   (assoc-in [:ftr :zen/package-name] zen-package-name)
                   (assoc-in [:ftr :inferred-ftr-dir] inferred-ftr-dir))
         (get-in vs [:ftr :validation-index])
-        (assoc-in [:ftr :validation-index-path] (str (.resolve path-to-package (get-in vs [:ftr :validation-index :file]))))))
+        (assoc-in [:ftr :validation-index-path]
+                   (if (.exists (io/file zen-file (get-in vs [:ftr :module]) (get-in vs [:ftr :validation-index :file])))
+                       (str (io/file zen-file (get-in vs [:ftr :module]) (get-in vs [:ftr :validation-index :file])))
+                       (str (.resolve path-to-package (get-in vs [:ftr :validation-index :file])))))))
     vs))
 
 
@@ -287,7 +290,7 @@
 
 
 (defn choose-bindings-to-use [bindings]
-  (->> (group-by :value-set bindings )
+  (->> (group-by :value-set bindings)
        vals
        (mapcat filter-duplicate-value-sets)
        (choose-validation-defer-to-use)
@@ -297,7 +300,7 @@
              (map (fn [group]
                     (let [binding (select-keys (first group) #{:path :value-set :data :strength})
                           schemas (into #{} (map :schemas) group)]
-                      (assoc binding :schemas schemas)))))) )
+                      (assoc binding :schemas schemas)))))))
 
 
 (defn normalize-value-set-data
@@ -393,7 +396,7 @@
 
       (-> zen-validation-acc
           (dissoc :value-sets)
-          (update :errors (fnil into []) errors)) )))
+          (update :errors (fnil into []) errors)))))
 
 
 (defn validate-effects [ztx result]
@@ -440,6 +443,6 @@
 
   (count a)
 
-  (int (/ (total-memory a) 1000000))
+  (int (/ (total-memory a) 1000000)))
 
-  )
+  
