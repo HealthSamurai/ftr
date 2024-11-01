@@ -25,7 +25,7 @@
 
   :pipeline
   {:extra-deps {http-kit/http-kit   {:mvn/version "2.6.0"}
-                com.velisco/clj-ftp {:mvn/version "1.1.0"}
+                com.velisco/clj-ftp {:mvn/version "1.2.0"}
                 ;; http-kit can't handle cookies, so, to download LOINC bundle we're using clj-http with
                 ;; pre-configured cookie-store
                 clj-http/clj-http   {:mvn/version "3.12.3"} ;
